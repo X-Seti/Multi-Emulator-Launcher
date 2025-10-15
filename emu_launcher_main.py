@@ -1,22 +1,28 @@
 #!/usr/bin/env python3
+# X-Seti - October15 2025 - Multi-Emulator Launcher - Main Entry Point
+# This belongs in root /emu_launcher_main.py - Version: 2
 """
-Multi-Emulator Launcher
-A custom frontend for libretro cores with PS4 controller support
+Multi-Emulator Launcher - A custom frontend for libretro cores with PS4 controller support.
 """
+
+##Methods list -
+# load_config
+# run
+# setup_directories
 
 import os
 import sys
 import json
 from pathlib import Path
 
-# Main application structure
-class EmulatorLauncher:
-    def __init__(self):
+
+class EmulatorLauncher: #vers 2
+    def __init__(self): #vers 2
         self.base_dir = Path(__file__).parent.absolute()
         self.config = self.load_config()
         self.setup_directories()
-        
-    def load_config(self):
+    
+    def load_config(self): #vers 2
         """Load or create default configuration"""
         config_path = self.base_dir / 'config' / 'settings.json'
         
@@ -24,7 +30,6 @@ class EmulatorLauncher:
             with open(config_path, 'r') as f:
                 return json.load(f)
         else:
-            # Create default config
             default_config = {
                 "rom_path": str(self.base_dir / "roms"),
                 "core_path": str(self.base_dir / "cores"),
@@ -36,7 +41,7 @@ class EmulatorLauncher:
                     "height": 1080,
                     "fullscreen": True,
                     "vsync": True,
-                    "scale_quality": "linear"  # linear, nearest, or best
+                    "scale_quality": "linear"
                 },
                 "input": {
                     "controller_index": 0,
@@ -44,31 +49,14 @@ class EmulatorLauncher:
                 }
             }
             
-            # Create config directory
             config_path.parent.mkdir(parents=True, exist_ok=True)
             
-            # Save default config
             with open(config_path, 'w') as f:
                 json.dump(default_config, f, indent=2)
             
             return default_config
     
-    def setup_directories(self):
-        """Create necessary directories if they don't exist"""
-        directories = [
-            'cores',
-            'bios',
-            'roms',
-            'saves',
-            'cache/extracted',
-            'config'
-        ]
-        
-        for directory in directories:
-            dir_path = self.base_dir / directory
-            dir_path.mkdir(parents=True, exist_ok=True)
-    
-    def run(self):
+    def run(self): #vers 2
         """Main application loop"""
         print("Multi-Emulator Launcher")
         print("=" * 50)
@@ -78,14 +66,11 @@ class EmulatorLauncher:
         print(f"BIOS Path: {self.config['bios_path']}")
         print("=" * 50)
         
-        # Initialize components
-        from src.game_scanner import GameScanner
-        from src.platform_config import PlatformManager
+        from methods.game_scanner import GameScanner
+        from core.platform_config import PlatformManager
         
-        # Load platform configurations
         platform_manager = PlatformManager(self.base_dir / 'config')
         
-        # Scan for games
         scanner = GameScanner(self.config, platform_manager.platforms)
         available_platforms = scanner.discover_platforms()
         
@@ -94,12 +79,36 @@ class EmulatorLauncher:
             game_count = len(scanner.scan_platform(platform))
             print(f"  - {platform}: {game_count} games")
         
-        # Launch GUI
         print("\nLaunching GUI...")
-        from src.gui_main import EmulatorGUI
+        from PyQt6.QtWidgets import QApplication
+        from gui.gui_main import EmulatorGUI
+        from utils.app_settings_system import AppSettings
         
-        app = EmulatorGUI(self.config, platform_manager, scanner)
-        app.run()
+        app = QApplication(sys.argv)
+        
+        app_settings = AppSettings()
+        
+        stylesheet = app_settings.get_stylesheet()
+        app.setStyleSheet(stylesheet)
+        
+        gui = EmulatorGUI(self.config, platform_manager, scanner, app_settings)
+        sys.exit(gui.run())
+    
+    def setup_directories(self): #vers 2
+        """Create necessary directories if they don't exist"""
+        directories = [
+            'cores',
+            'bios',
+            'roms',
+            'saves',
+            'cache/extracted',
+            'config',
+            'themes'
+        ]
+        
+        for directory in directories:
+            dir_path = self.base_dir / directory
+            dir_path.mkdir(parents=True, exist_ok=True)
 
 
 if __name__ == "__main__":

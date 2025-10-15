@@ -1,0 +1,159 @@
+{
+  "Acorn Electron": {
+    "core": "mame_libretro.so",
+    "extensions": [
+      ".adf",
+      ".uef"
+    ],
+    "zip_support": "extract",
+    "cache_extracted": true,
+    "bios_required": false,
+    "bios_files": {}
+  },
+  "Amiga": {
+    "core": "puae_libretro.so",
+    "extensions": [
+      ".adf",
+      ".ipf",
+      ".dms",
+      ".hdf",
+      ".hdz",
+      ".zip"
+    ],
+    "zip_support": "extract",
+    "cache_extracted": true,
+    "bios_required": true,
+    "bios_files": {
+      "kick34005.A500": "Kickstart 3.1 ROM",
+      "kick40068.A1200": "Kickstart 3.1 ROM (A1200)"
+    }
+  },
+  "Amstrad CPC": {
+    "core": "cap32_libretro.so",
+    "extensions": [
+      ".dsk",
+      ".sna",
+      ".cdt",
+      ".zip"
+    ],
+    "zip_support": "extract",
+    "cache_extracted": true,
+    "bios_required": false,
+    "bios_files": {}
+  },
+  "Atari 2600": {
+    "core": "stella_libretro.so",
+    "extensions": [
+      ".bin",
+      ".a26",
+      ".zip"
+    ],
+    "zip_support": "native",
+    "cache_extracted": false,
+    "bios_required": false,
+    "bios_files": {}
+  },
+  "Atari 800": {
+    "core": "atari800_libretro.so",
+    "extensions": [
+      ".atr",
+      ".xex",
+      ".xfd",
+      ".dcm",
+      ".zip"
+    ],
+    "zip_support": "extract",
+    "cache_extracted": true,
+    "bios_required": true,
+    "bios_files": {
+      "ATARIXL.ROM": "Atari XL/XE OS",
+      "ATARIBAS.ROM": "Atari BASIC"
+    }
+  },
+  "Atari-8-bit": {
+    "core": "atari800_libretro.so",
+    "extensions": [
+      ".atr",
+      ".xex",
+      ".xfd",
+      ".dcm",
+      ".zip"
+    ],
+    "zip_support": "extract",
+    "cache_extracted": true,
+    "bios_required": true,
+    "bios_files": {
+      "ATARIXL.ROM": "Atari XL/XE OS",
+      "ATARIBAS.ROM": "Atari BASIC"
+    }
+  },
+  "Atari ST": {
+    "core": "hatari_libretro.so",
+    "extensions": [
+      ".st",
+      ".stx",
+      ".msa",
+      ".dim",
+      ".zip"
+    ],
+    "zip_support": "extract",
+    "cache_extracted": true,
+    "bios_required": true,
+    "bios_files": {
+      "tos.img": "TOS System ROM"
+    }
+  },
+  "BBC Micro": {
+    "core": "mame_libretro.so",
+    "extensions": [
+      ".ssd",
+      ".dsd",
+      ".uef",
+      ".zip"
+    ],
+    "zip_support": "extract",
+    "cache_extracted": true,
+    "bios_required": false,
+    "bios_files": {}
+  },
+  "Commodore 64": {
+    "core": "vice_x64_libretro.so",
+    "extensions": [
+      ".d64",
+      ".t64",
+      ".prg",
+      ".tap",
+      ".zip"
+    ],
+    "zip_support": "extract",
+    "cache_extracted": true,
+    "bios_required": false,
+    "bios_files": {}
+  },
+  "MS-DOS": {
+    "core": "dosbox_pure_libretro.so",
+    "extensions": [
+      ".zip",
+      ".dosz"
+    ],
+    "zip_support": "native",
+    "cache_extracted": false,
+    "bios_required": false,
+    "bios_files": {}
+  },
+  "ZX Spectrum": {
+    "core": "fuse_libretro.so",
+    "extensions": [
+      ".tzx",
+      ".tap",
+      ".z80",
+      ".sna",
+      ".szx",
+      ".zip"
+    ],
+    "zip_support": "extract",
+    "cache_extracted": true,
+    "bios_required": false,
+    "bios_files": {}
+  }
+}

@@ -1,0 +1,62 @@
+.
+├── cc.py
+├── components
+│   └── placeholder
+├── core
+│   └── placeholder
+├── core_launcher.py
+├── debug
+│   └── placeholder
+├── emu_launcher_main.py
+├── game_scanner.py
+├── gui
+│   └── placeholder
+├── gui_main.py
+├── locale
+│   └── placeholder
+├── methods
+│   └── placeholder
+├── platform_config.py
+├── README.pdf
+├── requirements.md
+├── rom_loader.py
+├── rules.md
+├── themes
+│   ├── amiga_mui_light.json
+│   ├── amiga_wb light.json
+│   ├── blue_panels_dark.json
+│   ├── blue_theme_light.json
+│   ├── classic_dark.json
+│   ├── cyberpunk_dark.json
+│   ├── green_shad_light.json
+│   ├── green_theme_light.json
+│   ├── gta_forums_dark.json
+│   ├── gta_forums_light.json
+│   ├── gta_liberty_city_dark.json
+│   ├── gta_san_andreas_dark.json
+│   ├── gta_vice_city_dark.json
+│   ├── img_factory_dark.json
+│   ├── img_factory_light.json
+│   ├── knight_rider_dark.json
+│   ├── lavender_theme_light.json
+│   ├── matrix_dark.json
+│   ├── pastel_theme_light.json
+│   ├── peach_theme_light.json
+│   ├── pink_theme_light.json
+│   ├── professional_light.json
+│   ├── red_dead_theme_dark.json
+│   ├── red_theme_dark.json
+│   ├── red_wine_dark.json
+│   ├── rockstar_dark.json
+│   ├── synthwave_outrun_dark.json
+│   ├── tea_and_toast_dark.json
+│   ├── Test Theme_light.json
+│   ├── themes_organization.md
+│   └── yellow_theme_light.json
+├── tree.git
+└── utils
+    ├── app_settings_system.py
+    ├── themer_settings.json
+    └── themes -> /home/x2/Documents/GitHub/Img Factory 1.5/themes
+
+10 directories, 50 files

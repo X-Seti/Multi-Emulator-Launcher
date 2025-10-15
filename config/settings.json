@@ -1,0 +1,18 @@
+{
+  "rom_path": "/home/x2/Documents/GitHub/Multi-Emulator-Launcher/roms",
+  "core_path": "/home/x2/Documents/GitHub/Multi-Emulator-Launcher/cores",
+  "bios_path": "/home/x2/Documents/GitHub/Multi-Emulator-Launcher/bios",
+  "save_path": "/home/x2/Documents/GitHub/Multi-Emulator-Launcher/saves",
+  "cache_path": "/home/x2/Documents/GitHub/Multi-Emulator-Launcher/cache",
+  "display": {
+    "width": 1920,
+    "height": 1080,
+    "fullscreen": true,
+    "vsync": true,
+    "scale_quality": "linear"
+  },
+  "input": {
+    "controller_index": 0,
+    "deadzone": 0.15
+  }
+}
