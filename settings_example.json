@@ -1,0 +1,46 @@
+{
+  "_comment": "Multi-Emulator Launcher Configuration",
+  "_comment2": "Copy this file to settings.json and customize paths",
+  
+  "rom_path": "roms",
+  "core_path": "cores",
+  "bios_path": "bios",
+  "save_path": "saves",
+  "cache_path": "cache",
+  
+  "display": {
+    "_comment": "Display and video settings",
+    "width": 1920,
+    "height": 1080,
+    "fullscreen": true,
+    "vsync": true,
+    "scale_quality": "linear"
+  },
+  
+  "input": {
+    "_comment": "Controller input settings",
+    "controller_index": 0,
+    "deadzone": 0.15
+  },
+  
+  "_paths_help": {
+    "rom_path": "Root directory containing platform folders (e.g., roms/Amiga/, roms/Atari ST/)",
+    "core_path": "Directory containing libretro core files (.so/.dll/.dylib)",
+    "bios_path": "Root directory for BIOS files, organized by platform (e.g., bios/Amiga/kick31.rom)",
+    "save_path": "Directory for save states and SRAM files",
+    "cache_path": "Directory for cached ZIP extractions"
+  },
+  
+  "_display_help": {
+    "width": "Display width in pixels",
+    "height": "Display height in pixels",
+    "fullscreen": "Launch games in fullscreen mode (true/false)",
+    "vsync": "Enable vertical sync (true/false)",
+    "scale_quality": "Scaling filter: 'nearest' (pixelated), 'linear' (smooth), or 'best' (high quality)"
+  },
+  
+  "_input_help": {
+    "controller_index": "Which controller to use (0 = first controller)",
+    "deadzone": "Analog stick deadzone (0.0 to 1.0, recommended: 0.15)"
+  }
+}
