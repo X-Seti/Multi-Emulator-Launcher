@@ -28,15 +28,15 @@ from PyQt6.QtSvg import QSvgRenderer
 App_name = "GUI Window"
 DEBUG_STANDALONE = False
 
-class TXDWorkshop(QWidget): #vers 3
+class MainGUI(QWidget): #vers 3
     """GUI Setup - Main window"""
 
     workshop_closed = pyqtSignal()
 
     def __init__(self, parent=None, main_window=None): #vers 10
-        """Initialize TXD Workshop - FIXED: Remove duplicate theme calls"""
+        """initialize_features"""
         if DEBUG_STANDALONE and main_window is None:
-            print("   → Initializing TXD Workshop...")
+            print(App_name * "Initializing ...")
 
         super().__init__(parent)
 
@@ -75,7 +75,7 @@ class TXDWorkshop(QWidget): #vers 3
         self.overlay_table = None
         self.overlay_tab_index = -1
 
-        self.setWindowTitle("application: No File")
+        self.setWindowTitle(App_name + ": No File")
         self.resize(1400, 800)
         self.use_system_titlebar = False
         self.window_always_on_top = False
@@ -119,7 +119,7 @@ class TXDWorkshop(QWidget): #vers 3
         self.setMouseTracking(True)
 
         if DEBUG_STANDALONE and self.standalone_mode:
-            print("   ✓ TXD Workshop initialized")
+            print(App_name + "initialized")
 
     def setup_ui(self): #vers 7
         """Setup the main UI layout"""
@@ -189,7 +189,7 @@ class TXDWorkshop(QWidget): #vers 3
                 self.main_window.log_message(f"Feature init error: {str(e)}")
 
 
-    def _create_status_bar(self): #vers 5
+    def _create_status_bar(self): #vers 1
         """Create bottom status bar - single line compact"""
         from PyQt6.QtWidgets import QFrame, QHBoxLayout, QLabel
 
@@ -214,7 +214,7 @@ class TXDWorkshop(QWidget): #vers 3
         return status_bar
 
 
-    def _show_workshop_settings(self): #vers 5
+    def _show_workshop_settings(self): #vers 1
         """Show complete workshop settings dialog"""
         from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton,
                                     QTabWidget, QWidget, QGroupBox, QFormLayout,
@@ -224,7 +224,7 @@ class TXDWorkshop(QWidget): #vers 3
         from PyQt6.QtGui import QFont
 
         dialog = QDialog(self)
-        dialog.setWindowTitle("TXD Workshop Settings")
+        dialog.setWindowTitle(App_name + " Settings")
         dialog.setMinimumWidth(650)
         dialog.setMinimumHeight(550)
 
@@ -385,65 +385,8 @@ class TXDWorkshop(QWidget): #vers 3
         display_layout.addStretch()
         tabs.addTab(display_tab, "Display")
 
-        # TAB 3: EXPORT SETTINGS
 
-        export_tab = QWidget()
-        export_layout = QVBoxLayout(export_tab)
-
-        # Default export format
-        export_format_group = QGroupBox("Default Export Format")
-        export_format_layout = QVBoxLayout()
-
-        format_combo = QComboBox()
-        format_combo.addItems(["PNG", "TGA", "BMP", "DDS"])
-        format_combo.setCurrentText(getattr(self, 'default_export_format', 'PNG'))
-        export_format_layout.addWidget(format_combo)
-
-        format_hint = QLabel("PNG recommended for best quality and compatibility")
-        format_hint.setStyleSheet("color: #888; font-style: italic;")
-        export_format_layout.addWidget(format_hint)
-
-        export_format_group.setLayout(export_format_layout)
-        export_layout.addWidget(export_format_group)
-
-        # Export options
-        export_options_group = QGroupBox("Export Options")
-        export_options_layout = QVBoxLayout()
-
-        preserve_alpha = QCheckBox("Preserve alpha channel when exporting")
-        preserve_alpha.setChecked(True)
-        export_options_layout.addWidget(preserve_alpha)
-
-        export_mipmaps = QCheckBox("Export mipmaps as separate files")
-        export_mipmaps.setChecked(False)
-        export_mipmaps.setToolTip("Saves each mipmap level as texture_mip0.png, texture_mip1.png, etc.")
-        export_options_layout.addWidget(export_mipmaps)
-
-        auto_folder = QCheckBox("Auto-create subfolders by texture name")
-        auto_folder.setChecked(False)
-        export_options_layout.addWidget(auto_folder)
-
-        export_options_group.setLayout(export_options_layout)
-        export_layout.addWidget(export_options_group)
-
-        # Target game/platform
-        target_group = QGroupBox("🎮 Export Target")
-        target_layout = QFormLayout()
-
-        game_combo = QComboBox()
-        game_combo.addItems(["Auto Detect", "GTA III", "GTA Vice City", "GTA San Andreas", "Manhunt"])
-        target_layout.addRow("Target Game:", game_combo)
-
-        platform_combo = QComboBox()
-        platform_combo.addItems(["PC", "Xbox", "PS2", "Android", "Multi-platform"])
-        target_layout.addRow("Target Platform:", platform_combo)
-
-        target_group.setLayout(target_layout)
-        export_layout.addWidget(target_group)
-
-        export_layout.addStretch()
-        tabs.addTab(export_tab, "Export")
-
+        # TAB 3: placeholder
         # TAB 4: PERFORMANCE
 
         perf_tab = QWidget()
@@ -542,8 +485,8 @@ class TXDWorkshop(QWidget): #vers 3
         bg_layout.addLayout(cb_layout)
 
         # Connect checkerboard controls
-        cb_slider.valueChanged.connect(cb_spin.setValue)
-        cb_spin.valueChanged.connect(cb_slider.setValue)
+        #cb_slider.valueChanged.connect(cb_spin.setValue)
+        #cb_spin.valueChanged.connect(cb_slider.setValue)
 
         # Hint
         cb_hint = QLabel("Smaller = tighter pattern, larger = bigger squares")
@@ -580,8 +523,8 @@ class TXDWorkshop(QWidget): #vers 3
         overlay_layout.addLayout(opacity_layout)
 
         # Connect opacity controls
-        opacity_slider.valueChanged.connect(opacity_spin.setValue)
-        opacity_spin.valueChanged.connect(opacity_slider.setValue)
+        #opacity_slider.valueChanged.connect(opacity_spin.setValue)
+        #opacity_spin.valueChanged.connect(opacity_slider.setValue)
 
         # Hint
         opacity_hint = QLabel("0")
@@ -665,8 +608,6 @@ class TXDWorkshop(QWidget): #vers 3
                 self._update_all_buttons()
 
             # Refresh display
-            if self.selected_texture:
-                self._update_texture_info(self.selected_texture)
 
             if self.main_window and hasattr(self.main_window, 'log_message'):
                 self.main_window.log_message("Workshop settings updated successfully")
@@ -729,10 +670,8 @@ class TXDWorkshop(QWidget): #vers 3
             current_geometry = self.geometry()
             was_visible = self.isVisible()
 
-            # Apply new flags
             self.setWindowFlags(new_flags)
 
-            # Restore state
             self.setGeometry(current_geometry)
             if was_visible:
                 self.show()
@@ -872,8 +811,6 @@ class TXDWorkshop(QWidget): #vers 3
 
     def _dock_to_main(self): #vers 7
         """Dock handled by overlay system in imgfactory"""
-        # Docking is handled by imgfactory.py open_txd_workshop_docked()
-        # This is now just a compatibility stub
         if hasattr(self, 'is_overlay') and self.is_overlay:
             self.show()
             self.raise_()
@@ -881,7 +818,6 @@ class TXDWorkshop(QWidget): #vers 3
     def _undock_from_main(self): #vers 3
         """Undock from overlay mode to standalone window"""
         if hasattr(self, 'is_overlay') and self.is_overlay:
-            # Switch from overlay to normal window
             self.setWindowFlags(Qt.WindowType.Window)
             self.is_overlay = False
             self.overlay_table = None
@@ -892,7 +828,7 @@ class TXDWorkshop(QWidget): #vers 3
         self.show()
 
         if hasattr(self.main_window, 'log_message'):
-            self.main_window.log_message("TXD Workshop undocked to standalone")
+            self.main_window.log_message(App_name + " undocked to standalone")
 
 
     def _apply_button_mode(self, dialog): #vers 1
@@ -973,19 +909,15 @@ class TXDWorkshop(QWidget): #vers 3
         w = self.width()
         h = self.height()
 
-        # Top-left corner
         if pos.x() < size and pos.y() < size:
             return "top-left"
 
-        # Top-right corner
         if pos.x() > w - size and pos.y() < size:
             return "top-right"
 
-        # Bottom-left corner
         if pos.x() < size and pos.y() > h - size:
             return "bottom-left"
 
-        # Bottom-right corner
         if pos.x() > w - size and pos.y() > h - size:
             return "bottom-right"
 
@@ -995,7 +927,6 @@ class TXDWorkshop(QWidget): #vers 3
     def mousePressEvent(self, event): #vers 2
         """Handle mouse press for dragging and resizing"""
         if event.button() == Qt.MouseButton.LeftButton:
-            # Check if clicking on corner
             self.resize_corner = self._get_resize_corner(event.pos())
 
             if self.resize_corner:
@@ -1020,7 +951,6 @@ class TXDWorkshop(QWidget): #vers 3
                 self.move(event.globalPosition().toPoint() - self.drag_position)
             event.accept()
         else:
-            # Update hover state and cursor
             corner = self._get_resize_corner(event.pos())
             if corner != self.hover_corner:
                 self.hover_corner = corner
@@ -1068,7 +998,6 @@ class TXDWorkshop(QWidget): #vers 3
 
         # Calculate new geometry based on corner
         if self.resize_corner == "top-left":
-            # Move top-left corner
             new_x = geometry.x() + delta.x()
             new_y = geometry.y() + delta.y()
             new_width = geometry.width() - delta.x()
@@ -1078,7 +1007,6 @@ class TXDWorkshop(QWidget): #vers 3
                 self.setGeometry(new_x, new_y, new_width, new_height)
 
         elif self.resize_corner == "top-right":
-            # Move top-right corner
             new_y = geometry.y() + delta.y()
             new_width = geometry.width() + delta.x()
             new_height = geometry.height() - delta.y()
@@ -1087,7 +1015,6 @@ class TXDWorkshop(QWidget): #vers 3
                 self.setGeometry(geometry.x(), new_y, new_width, new_height)
 
         elif self.resize_corner == "bottom-left":
-            # Move bottom-left corner
             new_x = geometry.x() + delta.x()
             new_width = geometry.width() - delta.x()
             new_height = geometry.height() + delta.y()
@@ -1096,7 +1023,6 @@ class TXDWorkshop(QWidget): #vers 3
                 self.setGeometry(new_x, geometry.y(), new_width, new_height)
 
         elif self.resize_corner == "bottom-right":
-            # Move bottom-right corner
             new_width = geometry.width() + delta.x()
             new_height = geometry.height() + delta.y()
 
@@ -1203,7 +1129,6 @@ class TXDWorkshop(QWidget): #vers 3
             background-size: 20px 20px;
             background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
         """)
-
 
     def _is_on_draggable_area(self, pos): #vers 3
         """Check if position is on draggable toolbar area (stretch space, not buttons)"""
@@ -1634,10 +1559,10 @@ class TXDWorkshop(QWidget): #vers 3
 
 
     def _create_middle_panel(self): #vers 1
-        """Create middle panel with bumpmap controls"""
+        """Create middle panel with controls"""
         from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QGroupBox, QLabel
 
-        panel = QGroupBox("Controls    .")
+        panel = QGroupBox("Controls")
         # Match your styling
         panel.setStyleSheet("""
             QGroupBox {
@@ -1661,56 +1586,6 @@ class TXDWorkshop(QWidget): #vers 3
         layout = QVBoxLayout(panel)
         layout.setSpacing(10)
 
-        # Info text
-        info_label = QLabel(
-            "Bumpmaps add surface detail.\n"
-            "Generate from texture or import."
-        )
-        info_label.setFont(self.panel_font)
-        info_label.setStyleSheet("color: #888; line-height: 1.4;")
-        info_label.setWordWrap(True)
-        layout.addWidget(info_label)
-
-        # Generate button (F9)
-        generate_btn = QPushButton("Generate from Texture (F9)")
-        generate_btn.setFont(self.button_font)
-        #generate_btn.clicked.connect(self._generate_bumpmap)
-        layout.addWidget(generate_btn)
-
-        # Import button (F10)
-        import_btn = QPushButton("Import from File (F10)")
-        import_btn.setFont(self.button_font)
-        #import_btn.clicked.connect(self._import_bumpmap)
-        layout.addWidget(import_btn)
-
-        # Export button
-        export_btn = QPushButton("Export to File")
-        export_btn.setFont(self.button_font)
-        #export_btn.clicked.connect(self._export_bumpmap)
-        #export_btn.setEnabled(self._has_bumpmap())
-        layout.addWidget(export_btn)
-
-        # Delete button (F11)
-        delete_btn = QPushButton("Delete Bumpmap (F11)")
-        delete_btn.setFont(self.button_font)
-        #delete_btn.clicked.connect(self._delete_bumpmap)
-        #delete_btn.setEnabled(self._has_bumpmap())
-        layout.addWidget(delete_btn)
-
-        layout.addStretch()
-
-        # Type info
-        type_info = QLabel(
-            "Types:\n"
-            "• Grayscale Height Map\n"
-            "• RGB Normal Map\n"
-            "• Both (Height + Normal)"
-        )
-        type_info.setFont(self.panel_font)
-        type_info.setStyleSheet("color: #aaa; font-size: 9pt;")
-        type_info.setWordWrap(True)
-        layout.addWidget(type_info)
-
         return panel
 
 
@@ -1732,7 +1607,7 @@ class TXDWorkshop(QWidget): #vers 3
 
         # Preview area (center)
         preview_widget = self._create_preview_widget()
-        top_layout.addWidget(self._create_preview_widget, stretch=2)
+        top_layout.addWidget(preview_widget, stretch=2)
 
         # Preview controls (right side, vertical)
         preview_controls = self._create_preview_controls()
@@ -2114,15 +1989,29 @@ class TXDWorkshop(QWidget): #vers 3
 
         return card
 
+    def _create_preview_widget(self, level_data=None): #vers 2
+        """Create preview widget - blank square if no level_data"""
+        if level_data is None:
+            # Return blank square placeholder
+            preview = QLabel()
+            preview.setFixedSize(600, 600)
+            preview.setStyleSheet("""
+                QLabel {
+                    background: #0a0a0a;
+                    border: 2px solid #3a3a3a;
+                    border-radius: 3px;
+                }
+            """)
+            preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            preview.setText("Preview Area")
+            return preview
 
-    def _create_preview_widget(self, level_data): #vers 1
-        """Create preview thumbnail with checkerboard"""
+        # Original logic with level_data...
         level_num = level_data.get('level', 0)
         width = level_data.get('width', 0)
         height = level_data.get('height', 0)
         rgba_data = level_data.get('rgba_data')
 
-        # Scale preview size based on level
         preview_size = max(45, 120 - (level_num * 15))
 
         preview = QLabel()
@@ -2187,7 +2076,7 @@ class TXDWorkshop(QWidget): #vers 3
 
         # Main texture indicator
         if level_num == 0:
-            main_badge = QLabel("● Main Texture")
+            main_badge = QLabel("Main Texture")
             main_badge.setStyleSheet("color: #4caf50; font-size: 12px;")
             header_layout.addWidget(main_badge)
 
@@ -2347,6 +2236,38 @@ class TXDWorkshop(QWidget): #vers 3
         return action_widget
 
 
+    def _apply_title_font(self): #vers 1
+        """Apply title font to title bar labels"""
+        if hasattr(self, 'title_font'):
+            # Find all title labels
+            for label in self.findChildren(QLabel):
+                if label.objectName() == "title_label" or "🗺️" in label.text():
+                    label.setFont(self.title_font)
+
+
+    def _apply_panel_font(self): #vers 1
+        """Apply panel font to info panels and labels"""
+        if hasattr(self, 'panel_font'):
+            # Apply to info labels (Mipmaps, Bumpmaps, status labels)
+            for label in self.findChildren(QLabel):
+                if any(x in label.text() for x in ["Mipmaps:", "Bumpmaps:", "Status:", "Type:", "Format:"]):
+                    label.setFont(self.panel_font)
+
+
+    def _apply_button_font(self): #vers 1
+        """Apply button font to all buttons"""
+        if hasattr(self, 'button_font'):
+            for button in self.findChildren(QPushButton):
+                button.setFont(self.button_font)
+
+
+    def _apply_infobar_font(self): #vers 1
+        """Apply fixed-width font to info bar at bottom"""
+        if hasattr(self, 'infobar_font'):
+            if hasattr(self, 'info_bar'):
+                self.info_bar.setFont(self.infobar_font)
+
+
     def _update_toolbar_for_docking_state(self): #vers 1
         """Update toolbar visibility based on docking state"""
         # Hide/show drag button based on docking state
@@ -2358,7 +2279,7 @@ class TXDWorkshop(QWidget): #vers 3
         """Toggle tear-off state (merge back to IMG Factory)"""
         QMessageBox.information(self, "Tear-off",
             "Merge back to IMG Factory functionality coming soon!\n\n"
-            "This will dock the TXD Workshop back into the main window.")
+            "This will dock the app back into the main window.")
 
 
     def _show_settings_dialog(self): #vers 5
@@ -2371,7 +2292,7 @@ class TXDWorkshop(QWidget): #vers 3
         from PyQt6.QtGui import QKeySequence
 
         dialog = QDialog(self)
-        dialog.setWindowTitle("TXD Workshop Settings")
+        dialog.setWindowTitle(App_name + " Settings")
         dialog.setMinimumWidth(700)
         dialog.setMinimumHeight(600)
 
@@ -2551,7 +2472,7 @@ class TXDWorkshop(QWidget): #vers 3
 
         # Compatibility note
         compat_label = QLabel(
-            "Note: TXD files use RenderWare format. Exported textures are converted to standard image formats."
+            "Note: PLACEholder."
         )
         compat_label.setWordWrap(True)
         compat_label.setStyleSheet("padding: 10px; background-color: #3a3a3a; border-radius: 4px;")
@@ -2928,14 +2849,14 @@ class TXDWorkshop(QWidget): #vers 3
                 theme_name = self.main_window.app_settings.current_settings.get('theme', 'IMG_Factory')
                 stylesheet = self.main_window.app_settings.get_stylesheet()
 
-                # Apply to TXD Workshop
+                # Apply to App
                 self.setStyleSheet(stylesheet)
 
                 # Force update
                 self.update()
 
                 if hasattr(self.main_window, 'log_message'):
-                    self.main_window.log_message(f"🎨 TXD Workshop theme applied: {theme_name}")
+                    self.main_window.log_message(f"theme applied: {theme_name}")
             else:
                 # Fallback dark theme
                 self.setStyleSheet("""
@@ -3061,7 +2982,7 @@ class TXDWorkshop(QWidget): #vers 3
 
 
     def _setup_hotkeys(self): #vers 3
-        """Setup Plasma6-style keyboard shortcuts for TXD Workshop - checks for existing methods"""
+        """Setup Plasma6-style keyboard shortcuts for this application - checks for existing methods"""
         from PyQt6.QtGui import QShortcut, QKeySequence
         from PyQt6.QtCore import Qt
 
@@ -3157,8 +3078,6 @@ class TXDWorkshop(QWidget): #vers 3
         if not hasattr(self, '_rename_texture_shortcut'):
             # Create rename shortcut method inline
             def rename_shortcut():
-                if not self.selected_texture:
-                    return
                 # Focus the name input field if it exists
                 if hasattr(self, 'info_name'):
                     self.info_name.setReadOnly(False)
@@ -3322,7 +3241,7 @@ class TXDWorkshop(QWidget): #vers 3
         from PyQt6.QtCore import Qt
 
         dialog = QDialog(self)
-        dialog.setWindowTitle("TXD Workshop Settings")
+        dialog.setWindowTitle(App_name + " Settings")
         dialog.setMinimumWidth(600)
         dialog.setMinimumHeight(500)
 
@@ -4336,60 +4255,10 @@ import shutil
 import sys
 
 
-def _call_external_upscaler(self, qimg, factor, command): #vers 1
-    """Call external AI upscaler tool"""
-    if not command:
-        return None
-
-    tmp_dir = tempfile.mkdtemp(prefix='txd_upscale_')
-    input_path = os.path.join(tmp_dir, 'input.png')
-    output_path = os.path.join(tmp_dir, 'output.png')
-
+def open_workshop(main_window, img_path=None): #vers 3
+    """Open Workshop from main window - works with or without IMG"""
     try:
-        # Save input image
-        qimg.save(input_path)
-
-        # Try common command patterns
-        command_patterns = [
-            [command, '-i', input_path, '-o', output_path, '-s', str(factor)],
-            [command, input_path, output_path, str(factor)],
-            [command, input_path, output_path],
-            [command, '--input', input_path, '--output', output_path, '--scale', str(factor)]
-        ]
-
-        for cmd_args in command_patterns:
-            try:
-                result = subprocess.run(cmd_args, check=True,
-                                        stdout=subprocess.PIPE,
-                                        stderr=subprocess.PIPE,
-                                        timeout=300)  # 5 minute timeout
-
-                if os.path.exists(output_path):
-                    result_img = QImage(output_path)
-                    if not result_img.isNull():
-                        return result_img.convertToFormat(QImage.Format.Format_RGBA8888)
-
-            except subprocess.TimeoutExpired:
-                if self.main_window and hasattr(self.main_window, 'log_message'):
-                    self.main_window.log_message("External upscaler timed out")
-                break
-            except Exception:
-                continue
-
-        return None
-
-    finally:
-        # Cleanup temp directory
-        try:
-            shutil.rmtree(tmp_dir)
-        except Exception:
-            pass
-
-
-def open_txd_workshop(main_window, img_path=None): #vers 3
-    """Open TXD Workshop from main window - works with or without IMG"""
-    try:
-        workshop = TXDWorkshop(main_window, main_window)
+        workshop = MainGui(main_window, main_window)
 
         if img_path:
             # Check if it's a TXD file or IMG file
@@ -4402,12 +4271,12 @@ def open_txd_workshop(main_window, img_path=None): #vers 3
         else:
             # Open in standalone mode (no IMG loaded)
             if main_window and hasattr(main_window, 'log_message'):
-                main_window.log_message("TXD Workshop opened in standalone mode")
+                main_window.log_message(App_name * " opened in standalone mode")
 
         workshop.show()
         return workshop
     except Exception as e:
-        QMessageBox.critical(main_window, "Error", f"Failed to open TXD Workshop: {str(e)}")
+        QMessageBox.critical(main_window, App_name * "Error", f"Failed to open: {str(e)}")
         return None
 
 
@@ -4416,16 +4285,16 @@ if __name__ == "__main__":
     import sys
     import traceback
 
-    print("Starting TXD Workshop...")
+    print(App_name + "Starting.")
 
     try:
         app = QApplication(sys.argv)
         print("QApplication created")
 
-        workshop = TXDWorkshop()
-        print("TXDWorkshop instance created")
+        workshop = MainGUI()
+        print(App_name + "instance created")
 
-        workshop.setWindowTitle("TXD Workshop - Standalone")
+        workshop.setWindowTitle(App_name + " - Standalone")
         workshop.resize(1200, 800)
         workshop.show()
         print("Window shown, entering event loop")
