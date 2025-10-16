@@ -12,13 +12,14 @@
 ├── emu_launcher_main.py
 ├── LICENSE
 ├── main_app
+│   ├── components
+│   │   └── game_list_widget.py
 │   ├── core
 │   │   ├── core_launcher.py
 │   │   ├── placeholder
 │   │   └── platform_config.py
 │   ├── debug
 │   │   └── placeholder
-│   ├── game_list_widget.py
 │   ├── gui
 │   │   ├── gui_main.py
 │   │   └── placeholder
@@ -72,4 +73,4 @@
 ├── settings_example.json
 └── tree.git
 
-17 directories, 56 files
+18 directories, 56 files

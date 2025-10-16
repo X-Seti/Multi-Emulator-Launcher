@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# X-Seti - October15 2025 - Multi-Emulator Launcher - Main Entry Point
-# This belongs in root /emu_launcher_main.py - Version: 2
+# X-Seti - October16 2025 - Multi-Emulator Launcher - Main Entry Point
+# This belongs in root /emu_launcher_main.py - Version: 3
 """
 Multi-Emulator Launcher - A custom frontend for libretro cores with PS4 controller support.
 """
@@ -16,8 +16,8 @@ import json
 from pathlib import Path
 
 
-class EmulatorLauncher: #vers 2
-    def __init__(self): #vers 2
+class EmulatorLauncher: #vers 3
+    def __init__(self): #vers 3
         self.base_dir = Path(__file__).parent.absolute()
         self.config = self.load_config()
         self.setup_directories()
@@ -56,7 +56,7 @@ class EmulatorLauncher: #vers 2
             
             return default_config
     
-    def run(self): #vers 2
+    def run(self): #vers 3
         """Main application loop"""
         print("Multi-Emulator Launcher")
         print("=" * 50)
@@ -66,8 +66,8 @@ class EmulatorLauncher: #vers 2
         print(f"BIOS Path: {self.config['bios_path']}")
         print("=" * 50)
         
-        from methods.game_scanner import GameScanner
-        from core.platform_config import PlatformManager
+        from main_app.methods.game_scanner import GameScanner
+        from main_app.core.platform_config import PlatformManager
         
         platform_manager = PlatformManager(self.base_dir / 'config')
         
@@ -81,8 +81,8 @@ class EmulatorLauncher: #vers 2
         
         print("\nLaunching GUI...")
         from PyQt6.QtWidgets import QApplication
-        from gui.gui_main import EmulatorGUI
-        from utils.app_settings_system import AppSettings
+        from main_app.gui.gui_main import EmulatorGUI
+        from main_app.utils.app_settings_system import AppSettings
         
         app = QApplication(sys.argv)
         
@@ -103,7 +103,7 @@ class EmulatorLauncher: #vers 2
             'saves',
             'cache/extracted',
             'config',
-            'themes'
+            'main_app/themes'
         ]
         
         for directory in directories:
