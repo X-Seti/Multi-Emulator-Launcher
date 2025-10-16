@@ -5,8 +5,11 @@ Main GUI - PyQt6-based frameless interface with custom window controls and PS4 c
 """
 
 ##Methods list -
+# browse_path
 # clear_cache
 # create_settings_tab
+# get_resize_edge
+# handle_resize
 # init_controller
 # init_ui
 # launch_selected_game
@@ -17,13 +20,17 @@ Main GUI - PyQt6-based frameless interface with custom window controls and PS4 c
 # navigate_list
 # next_tab
 # on_tab_changed
+# open_theme_settings
 # poll_controller
 # previous_tab
 # refresh_games
 # resizeEvent
 # run
+# save_path_settings
 # setup_shortcuts
 # show_settings
+# toggle_maximize
+# update_cursor
 # wait_button_release
 # wait_hat_release
 
@@ -375,6 +382,7 @@ class EmulatorGUI(QMainWindow): #vers 2
         # Title (center-left)
         title_label = QLabel("Multi-Emulator Launcher")
         title_label.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+        title_label.setObjectName("titleLabel")
         title_bar_layout.addWidget(title_label)
         
         title_bar_layout.addStretch()
@@ -384,18 +392,21 @@ class EmulatorGUI(QMainWindow): #vers 2
         self.minimize_btn.setIcon(self.icons._create_minimize_icon())
         self.minimize_btn.setFixedSize(40, 40)
         self.minimize_btn.setObjectName("windowButton")
+        self.minimize_btn.setToolTip("Minimize")
         self.minimize_btn.clicked.connect(self.showMinimized)
         
         self.maximize_btn = QPushButton()
         self.maximize_btn.setIcon(self.icons._create_maximize_icon())
         self.maximize_btn.setFixedSize(40, 40)
         self.maximize_btn.setObjectName("windowButton")
+        self.maximize_btn.setToolTip("Maximize")
         self.maximize_btn.clicked.connect(self.toggle_maximize)
         
         self.close_btn = QPushButton()
         self.close_btn.setIcon(self.icons._create_close_icon())
         self.close_btn.setFixedSize(40, 40)
         self.close_btn.setObjectName("closeButton")
+        self.close_btn.setToolTip("Close")
         self.close_btn.clicked.connect(self.close)
         
         title_bar_layout.addWidget(self.minimize_btn)
@@ -409,12 +420,14 @@ class EmulatorGUI(QMainWindow): #vers 2
         content_layout = QVBoxLayout(content_widget)
         content_layout.setContentsMargins(10, 10, 10, 10)
         
-        # Header with settings button
+        # Header
         header_layout = QHBoxLayout()
         header_title = QLabel("Game Library")
         header_title.setFont(QFont("Arial", 16, QFont.Weight.Bold))
         header_layout.addWidget(header_title)
         header_layout.addStretch()
+        
+        content_layout.addLayout(header_layout)
         
         # Tab widget for platforms
         self.tab_widget = QTabWidget()
@@ -429,6 +442,9 @@ class EmulatorGUI(QMainWindow): #vers 2
             #titleBar {
                 background-color: palette(window);
                 border-bottom: 1px solid palette(mid);
+            }
+            #titleLabel {
+                color: palette(windowText);
             }
             #windowButton {
                 background-color: transparent;
@@ -612,9 +628,14 @@ class EmulatorGUI(QMainWindow): #vers 2
                 f"Cleared {size_mb:.2f} MB from cache"
             )
     
-    def create_settings_tab(self): #vers 1
-        """Create settings tab"""
-        from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QGroupBox
+    def create_settings_tab(self): #vers 3
+        """Create settings tab with editable paths"""
+        from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QLabel, QGroupBox, 
+                                     QScrollArea, QLineEdit, QFileDialog)
+        
+        # Main widget with scroll
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
         
         settings_widget = QWidget()
         layout = QVBoxLayout(settings_widget)
@@ -623,7 +644,11 @@ class EmulatorGUI(QMainWindow): #vers 2
         theme_group = QGroupBox("Theme Settings")
         theme_layout = QVBoxLayout(theme_group)
         
-        theme_btn = QPushButton("Open Theme Settings")
+        current_theme = QLabel(f"Current Theme: {self.app_settings.current_settings.get('theme', 'App_Factory')}")
+        current_theme.setStyleSheet("font-weight: bold;")
+        theme_layout.addWidget(current_theme)
+        
+        theme_btn = QPushButton("Open Theme Editor")
         theme_btn.clicked.connect(self.open_theme_settings)
         theme_layout.addWidget(theme_btn)
         
@@ -633,8 +658,18 @@ class EmulatorGUI(QMainWindow): #vers 2
         cache_group = QGroupBox("Cache Settings")
         cache_layout = QVBoxLayout(cache_group)
         
-        cache_info = QLabel("ROM extraction cache location:\n" + str(self.config['cache_path']))
-        cache_layout.addWidget(cache_info)
+        cache_label = QLabel("ROM Extraction Cache:")
+        cache_label.setStyleSheet("font-weight: bold;")
+        cache_layout.addWidget(cache_label)
+        
+        cache_path_layout = QHBoxLayout()
+        self.cache_path_edit = QLineEdit(str(self.config['cache_path']))
+        cache_path_layout.addWidget(self.cache_path_edit)
+        
+        cache_browse_btn = QPushButton("Browse")
+        cache_browse_btn.clicked.connect(lambda: self.browse_path('cache_path', self.cache_path_edit))
+        cache_path_layout.addWidget(cache_browse_btn)
+        cache_layout.addLayout(cache_path_layout)
         
         clear_cache_btn = QPushButton("Clear Cache")
         clear_cache_btn.clicked.connect(self.clear_cache)
@@ -642,22 +677,156 @@ class EmulatorGUI(QMainWindow): #vers 2
         
         layout.addWidget(cache_group)
         
-        # Paths info
-        paths_group = QGroupBox("Path Information")
-        paths_layout = QVBoxLayout(paths_group)
+        # ROM Paths
+        rom_group = QGroupBox("ROM Path")
+        rom_layout = QVBoxLayout(rom_group)
         
-        paths_info = QLabel(
-            f"ROMs: {self.config['rom_path']}\n"
-            f"Cores: {self.config['core_path']}\n"
-            f"BIOS: {self.config['bios_path']}\n"
-            f"Saves: {self.config['save_path']}"
-        )
-        paths_layout.addWidget(paths_info)
+        rom_label = QLabel("ROMs Location:")
+        rom_label.setStyleSheet("font-weight: bold;")
+        rom_layout.addWidget(rom_label)
         
-        layout.addWidget(paths_group)
+        rom_path_layout = QHBoxLayout()
+        self.rom_path_edit = QLineEdit(str(self.config['rom_path']))
+        rom_path_layout.addWidget(self.rom_path_edit)
+        
+        rom_browse_btn = QPushButton("Browse")
+        rom_browse_btn.clicked.connect(lambda: self.browse_path('rom_path', self.rom_path_edit))
+        rom_path_layout.addWidget(rom_browse_btn)
+        rom_layout.addLayout(rom_path_layout)
+        
+        layout.addWidget(rom_group)
+        
+        # Core Paths
+        core_group = QGroupBox("Core Path")
+        core_layout = QVBoxLayout(core_group)
+        
+        core_label = QLabel("Cores Location:")
+        core_label.setStyleSheet("font-weight: bold;")
+        core_layout.addWidget(core_label)
+        
+        core_path_layout = QHBoxLayout()
+        self.core_path_edit = QLineEdit(str(self.config['core_path']))
+        core_path_layout.addWidget(self.core_path_edit)
+        
+        core_browse_btn = QPushButton("Browse")
+        core_browse_btn.clicked.connect(lambda: self.browse_path('core_path', self.core_path_edit))
+        core_path_layout.addWidget(core_browse_btn)
+        core_layout.addLayout(core_path_layout)
+        
+        layout.addWidget(core_group)
+        
+        # BIOS Paths
+        bios_group = QGroupBox("BIOS Path")
+        bios_layout = QVBoxLayout(bios_group)
+        
+        bios_label = QLabel("BIOS Location:")
+        bios_label.setStyleSheet("font-weight: bold;")
+        bios_layout.addWidget(bios_label)
+        
+        bios_path_layout = QHBoxLayout()
+        self.bios_path_edit = QLineEdit(str(self.config['bios_path']))
+        bios_path_layout.addWidget(self.bios_path_edit)
+        
+        bios_browse_btn = QPushButton("Browse")
+        bios_browse_btn.clicked.connect(lambda: self.browse_path('bios_path', self.bios_path_edit))
+        bios_path_layout.addWidget(bios_browse_btn)
+        bios_layout.addLayout(bios_path_layout)
+        
+        layout.addWidget(bios_group)
+        
+        # Save Paths
+        save_group = QGroupBox("Save Path")
+        save_layout = QVBoxLayout(save_group)
+        
+        save_label = QLabel("Saves Location:")
+        save_label.setStyleSheet("font-weight: bold;")
+        save_layout.addWidget(save_label)
+        
+        save_path_layout = QHBoxLayout()
+        self.save_path_edit = QLineEdit(str(self.config['save_path']))
+        save_path_layout.addWidget(self.save_path_edit)
+        
+        save_browse_btn = QPushButton("Browse")
+        save_browse_btn.clicked.connect(lambda: self.browse_path('save_path', self.save_path_edit))
+        save_path_layout.addLayout(save_path_layout)
+        save_layout.addLayout(save_path_layout)
+        
+        layout.addWidget(save_group)
+        
+        # Memory Card Paths
+        memcard_group = QGroupBox("Memory Card Path")
+        memcard_layout = QVBoxLayout(memcard_group)
+        
+        memcard_label = QLabel("Memory Cards Location:")
+        memcard_label.setStyleSheet("font-weight: bold;")
+        memcard_layout.addWidget(memcard_label)
+        
+        memcard_path_layout = QHBoxLayout()
+        self.memcard_path_edit = QLineEdit(str(self.config.get('memcard_path', self.config['save_path'] + '/memcards')))
+        memcard_path_layout.addWidget(self.memcard_path_edit)
+        
+        memcard_browse_btn = QPushButton("Browse")
+        memcard_browse_btn.clicked.connect(lambda: self.browse_path('memcard_path', self.memcard_path_edit))
+        memcard_path_layout.addWidget(memcard_browse_btn)
+        memcard_layout.addLayout(memcard_path_layout)
+        
+        layout.addWidget(memcard_group)
+        
+        # Save settings button
+        save_btn = QPushButton("Save Settings")
+        save_btn.setStyleSheet("font-weight: bold; padding: 8px;")
+        save_btn.clicked.connect(self.save_path_settings)
+        layout.addWidget(save_btn)
+        
         layout.addStretch()
         
-        return settings_widget
+        scroll.setWidget(settings_widget)
+        return scroll
+    
+    def browse_path(self, config_key, line_edit): #vers 1
+        """Open folder browser dialog for path selection"""
+        current_path = line_edit.text()
+        
+        new_path = QFileDialog.getExistingDirectory(
+            self,
+            f"Select {config_key.replace('_', ' ').title()} Directory",
+            current_path
+        )
+        
+        if new_path:
+            line_edit.setText(new_path)
+    
+    def save_path_settings(self): #vers 1
+        """Save updated path settings to config"""
+        import json
+        from pathlib import Path
+        
+        # Update config dictionary
+        self.config['cache_path'] = self.cache_path_edit.text()
+        self.config['rom_path'] = self.rom_path_edit.text()
+        self.config['core_path'] = self.core_path_edit.text()
+        self.config['bios_path'] = self.bios_path_edit.text()
+        self.config['save_path'] = self.save_path_edit.text()
+        self.config['memcard_path'] = self.memcard_path_edit.text()
+        
+        # Save to config file
+        config_path = Path(__file__).parent.parent.parent / 'config' / 'settings.json'
+        
+        try:
+            with open(config_path, 'w') as f:
+                json.dump(self.config, f, indent=2)
+            
+            QMessageBox.information(
+                self,
+                "Settings Saved",
+                "Path settings have been saved successfully!\n\nRestart the application for changes to take effect."
+            )
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Save Error",
+                f"Failed to save settings:\n\n{str(e)}"
+            )
     
     def open_theme_settings(self): #vers 1
         """Open full theme settings dialog"""
