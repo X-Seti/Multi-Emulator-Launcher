@@ -1,28 +1,16 @@
 .
-├── AppFactory.settings.json
-├── bios
-├── cache
-│   └── extracted
-├── cc.py
-├── changelog.md
-├── config
-│   ├── platforms.json
-│   └── settings.json
-├── cores
-├── emu_launcher_main.py
-├── LICENSE
-├── main_app
+├── apps
+│   ├── appfactory.settings.json
 │   ├── components
 │   │   └── game_list_widget.py
 │   ├── core
-│   │   ├── core_launcher.py
-│   │   ├── placeholder
+│   │   ├── core_downloader.py
+│   │   ├── gamepad_config.py
 │   │   └── platform_config.py
 │   ├── debug
 │   │   └── placeholder
 │   ├── gui
-│   │   ├── gui_main.py
-│   │   └── placeholder
+│   │   └── emu_launcher_main.py
 │   ├── locale
 │   │   └── placeholder
 │   ├── methods
@@ -65,12 +53,156 @@
 │       ├── app_settings_system.py
 │       ├── themer_settings.json
 │       └── themes -> /home/x2/Documents/GitHub/Img Factory 1.5/themes
-├── quickstart.md
-├── README.md
-├── requirements.md
+├── bios
+│   ├── Arcade
+│   ├── Game Boy Advance
+│   ├── Nintendo 64
+│   ├── Nintendo Entertainment System
+│   ├── Nintendo Switch
+│   ├── PlayStation 1
+│   ├── PlayStation 2
+│   ├── PSP
+│   ├── Sega Genesis
+│   └── Super Nintendo
+├── cc.py
+├── config
+│   ├── platforms.json
+│   └── settings.json
+├── cores
+│   ├── 2048_libretro.so
+│   ├── 3dengine_libretro.so
+│   ├── 81_libretro.so
+│   ├── a5200_libretro.so
+│   ├── anarch_libretro.so
+│   ├── ardens_libretro.so
+│   ├── arduous_libretro.so
+│   ├── atari800_libretro.so
+│   ├── b2_libretro.so
+│   ├── blastem_libretro.so
+│   ├── bluemsx_libretro.so
+│   ├── bsnes_libretro.so
+│   ├── cap32_libretro.so
+│   ├── cdi2015_libretro.so
+│   ├── chailove_libretro.so
+│   ├── citra_libretro.so
+│   ├── crocods_libretro.so
+│   ├── desmume_libretro.so
+│   ├── dice_libretro.so
+│   ├── dolphin_libretro.so
+│   ├── ep128emu_core_libretro.so
+│   ├── fbalpha_libretro.so
+│   ├── fbneo_libretro.so
+│   ├── fceumm_libretro.so
+│   ├── flycast_libretro.so
+│   ├── fmsx_libretro.so
+│   ├── frodo_libretro.so
+│   ├── fuse_libretro.so
+│   ├── gam4980_libretro.so
+│   ├── gambatte_libretro.so
+│   ├── gearboy_libretro.so
+│   ├── gearcoleco_libretro.so
+│   ├── geargrafx_libretro.so
+│   ├── gearsystem_libretro.so
+│   ├── genesis_plus_gx_libretro.so
+│   ├── geolith_libretro.so
+│   ├── gme_libretro.so
+│   ├── gong_libretro.so
+│   ├── gpsp_libretro.so
+│   ├── handy_libretro.so
+│   ├── hatari_libretro.so
+│   ├── holani_libretro.so
+│   ├── kronos_libretro.so
+│   ├── lutro_libretro.so
+│   ├── m2000_libretro.so
+│   ├── mame_libretro.so
+│   ├── mcsoftserve_libretro.so
+│   ├── mednafen_gba_libretro.so
+│   ├── mednafen_lynx_libretro.so
+│   ├── mednafen_ngp_libretro.so
+│   ├── mednafen_pce_fast_libretro.so
+│   ├── mednafen_pce_libretro.so
+│   ├── mednafen_pcfx_libretro.so
+│   ├── mednafen_psx_hw_libretro.so
+│   ├── mednafen_psx_libretro.so
+│   ├── mednafen_saturn_libretro.so
+│   ├── mednafen_snes_libretro.so
+│   ├── mednafen_supergrafx_libretro.so
+│   ├── mednafen_vb_libretro.so
+│   ├── melonds_libretro.so
+│   ├── mesen_libretro.so
+│   ├── mesen-s_libretro.so
+│   ├── mgba_libretro.so
+│   ├── minivmac_libretro.so
+│   ├── mu_libretro.so
+│   ├── neocd_libretro.so
+│   ├── nestopia_libretro.so
+│   ├── numero_libretro.so
+│   ├── nxengine_libretro.so
+│   ├── opera_libretro.so
+│   ├── panda3ds_libretro.so
+│   ├── parallel_n64_libretro.so
+│   ├── pcsx2_libretro.so
+│   ├── pcsx_rearmed_libretro.so
+│   ├── picodrive_libretro.so
+│   ├── play_libretro.so
+│   ├── ppsspp_libretro.so
+│   ├── prosystem_libretro.so
+│   ├── puae_libretro.so
+│   ├── px68k_libretro.so
+│   ├── qemu_libretro.so
+│   ├── quasi88_libretro.so
+│   ├── quicknes_libretro.so
+│   ├── retro8_libretro.so
+│   ├── sameboy_libretro.so
+│   ├── same_cdi_libretro.so
+│   ├── sameduck_libretro.so
+│   ├── scummvm_libretro.so
+│   ├── skyemu_libretro.so
+│   ├── snes9x_libretro.so
+│   ├── stella_libretro.so
+│   ├── uzem_libretro.so
+│   ├── vaporspec_libretro.so
+│   ├── vbam_libretro.so
+│   ├── vba_next_libretro.so
+│   ├── vecx_libretro.so
+│   ├── vemulator_libretro.so
+│   ├── vice_x128_libretro.so
+│   ├── vice_x64_libretro.so
+│   ├── vice_x64sc_libretro.so
+│   ├── vice_xcbm2_libretro.so
+│   ├── vice_xcbm5x0_libretro.so
+│   ├── vice_xpet_libretro.so
+│   ├── vice_xplus4_libretro.so
+│   ├── vice_xscpu64_libretro.so
+│   ├── vice_xvic_libretro.so
+│   ├── vircon32_libretro.so
+│   ├── virtualjaguar_libretro.so
+│   ├── virtualxt_libretro.so
+│   ├── x1_libretro.so
+│   └── yabause_libretro.so
+├── docs
+│   ├── changelog.md
+│   ├── LICENSE
+│   ├── quickstart.md
+│   ├── README.md
+│   └── requirements.md
+├── emu_launcher_main.py
+├── playlists
 ├── roms
+│   ├── Arcade
+│   ├── Game Boy Advance
+│   ├── Nintendo 64
+│   ├── Nintendo Entertainment System
+│   ├── Nintendo Switch
+│   ├── PlayStation 1
+│   ├── PlayStation 2
+│   ├── PSP
+│   ├── Sega Genesis
+│   └── Super Nintendo
 ├── saves
+├── screenshots
 ├── settings_example.json
+├── system
 └── tree.git
 
-18 directories, 56 files
+39 directories, 167 files

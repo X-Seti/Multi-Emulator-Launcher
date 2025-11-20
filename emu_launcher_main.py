@@ -1,116 +1,178 @@
 #!/usr/bin/env python3
-# X-Seti - October16 2025 - Multi-Emulator Launcher - Main Entry Point
-# This belongs in root /emu_launcher_main.py - Version: 3
+#this belongs in root /emu_launcher_main.py - Version: 1
+# X-Seti - November19 2025 - Multi-Emulator Launcher - Main Entry Point
+
 """
-Multi-Emulator Launcher - A custom frontend for libretro cores with PS4 controller support.
+Multi-Emulator Launcher
+Main entry point for the emulator launcher application
 """
 
-##Methods list -
-# load_config
-# run
-# setup_directories
-
-import os
 import sys
-import json
+import os
 from pathlib import Path
 
+# Add project root to Python path
+project_root = Path(__file__).parent
+sys.path.insert(0, str(project_root))
 
-class EmulatorLauncher: #vers 3
-    def __init__(self): #vers 3
-        self.base_dir = Path(__file__).parent.absolute()
-        self.config = self.load_config()
-        self.setup_directories()
+from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import Qt
+
+# Import application components
+from apps.gui.emu_launcher_gui import EmuLauncherGUI
+from apps.core.core_downloader import CoreDownloader, create_directory_structure
+from apps.core.gamepad_config import GamepadConfig
+
+# Optional AppSettings
+try:
+    from apps.utils.app_settings_system import AppSettings
+    APPSETTINGS_AVAILABLE = True
+except ImportError:
+    APPSETTINGS_AVAILABLE = False
+    AppSettings = None
+
+##Methods list -
+# check_dependencies
+# initialize_directories
+# main
+
+##class EmulatorLauncher -
+# __init__
+# run
+
+class EmulatorLauncher: #vers 1
+    """Main launcher class"""
     
-    def load_config(self): #vers 2
-        """Load or create default configuration"""
-        config_path = self.base_dir / 'config' / 'settings.json'
+    def __init__(self): #vers 1
+        """Initialize launcher"""
+        self.base_dir = Path.cwd()
+        self.app_settings = None
+        self.core_downloader = None
+        self.gamepad_config = None
         
-        if config_path.exists():
-            with open(config_path, 'r') as f:
-                return json.load(f)
+    def run(self): #vers 1
+        """Run the launcher"""
+        print("=" * 60)
+        print("Multi-Emulator Launcher v1.0")
+        print("=" * 60)
+        
+        # Check dependencies
+        if not check_dependencies():
+            print("\n⚠️  Missing dependencies detected")
+            print("Run: pip install -r requirements.txt")
+            return 1
+            
+        # Initialize directories
+        if not initialize_directories(self.base_dir):
+            print("\n⚠️  Failed to initialize directories")
+            return 1
+            
+        # Initialize core systems
+        print("\nInitializing core systems...")
+        
+        if APPSETTINGS_AVAILABLE and AppSettings:
+            self.app_settings = AppSettings()
         else:
-            default_config = {
-                "rom_path": str(self.base_dir / "roms"),
-                "core_path": str(self.base_dir / "cores"),
-                "bios_path": str(self.base_dir / "bios"),
-                "save_path": str(self.base_dir / "saves"),
-                "cache_path": str(self.base_dir / "cache"),
-                "display": {
-                    "width": 1920,
-                    "height": 1080,
-                    "fullscreen": True,
-                    "vsync": True,
-                    "scale_quality": "linear"
-                },
-                "input": {
-                    "controller_index": 0,
-                    "deadzone": 0.15
-                }
-            }
+            print("  ⚠️  AppSettings not available - using defaults")
+            self.app_settings = None
             
-            config_path.parent.mkdir(parents=True, exist_ok=True)
-            
-            with open(config_path, 'w') as f:
-                json.dump(default_config, f, indent=2)
-            
-            return default_config
-    
-    def run(self): #vers 3
-        """Main application loop"""
-        print("Multi-Emulator Launcher")
-        print("=" * 50)
-        print(f"Base Directory: {self.base_dir}")
-        print(f"ROM Path: {self.config['rom_path']}")
-        print(f"Core Path: {self.config['core_path']}")
-        print(f"BIOS Path: {self.config['bios_path']}")
-        print("=" * 50)
+        self.core_downloader = CoreDownloader(self.base_dir)
+        self.gamepad_config = GamepadConfig(self.base_dir)
         
-        from main_app.methods.game_scanner import GameScanner
-        from main_app.core.platform_config import PlatformManager
+        # Check for installed cores
+        installed_cores = self.core_downloader.get_installed_cores()
+        print(f"  ✓ Found {len(installed_cores)} installed cores")
         
-        platform_manager = PlatformManager(self.base_dir / 'config')
+        # Check for controllers
+        controllers = self.gamepad_config.detect_controllers()
+        print(f"  ✓ Detected {len(controllers)} controller(s)")
         
-        scanner = GameScanner(self.config, platform_manager.platforms)
-        available_platforms = scanner.discover_platforms()
-        
-        print(f"\nFound {len(available_platforms)} platforms:")
-        for platform in available_platforms:
-            game_count = len(scanner.scan_platform(platform))
-            print(f"  - {platform}: {game_count} games")
-        
+        # Launch GUI
         print("\nLaunching GUI...")
-        from PyQt6.QtWidgets import QApplication
-        from main_app.gui.gui_main import EmulatorGUI
-        from main_app.utils.app_settings_system import AppSettings
-        
         app = QApplication(sys.argv)
         
-        app_settings = AppSettings()
+        # Apply theme if available
+        if self.app_settings:
+            stylesheet = self.app_settings.get_stylesheet()
+            app.setStyleSheet(stylesheet)
         
-        stylesheet = app_settings.get_stylesheet()
-        app.setStyleSheet(stylesheet)
+        # Create main window
+        window = EmuLauncherGUI(
+            core_downloader=self.core_downloader,
+            gamepad_config=self.gamepad_config
+        )
+        window.show()
         
-        gui = EmulatorGUI(self.config, platform_manager, scanner, app_settings)
-        sys.exit(gui.run())
+        print("✓ Multi-Emulator Launcher started\n")
+        
+        return app.exec()
+
+
+def check_dependencies() -> bool: #vers 1
+    """Check if required dependencies are installed"""
+    required_modules = {
+        'PyQt6': 'PyQt6',
+        'pygame': 'pygame (for controller support)',
+    }
     
-    def setup_directories(self): #vers 2
-        """Create necessary directories if they don't exist"""
-        directories = [
-            'cores',
-            'bios',
-            'roms',
-            'saves',
-            'cache/extracted',
-            'config',
-            'main_app/themes'
-        ]
+    missing = []
+    
+    for module, description in required_modules.items():
+        try:
+            __import__(module)
+        except ImportError:
+            missing.append(description)
+            
+    if missing:
+        print("\nMissing dependencies:")
+        for dep in missing:
+            print(f"  ✗ {dep}")
+        return False
         
-        for directory in directories:
-            dir_path = self.base_dir / directory
-            dir_path.mkdir(parents=True, exist_ok=True)
+    return True
+
+
+def initialize_directories(base_dir: Path) -> bool: #vers 1
+    """Initialize directory structure if needed"""
+    required_dirs = [
+        'apps',
+        'cores', 
+        'roms',
+        'bios',
+        'saves',
+        'config',
+        'screenshots',
+        'playlists',
+        'system'
+    ]
+    
+    # Check if main directories exist
+    missing_dirs = [d for d in required_dirs if not (base_dir / d).exists()]
+    
+    if missing_dirs:
+        print(f"\n⚠️  Missing directories detected: {', '.join(missing_dirs)}")
+        response = input("Create directory structure? [Y/n]: ").strip().lower()
+        
+        if response in ['', 'y', 'yes']:
+            try:
+                create_directory_structure(base_dir)
+                print("✓ Directory structure created")
+                return True
+            except Exception as e:
+                print(f"✗ Error creating directories: {e}")
+                return False
+        else:
+            print("✗ Directory structure required to run")
+            return False
+            
+    return True
+
+
+def main(): #vers 1
+    """Main entry point"""
+    launcher = EmulatorLauncher()
+    sys.exit(launcher.run())
 
 
 if __name__ == "__main__":
-    launcher = EmulatorLauncher()
-    launcher.run()
+    main()
