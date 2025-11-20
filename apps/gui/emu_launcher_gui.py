@@ -549,7 +549,7 @@ class EmuLauncherGUI(QWidget): #vers 1
         layout.addWidget(self.platform_list)
         
         # Populate with example platforms
-        platforms = ["PlayStation 2", "PlayStation 3", "Nintendo Switch", "Xbox 360"]
+        platforms = ["PlayStation 2", "PlayStation 3", "Nintendo Switch", "Xbox 360"] #TODO count systems in systems/
         self.platform_list.populate_platforms(platforms)
         
         return panel
@@ -805,7 +805,7 @@ class EmuLauncherGUI(QWidget): #vers 1
             if hasattr(self.main_window, 'app_settings') and hasattr(self.main_window.app_settings, 'get_theme_colors'):
                 colors = self.main_window.app_settings.get_theme_colors()
                 if colors:
-                    print(f"✅ Using app_settings theme colors: {len(colors)} colors loaded")
+                    print(f"Using app_settings theme colors: {len(colors)} colors loaded")
                     return colors
 
             # Method 2: Try direct theme access
@@ -814,14 +814,14 @@ class EmuLauncherGUI(QWidget): #vers 1
                 theme_data = self.main_window.app_settings.themes.get(current_theme, {})
                 colors = theme_data.get('colors', {})
                 if colors:
-                    print(f"✅ Using direct theme access: {current_theme}")
+                    print(f"Using direct theme access: {current_theme}")
                     return colors
 
         except Exception as e:
-            print(f"❌ Theme color lookup error: {e}")
+            print(f"Theme color lookup error: {e}")
 
         # Fallback with proper theme variables
-        print("⚠️ Using fallback theme colors")
+        print("Using fallback theme colors")
         is_dark = self._is_dark_theme()
         if is_dark:
             return {
