@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-#this belongs in root /emu_launcher_main.py - Version: 1
+#this belongs in root /emu_launcher_main.py - Version: 2
 # X-Seti - November19 2025 - Multi-Emulator Launcher - Main Entry Point
 
 """
@@ -21,6 +21,7 @@ from PyQt6.QtCore import Qt
 # Import application components
 from apps.gui.emu_launcher_gui import EmuLauncherGUI
 from apps.core.core_downloader import CoreDownloader, create_directory_structure
+from apps.core.core_launcher import CoreLauncher
 from apps.core.gamepad_config import GamepadConfig
 
 # Optional AppSettings
@@ -40,17 +41,18 @@ except ImportError:
 # __init__
 # run
 
-class EmulatorLauncher: #vers 1
+class EmulatorLauncher: #vers 2
     """Main launcher class"""
     
-    def __init__(self): #vers 1
+    def __init__(self): #vers 2
         """Initialize launcher"""
         self.base_dir = Path.cwd()
         self.app_settings = None
         self.core_downloader = None
+        self.core_launcher = None
         self.gamepad_config = None
         
-    def run(self): #vers 1
+    def run(self): #vers 2
         """Run the launcher"""
         print("=" * 60)
         print("Multi-Emulator Launcher v1.0")
@@ -77,6 +79,13 @@ class EmulatorLauncher: #vers 1
             self.app_settings = None
             
         self.core_downloader = CoreDownloader(self.base_dir)
+        
+        # Initialize CoreLauncher with database from CoreDownloader
+        self.core_launcher = CoreLauncher(
+            self.base_dir, 
+            self.core_downloader.CORE_DATABASE
+        )
+        
         self.gamepad_config = GamepadConfig(self.base_dir)
         
         # Check for installed cores
@@ -95,10 +104,11 @@ class EmulatorLauncher: #vers 1
         if self.app_settings:
             stylesheet = self.app_settings.get_stylesheet()
             app.setStyleSheet(stylesheet)
-        
-        # Create main window
+            
+        # Create main window with all systems
         window = EmuLauncherGUI(
             core_downloader=self.core_downloader,
+            core_launcher=self.core_launcher,
             gamepad_config=self.gamepad_config
         )
         window.show()

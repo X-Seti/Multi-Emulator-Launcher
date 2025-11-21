@@ -1,10 +1,21 @@
 #!/usr/bin/env python3
-#this belongs in apps/gui/emu_launcher_gui.py - Version: 1
+#this belongs in apps/gui/emu_launcher_gui.py - Version: 5
 # X-Seti - November19 2025 - Multi-Emulator Launcher - Main GUI
 
 """
 Multi-Emulator Launcher GUI
 Main window with 3-panel layout for emulator management
+
+#Changelog
+
+November20 - Added - PlatformScanner for dynamic platform discovery
+- 1. Add PlatformScanner import at top
+- 2. Initialize platform_scanner in __init__ (vers 5)
+- 3. Update _create_left_panel to use scanner (vers 2)
+- 4. Add _refresh_platforms method (vers 1)
+- 5. Update _on_platform_selected to use platform info (vers 3)
+
+
 """
 
 import os
@@ -20,6 +31,9 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QSize, QPoint
 from PyQt6.QtGui import QFont, QIcon, QColor, QCursor, QPainter, QPen
+from apps.methods.platform_scanner import PlatformScanner
+from apps.methods.svg_icon_factory import SVGIconFactory
+
 
 # Import AppSettings
 try:
@@ -248,89 +262,13 @@ class EmulatorDisplayWidget(QWidget): #vers 2
         
         return controls_frame
         
-    def _create_volume_up_icon(self): #vers 1
-        """Create volume up icon"""
-        from PyQt6.QtSvg import QSvgRenderer
-        from PyQt6.QtGui import QPixmap, QPainter
-        
-        svg_data = '''<svg width="16" height="16" viewBox="0 0 16 16">
-            <path d="M 2 6 L 5 6 L 8 3 L 8 13 L 5 10 L 2 10 Z" fill="#ffffff"/>
-            <path d="M 10 5 Q 12 8 10 11" stroke="#ffffff" stroke-width="1.5" fill="none"/>
-        </svg>'''
-        
-        renderer = QSvgRenderer(svg_data.encode())
-        pixmap = QPixmap(16, 16)
-        pixmap.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(pixmap)
-        renderer.render(painter)
-        painter.end()
-        
-        return QIcon(pixmap)
-        
-    def _create_volume_down_icon(self): #vers 1
-        """Create volume down icon"""
-        from PyQt6.QtSvg import QSvgRenderer
-        from PyQt6.QtGui import QPixmap, QPainter
-        
-        svg_data = '''<svg width="16" height="16" viewBox="0 0 16 16">
-            <path d="M 2 6 L 5 6 L 8 3 L 8 13 L 5 10 L 2 10 Z" fill="#ffffff"/>
-            <path d="M 10 8 L 12 8" stroke="#ffffff" stroke-width="1.5"/>
-        </svg>'''
-        
-        renderer = QSvgRenderer(svg_data.encode())
-        pixmap = QPixmap(16, 16)
-        pixmap.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(pixmap)
-        renderer.render(painter)
-        painter.end()
-        
-        return QIcon(pixmap)
-        
-    def _create_screenshot_icon(self): #vers 1
-        """Create screenshot (camera) icon"""
-        from PyQt6.QtSvg import QSvgRenderer
-        from PyQt6.QtGui import QPixmap, QPainter
-        
-        svg_data = '''<svg width="16" height="16" viewBox="0 0 16 16">
-            <rect x="2" y="5" width="12" height="9" rx="1" fill="none" stroke="#ffffff" stroke-width="1.5"/>
-            <circle cx="8" cy="9" r="2" fill="none" stroke="#ffffff" stroke-width="1.5"/>
-            <path d="M 5 5 L 6 3 L 10 3 L 11 5" fill="none" stroke="#ffffff" stroke-width="1.5"/>
-        </svg>'''
-        
-        renderer = QSvgRenderer(svg_data.encode())
-        pixmap = QPixmap(16, 16)
-        pixmap.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(pixmap)
-        renderer.render(painter)
-        painter.end()
-        
-        return QIcon(pixmap)
-        
-    def _create_record_icon(self): #vers 1
-        """Create record (circle) icon"""
-        from PyQt6.QtSvg import QSvgRenderer
-        from PyQt6.QtGui import QPixmap, QPainter
-        
-        svg_data = '''<svg width="16" height="16" viewBox="0 0 16 16">
-            <circle cx="8" cy="8" r="5" fill="#ff0000"/>
-        </svg>'''
-        
-        renderer = QSvgRenderer(svg_data.encode())
-        pixmap = QPixmap(16, 16)
-        pixmap.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(pixmap)
-        renderer.render(painter)
-        painter.end()
-        
-        return QIcon(pixmap)
-
-
 class EmuLauncherGUI(QWidget): #vers 1
     """Main GUI window - Multi-Emulator Launcher"""
     
     window_closed = pyqtSignal()
     
-    def __init__(self, parent=None, main_window=None, core_downloader=None, gamepad_config=None): #vers 3
+    def __init__(self, parent=None, main_window=None, core_downloader=None,
+             core_launcher=None, gamepad_config=None): #vers 5
         """Initialize GUI with AppSettings integration and core systems"""
         if DEBUG_STANDALONE:
             print(f"{App_name} Initializing...")
@@ -340,8 +278,13 @@ class EmuLauncherGUI(QWidget): #vers 1
         self.main_window = main_window
         self.standalone_mode = (main_window is None)
         
+        # Initialize PlatformScanner
+        roms_dir = Path.cwd() / "roms" # TODO needs to be defined in Settingd
+        self.platform_scanner = PlatformScanner(roms_dir)
+
         # Store core systems
         self.core_downloader = core_downloader
+        self.core_launcher = core_launcher
         self.gamepad_config = gamepad_config
         
         # Initialize AppSettings
@@ -350,6 +293,11 @@ class EmuLauncherGUI(QWidget): #vers 1
         else:
             self.app_settings = None
         
+        # State tracking for launch functionality
+        self.current_platform = None
+        self.current_rom_path = None
+        self.available_roms = {}
+
         # Set default fonts
         default_font = QFont("Fira Sans Condensed", 14)
         self.setFont(default_font)
@@ -441,7 +389,7 @@ class EmuLauncherGUI(QWidget): #vers 1
         # Settings button with icon
         self.settings_btn = QPushButton()
         self.settings_btn.setFont(self.button_font)
-        self.settings_btn.setIcon(self._create_settings_icon())
+        self.settings_btn.setIcon(SVGIconFactory.settings_icon())
         self.settings_btn.setText("Settings")
         self.settings_btn.setIconSize(QSize(20, 20))
         self.settings_btn.setToolTip("Settings")
@@ -529,30 +477,186 @@ class EmuLauncherGUI(QWidget): #vers 1
         self.titlebar = titlebar
         return titlebar
         
-    def _create_left_panel(self): #vers 1
-        """Create Panel 1: Emulator platforms list"""
-        panel = QFrame()
-        panel.setFrameStyle(QFrame.Shape.StyledPanel)
-        
-        layout = QVBoxLayout(panel)
-        layout.setContentsMargins(5, 5, 5, 5)
-        
-        # Header
-        header = QLabel("Emulator Platforms")
-        header.setFont(self.panel_font)
-        header.setStyleSheet("font-weight: bold; padding: 5px;")
-        layout.addWidget(header)
-        
-        # Platform list
-        self.platform_list = EmulatorListWidget()
-        self.platform_list.platform_selected.connect(self._on_platform_selected)
-        layout.addWidget(self.platform_list)
-        
-        # Populate with example platforms
-        platforms = ["PlayStation 2", "PlayStation 3", "Nintendo Switch", "Xbox 360"] #TODO count systems in systems/
-        self.platform_list.populate_platforms(platforms)
-        
-        return panel
+#!/usr/bin/env python3
+#this belongs in apps/gui/emu_launcher_gui.py - Version: 5
+# X-Seti - November20 2025 - Multi-Emulator Launcher - Main GUI
+# UPDATE: Add PlatformScanner for dynamic platform discovery
+
+"""
+GUI Updates for Dynamic Platform Scanning
+Replace hardcoded platform list with automatic ROM directory scanning
+"""
+
+# ADD THIS IMPORT at top of file (around line 22)
+from apps.methods.platform_scanner import PlatformScanner
+
+# UPDATE __init__ method to add platform_scanner (vers 5)
+def __init__(self, parent=None, main_window=None, core_downloader=None,
+             core_launcher=None, gamepad_config=None): #vers 5
+    """Initialize GUI with AppSettings integration and core systems"""
+    if DEBUG_STANDALONE:
+        print(f"{App_name} Initializing...")
+
+    super().__init__(parent)
+
+    self.main_window = main_window
+    self.standalone_mode = (main_window is None)
+
+    # Store core systems
+    self.core_downloader = core_downloader
+    self.core_launcher = core_launcher
+    self.gamepad_config = gamepad_config
+
+    # Initialize PlatformScanner - NEW
+    roms_dir = Path.cwd() / "roms"
+    self.platform_scanner = PlatformScanner(roms_dir)
+
+    # State tracking for launch functionality
+    self.current_platform = None
+    self.current_rom_path = None
+    self.available_roms = {}
+
+    # Initialize AppSettings
+    if APPSETTINGS_AVAILABLE:
+        self.app_settings = AppSettings()
+    else:
+        self.app_settings = None
+
+    # Set default fonts
+    default_font = QFont("Fira Sans Condensed", 14)
+    self.setFont(default_font)
+    self.title_font = QFont("Arial", 14)
+    self.panel_font = QFont("Arial", 10)
+    self.button_font = QFont("Arial", 10)
+
+    # Window settings
+    self.setWindowTitle(f"{App_name}: Ready")
+    self.resize(1400, 800)
+    self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+
+    # Corner resize variables
+    self.dragging = False
+    self.drag_position = None
+    self.resizing = False
+    self.resize_corner = None
+    self.corner_size = 20
+    self.hover_corner = None
+
+    # Setup UI
+    self.setup_ui()
+
+    # Apply theme
+    self._apply_theme()
+
+    # Enable mouse tracking
+    self.setMouseTracking(True)
+
+    if DEBUG_STANDALONE:
+        print(f"{App_name} initialized")
+
+
+def _create_left_panel(self): #vers 2
+    """Create Panel 1: Emulator platforms list with dynamic scanning"""
+    panel = QFrame()
+    panel.setFrameStyle(QFrame.Shape.StyledPanel)
+
+    layout = QVBoxLayout(panel)
+    layout.setContentsMargins(5, 5, 5, 5)
+
+    # Header
+    header = QLabel("Emulator Platforms")
+    header.setFont(self.panel_font)
+    header.setStyleSheet("font-weight: bold; padding: 5px;")
+    layout.addWidget(header)
+
+    # Platform list
+    self.platform_list = EmulatorListWidget()
+    self.platform_list.platform_selected.connect(self._on_platform_selected)
+    layout.addWidget(self.platform_list)
+
+    # Scan for platforms dynamically
+    discovered_platforms = self.platform_scanner.get_platforms()
+
+    if discovered_platforms:
+        self.platform_list.populate_platforms(discovered_platforms)
+        print(f"Loaded {len(discovered_platforms)} platform(s): {', '.join(discovered_platforms)}")
+    else:
+        # No platforms found - show helpful message
+        self.platform_list.clear()
+        placeholder = QListWidgetItem("No platforms found")
+        placeholder.setFlags(Qt.ItemFlag.NoItemFlags)
+        self.platform_list.addItem(placeholder)
+
+        info = QListWidgetItem("Place ROMs in /roms/[Platform]/")
+        info.setFlags(Qt.ItemFlag.NoItemFlags)
+        self.platform_list.addItem(info)
+
+        print("No platforms found. Create directories in /roms/")
+
+    # Add refresh button
+    refresh_btn = QPushButton("Refresh Platforms")
+    refresh_btn.clicked.connect(self._refresh_platforms)
+    layout.addWidget(refresh_btn)
+
+    return panel
+
+
+def _refresh_platforms(self): #vers 1
+    """Refresh platform list by rescanning ROM directory"""
+    self.platform_scanner.scan_platforms()
+    discovered_platforms = self.platform_scanner.get_platforms()
+
+    if discovered_platforms:
+        self.platform_list.populate_platforms(discovered_platforms)
+        self.status_label.setText(f"Found {len(discovered_platforms)} platform(s)")
+    else:
+        self.platform_list.clear()
+        placeholder = QListWidgetItem("No platforms found")
+        placeholder.setFlags(Qt.ItemFlag.NoItemFlags)
+        self.platform_list.addItem(placeholder)
+        self.status_label.setText("No platforms found")
+
+
+def _on_platform_selected(self, platform): #vers 3
+    """Handle platform selection - scan for actual ROMs using discovered info"""
+    self.current_platform = platform
+    self.current_rom_path = None
+    self.platform_status.setText(f"Platform: {platform}")
+
+    # Get platform info from scanner
+    platform_info = self.platform_scanner.get_platform_info(platform)
+
+    if not platform_info:
+        self.game_list.populate_games([])
+        self.status_label.setText(f"Platform info not found: {platform}")
+        return
+
+    # Get ROM directory from discovered info
+    roms_dir = Path(platform_info['path'])
+
+    if not roms_dir.exists():
+        self.game_list.populate_games([])
+        self.status_label.setText(f"ROM directory not found: {roms_dir}")
+        return
+
+    # Get valid extensions from discovered info
+    extensions = platform_info.get('extensions', [])
+
+    # Find all ROM files
+    rom_files = []
+    for ext in extensions:
+        rom_files.extend(list(roms_dir.glob(f"*{ext}")))
+
+    # Store ROM paths
+    self.available_roms[platform] = rom_files
+
+    # Populate game list with filenames
+    game_names = [rom.stem for rom in rom_files]
+    self.game_list.populate_games(game_names)
+
+    rom_count = platform_info.get('rom_count', len(rom_files))
+    self.status_label.setText(f"Found {rom_count} ROM(s) for {platform}")
+
         
     def _create_middle_panel(self): #vers 1
         """Create Panel 2: Game list for selected platform"""
@@ -1432,216 +1536,6 @@ class EmuLauncherGUI(QWidget): #vers 1
             painter.drawPath(path)
             
         painter.end()
-        
-    # SVG Icon creation methods
-    def _create_close_icon(self): #vers 1
-        """Create close (X) icon"""
-        from PyQt6.QtSvg import QSvgRenderer
-        from PyQt6.QtGui import QPixmap, QPainter
-        
-        svg_data = '''<svg width="16" height="16" viewBox="0 0 16 16">
-            <path d="M 3 3 L 13 13 M 13 3 L 3 13" stroke="#ffffff" stroke-width="2"/>
-        </svg>'''
-        
-        renderer = QSvgRenderer(svg_data.encode())
-        pixmap = QPixmap(16, 16)
-        pixmap.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(pixmap)
-        renderer.render(painter)
-        painter.end()
-        
-        return QIcon(pixmap)
-        
-    def _create_file_icon(self): #vers 1
-        """Create file icon"""
-        from PyQt6.QtSvg import QSvgRenderer
-        from PyQt6.QtGui import QPixmap, QPainter
-        
-        svg_data = '''<svg width="16" height="16" viewBox="0 0 16 16">
-            <path d="M 3 1 L 10 1 L 13 4 L 13 15 L 3 15 Z" fill="none" stroke="#ffffff" stroke-width="1.5"/>
-            <path d="M 10 1 L 10 4 L 13 4" fill="none" stroke="#ffffff" stroke-width="1.5"/>
-        </svg>'''
-        
-        renderer = QSvgRenderer(svg_data.encode())
-        pixmap = QPixmap(16, 16)
-        pixmap.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(pixmap)
-        renderer.render(painter)
-        painter.end()
-        
-        return QIcon(pixmap)
-        
-    def _create_folder_icon(self): #vers 1
-        """Create folder icon"""
-        from PyQt6.QtSvg import QSvgRenderer
-        from PyQt6.QtGui import QPixmap, QPainter
-        
-        svg_data = '''<svg width="16" height="16" viewBox="0 0 16 16">
-            <path d="M 2 3 L 7 3 L 8 5 L 14 5 L 14 13 L 2 13 Z" fill="none" stroke="#ffffff" stroke-width="1.5"/>
-        </svg>'''
-        
-        renderer = QSvgRenderer(svg_data.encode())
-        pixmap = QPixmap(16, 16)
-        pixmap.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(pixmap)
-        renderer.render(painter)
-        painter.end()
-        
-        return QIcon(pixmap)
-        
-    def _create_info_icon(self): #vers 1
-        """Create info (i) icon"""
-        from PyQt6.QtSvg import QSvgRenderer
-        from PyQt6.QtGui import QPixmap, QPainter
-        
-        svg_data = '''<svg width="16" height="16" viewBox="0 0 16 16">
-            <circle cx="8" cy="8" r="6" fill="none" stroke="#ffffff" stroke-width="1.5"/>
-            <circle cx="8" cy="5" r="0.5" fill="#ffffff"/>
-            <path d="M 8 7 L 8 11" stroke="#ffffff" stroke-width="1.5"/>
-        </svg>'''
-        
-        renderer = QSvgRenderer(svg_data.encode())
-        pixmap = QPixmap(16, 16)
-        pixmap.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(pixmap)
-        renderer.render(painter)
-        painter.end()
-        
-        return QIcon(pixmap)
-        
-    def _create_launch_icon(self): #vers 1
-        """Create launch (play) icon"""
-        from PyQt6.QtSvg import QSvgRenderer
-        from PyQt6.QtGui import QPixmap, QPainter
-        
-        svg_data = '''<svg width="16" height="16" viewBox="0 0 16 16">
-            <path d="M 4 2 L 4 14 L 12 8 Z" fill="#ffffff"/>
-        </svg>'''
-        
-        renderer = QSvgRenderer(svg_data.encode())
-        pixmap = QPixmap(16, 16)
-        pixmap.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(pixmap)
-        renderer.render(painter)
-        painter.end()
-        
-        return QIcon(pixmap)
-        
-    def _create_maximize_icon(self): #vers 1
-        """Create maximize icon"""
-        from PyQt6.QtSvg import QSvgRenderer
-        from PyQt6.QtGui import QPixmap, QPainter
-        
-        svg_data = '''<svg width="16" height="16" viewBox="0 0 16 16">
-            <rect x="3" y="3" width="10" height="10" fill="none" stroke="#ffffff" stroke-width="1.5"/>
-        </svg>'''
-        
-        renderer = QSvgRenderer(svg_data.encode())
-        pixmap = QPixmap(16, 16)
-        pixmap.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(pixmap)
-        renderer.render(painter)
-        painter.end()
-        
-        return QIcon(pixmap)
-        
-    def _create_minimize_icon(self): #vers 1
-        """Create minimize icon"""
-        from PyQt6.QtSvg import QSvgRenderer
-        from PyQt6.QtGui import QPixmap, QPainter
-        
-        svg_data = '''<svg width="16" height="16" viewBox="0 0 16 16">
-            <path d="M 3 8 L 13 8" stroke="#ffffff" stroke-width="2"/>
-        </svg>'''
-        
-        renderer = QSvgRenderer(svg_data.encode())
-        pixmap = QPixmap(16, 16)
-        pixmap.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(pixmap)
-        renderer.render(painter)
-        painter.end()
-        
-        return QIcon(pixmap)
-        
-    def _create_save_icon(self): #vers 1
-        """Create save (floppy disk) icon"""
-        from PyQt6.QtSvg import QSvgRenderer
-        from PyQt6.QtGui import QPixmap, QPainter
-        
-        svg_data = '''<svg width="16" height="16" viewBox="0 0 16 16">
-            <rect x="2" y="2" width="12" height="12" fill="none" stroke="#ffffff" stroke-width="1.5"/>
-            <rect x="4" y="2" width="8" height="4" fill="none" stroke="#ffffff" stroke-width="1.5"/>
-            <rect x="5" y="8" width="6" height="6" fill="#ffffff"/>
-        </svg>'''
-        
-        renderer = QSvgRenderer(svg_data.encode())
-        pixmap = QPixmap(16, 16)
-        pixmap.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(pixmap)
-        renderer.render(painter)
-        painter.end()
-        
-        return QIcon(pixmap)
-        
-    def _create_settings_icon(self): #vers 1
-        """Create settings (gear) icon"""
-        from PyQt6.QtSvg import QSvgRenderer
-        from PyQt6.QtGui import QPixmap, QPainter
-        
-        svg_data = '''<svg width="16" height="16" viewBox="0 0 16 16">
-            <circle cx="8" cy="8" r="3" fill="none" stroke="#ffffff" stroke-width="1.5"/>
-            <circle cx="8" cy="2" r="1" fill="#ffffff"/>
-            <circle cx="8" cy="14" r="1" fill="#ffffff"/>
-            <circle cx="2" cy="8" r="1" fill="#ffffff"/>
-            <circle cx="14" cy="8" r="1" fill="#ffffff"/>
-        </svg>'''
-        
-        renderer = QSvgRenderer(svg_data.encode())
-        pixmap = QPixmap(16, 16)
-        pixmap.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(pixmap)
-        renderer.render(painter)
-        painter.end()
-        
-        return QIcon(pixmap)
-        
-    def _create_stop_icon(self): #vers 1
-        """Create stop (square) icon"""
-        from PyQt6.QtSvg import QSvgRenderer
-        from PyQt6.QtGui import QPixmap, QPainter
-        
-        svg_data = '''<svg width="16" height="16" viewBox="0 0 16 16">
-            <rect x="4" y="4" width="8" height="8" fill="#ffffff"/>
-        </svg>'''
-        
-        renderer = QSvgRenderer(svg_data.encode())
-        pixmap = QPixmap(16, 16)
-        pixmap.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(pixmap)
-        renderer.render(painter)
-        painter.end()
-        
-        return QIcon(pixmap)
-        
-    def _create_controller_icon(self): #vers 1
-        """Create controller (gamepad) icon for titlebar"""
-        from PyQt6.QtSvg import QSvgRenderer
-        from PyQt6.QtGui import QPixmap, QPainter
-        
-        svg_data = '''<svg width="16" height="16" viewBox="0 0 16 16">
-            <path d="M 3 6 Q 2 6 2 7 L 2 10 Q 2 11 3 11 L 5 11 Q 6 11 6 10 L 6 7 Q 6 6 5 6 Z" fill="none" stroke="#ffffff" stroke-width="1.5"/>
-            <path d="M 11 6 Q 10 6 10 7 L 10 10 Q 10 11 11 11 L 13 11 Q 14 11 14 10 L 14 7 Q 14 6 13 6 Z" fill="none" stroke="#ffffff" stroke-width="1.5"/>
-            <path d="M 6 8 L 10 8" stroke="#ffffff" stroke-width="1.5"/>
-        </svg>'''
-        
-        renderer = QSvgRenderer(svg_data.encode())
-        pixmap = QPixmap(16, 16)
-        pixmap.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(pixmap)
-        renderer.render(painter)
-        painter.end()
-        
-        return QIcon(pixmap)
 
 
 # Standalone execution
