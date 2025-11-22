@@ -1,0 +1,15 @@
+{
+  "rom_path": "/home/x2/Desktop/Speccy",
+  "bios_path": "/home/x2/Roms",
+  "core_path": "cores",
+  "save_path": "saves",
+  "cache_path": "cache",
+  "icon_display_mode": "icons_only",
+  "hidden_platforms": [],
+  "window_geometry": {
+    "width": 1400,
+    "height": 800,
+    "x": 0,
+    "y": 0
+  }
+}
