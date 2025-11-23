@@ -8,6 +8,9 @@ Main window with 3-panel layout for emulator management
 Clean version: No hardcoded colors, uses AppSettings theme system
 """
 
+#TODO - def _create_icon_controls(self): #vers 2 exists but the icons are missing from the _create_right_panel.
+
+
 #Changelog
 
 #November22 v12 - Fixed themed titlebar setting to actually work
@@ -59,19 +62,25 @@ Clean version: No hardcoded colors, uses AppSettings theme system
 #- 5. Update _on_platform_selected to use platform info (vers 3)
 
 import os
+import tempfile
+import subprocess
+import shutil
+import struct
 import sys
+import io
+import numpy as np
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Dict, Tuple
 from PyQt6.QtSvg import QSvgRenderer
 
 # PyQt6 imports
-from PyQt6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QSplitter, 
-    QListWidget, QListWidgetItem, QLabel, QPushButton, QFrame, 
-    QTabWidget, QGroupBox, QFormLayout, QDialog, QMessageBox
+from PyQt6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QSplitter, QListWidget, QListWidgetItem, QLabel, QPushButton, QFrame, QTabWidget, QGroupBox, QFormLayout, QDialog, QMessageBox, QTextBrowser)
+from PyQt6.QtWidgets import (QApplication, QSlider, QCheckBox,
+    QWidget, QVBoxLayout, QHBoxLayout, QSplitter, QListWidget, QDialog, QFormLayout, QSpinBox,  QListWidgetItem, QLabel, QPushButton, QFrame, QFileDialog, QLineEdit, QTextEdit, QMessageBox, QScrollArea, QGroupBox, QTableWidget, QTableWidgetItem, QColorDialog, QHeaderView, QAbstractItemView, QMenu, QComboBox, QInputDialog, QTabWidget, QDoubleSpinBox, QRadioButton
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QSize, QPoint
-from PyQt6.QtGui import QFont, QIcon, QColor, QCursor, QPainter, QPen
+from PyQt6.QtCore import Qt, pyqtSignal, QSize, QPoint, QRect, QByteArray
+from PyQt6.QtGui import QFont, QIcon, QPixmap, QImage, QPainter, QPen, QBrush,  QColor, QCursor
+from PyQt6.QtSvg import QSvgRenderer
 
 # Import SVG icon factory
 from apps.methods.svg_icon_factory import SVGIconFactory
@@ -142,7 +151,6 @@ except ImportError:
 # App configuration
 App_name = "Multi-Emulator Launcher"
 DEBUG_STANDALONE = True
-
 
 class EmulatorListWidget(QListWidget): #vers 2
     """Panel 1: List of emulator platforms with icon support"""
@@ -454,16 +462,27 @@ class EmulatorDisplayWidget(QWidget): #vers 3
 
         # Launch button
         self.launch_btn = QPushButton("Launch Game")
-        self.launch_btn.setMinimumHeight(40)
+        self.launch_btn.setMinimumHeight(30)
         if self.main_window:
             self.launch_btn.clicked.connect(self.main_window._on_launch_game)
         button_layout.addWidget(self.launch_btn)
 
+        # Stop button
+        self.gameart_btn = QPushButton("Game Art")
+        self.gameart_btn.setMinimumHeight(30)
+        button_layout.addWidget(self.gameart_btn)
+
         button_layout.addStretch()
 
         # Stop button
+        self.manage_btn = QPushButton("Manage")
+        self.manage_btn.setMinimumHeight(30)
+        button_layout.addWidget(self.manage_btn)
+
+
+        # Stop button
         self.stop_btn = QPushButton("Stop")
-        self.stop_btn.setMinimumHeight(40)
+        self.stop_btn.setMinimumHeight(30)
         if self.main_window:
             self.stop_btn.clicked.connect(self.main_window._on_stop_emulation)
         button_layout.addWidget(self.stop_btn)
@@ -634,8 +653,18 @@ class EmuLauncherGUI(QWidget): #vers 1
         super().__init__(parent)
 
         self.main_window = main_window
-
+        self.button_display_mode = 'both'
+        self.last_save_directory = None
         self.standalone_mode = (main_window is None)
+
+        # Set default fonts
+        from PyQt6.QtGui import QFont
+        default_font = QFont("Fira Sans Condensed", 14)
+        self.setFont(default_font)
+        self.title_font = QFont("Arial", 14)
+        self.panel_font = QFont("Arial", 10)
+        self.button_font = QFont("Arial", 10)
+        self.infobar_font = QFont("Courier New", 9)
 
         # Initialize MEL Settings Manager FIRST
         self.mel_settings = MELSettingsManager()
@@ -643,11 +672,6 @@ class EmuLauncherGUI(QWidget): #vers 1
         # Initialize PlatformScanner with MEL settings path
         roms_dir = self.mel_settings.get_rom_path()
         self.platform_scanner = PlatformScanner(roms_dir)
-
-        # Store core systems
-        #self.core_downloader = core_downloader
-        #self.core_launcher = core_launcher
-        #self.gamepad_config = gamepad_config
 
         # Initialize core systems
         if not core_downloader:
@@ -681,6 +705,22 @@ class EmuLauncherGUI(QWidget): #vers 1
         from PyQt6.QtGui import QShortcut, QKeySequence
         self.display_toggle_shortcut = QShortcut(QKeySequence("Ctrl+D"), self)
         self.display_toggle_shortcut.activated.connect(self._toggle_icon_display_mode)
+
+        self.use_system_titlebar = False
+        self.window_always_on_top = False
+
+        # Window flags
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+
+        self._initialize_features()
+
+        # Corner resize variables
+        self.dragging = False
+        self.drag_position = None
+        self.resizing = False
+        self.resize_corner = None
+        self.corner_size = 20
+        self.hover_corner = None
 
         # State tracking for launch functionality
         self.current_platform = None
@@ -727,6 +767,8 @@ class EmuLauncherGUI(QWidget): #vers 1
         # Apply theme
         self._apply_theme()
 
+        # Setup hotkeys
+        #self._setup_hotkeys()
 
         # Enable mouse tracking
         self.setMouseTracking(True)
@@ -912,7 +954,7 @@ class EmuLauncherGUI(QWidget): #vers 1
         self.info_btn.setFixedSize(35, 35)
         self.info_btn.setIconSize(QSize(20, 20))
         self.info_btn.setToolTip("Information")
-        self.info_btn.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        #self.info_btn.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.info_btn.customContextMenuRequested.connect(self._show_about_dialog)
         self.layout.addWidget(self.info_btn)
 
@@ -956,7 +998,6 @@ class EmuLauncherGUI(QWidget): #vers 1
 
         titlebar = self.titlebar
         return titlebar
-
 
 
     def _create_left_panel(self): #vers 4
@@ -2479,18 +2520,9 @@ class EmuLauncherGUI(QWidget): #vers 1
 
     def _show_about_dialog(self): #vers 1
         """Show about/info dialog"""
-        from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QTextBrowser
+        from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QTabWidget, QWidget, QGroupBox, QFormLayout, QSpinBox, QComboBox, QSlider, QLabel, QCheckBox, QFontComboBox)
         from PyQt6.QtCore import Qt
-
-                # Apply theme to dialog
-        if APPSETTINGS_AVAILABLE and self.app_settings:
-            theme_name = self.app_settings.get_current_theme()
-            theme_data = self.app_settings.themes.get(theme_name)
-            if theme_name and theme_name in self.app_settings.themes:
-                theme_data = self.app_settings.themes[theme_name]
-                #bg = theme_data.get('bg_secondary', '#2a2a2a')
-                #text = theme_data.get('text_primary', '#ffffff')
-                #accent = theme_data.get('accent', '#00d8ff')
+        from PyQt6.QtGui import QFont
 
         dialog = QDialog(self)
         dialog.setWindowTitle("About Multi-Emulator Launcher")
@@ -2693,10 +2725,652 @@ class EmuLauncherGUI(QWidget): #vers 1
         else:
             QMessageBox.warning(self, "Save Failed", "Controller information not available")
 
+# - Settings Reusable
+    def _show_workshop_settings(self): #vers 1 < moved from TXD workshop
+        """Show complete workshop settings dialog"""
+        from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QTabWidget, QWidget, QGroupBox, QFormLayout, QSpinBox, QComboBox, QSlider, QLabel, QCheckBox, QFontComboBox)
+        from PyQt6.QtCore import Qt
+        from PyQt6.QtGui import QFont
 
-    def _initialize_features(self): #vers 1
-        """Initialize features after UI setup"""
-        pass
+        dialog = QDialog(self)
+        dialog.setWindowTitle(App_name + " Settings")
+        dialog.setMinimumWidth(650)
+        dialog.setMinimumHeight(550)
+
+        layout = QVBoxLayout(dialog)
+
+        # Create tabs
+        tabs = QTabWidget()
+
+        # TAB 1: FONTS (FIRST TAB)
+
+        fonts_tab = QWidget()
+        fonts_layout = QVBoxLayout(fonts_tab)
+
+        # Default Font
+        default_font_group = QGroupBox("Default Font")
+        default_font_layout = QHBoxLayout()
+
+        default_font_combo = QFontComboBox()
+        default_font_combo.setCurrentFont(self.font())
+        default_font_layout.addWidget(default_font_combo)
+
+        default_font_size = QSpinBox()
+        default_font_size.setRange(8, 24)
+        default_font_size.setValue(self.font().pointSize())
+        default_font_size.setSuffix(" pt")
+        default_font_size.setFixedWidth(80)
+        default_font_layout.addWidget(default_font_size)
+
+        default_font_group.setLayout(default_font_layout)
+        fonts_layout.addWidget(default_font_group)
+
+        # Title Font
+        title_font_group = QGroupBox("Title Font")
+        title_font_layout = QHBoxLayout()
+
+        title_font_combo = QFontComboBox()
+        if hasattr(self, 'title_font'):
+            title_font_combo.setCurrentFont(self.title_font)
+        else:
+            title_font_combo.setCurrentFont(QFont("Arial", 14))
+        title_font_layout.addWidget(title_font_combo)
+
+        title_font_size = QSpinBox()
+        title_font_size.setRange(10, 32)
+        title_font_size.setValue(getattr(self, 'title_font', QFont("Arial", 14)).pointSize())
+        title_font_size.setSuffix(" pt")
+        title_font_size.setFixedWidth(80)
+        title_font_layout.addWidget(title_font_size)
+
+        title_font_group.setLayout(title_font_layout)
+        fonts_layout.addWidget(title_font_group)
+
+        # Panel Font
+        panel_font_group = QGroupBox("Panel Headers Font")
+        panel_font_layout = QHBoxLayout()
+
+        panel_font_combo = QFontComboBox()
+        if hasattr(self, 'panel_font'):
+            panel_font_combo.setCurrentFont(self.panel_font)
+        else:
+            panel_font_combo.setCurrentFont(QFont("Arial", 10))
+        panel_font_layout.addWidget(panel_font_combo)
+
+        panel_font_size = QSpinBox()
+        panel_font_size.setRange(8, 18)
+        panel_font_size.setValue(getattr(self, 'panel_font', QFont("Arial", 10)).pointSize())
+        panel_font_size.setSuffix(" pt")
+        panel_font_size.setFixedWidth(80)
+        panel_font_layout.addWidget(panel_font_size)
+
+        panel_font_group.setLayout(panel_font_layout)
+        fonts_layout.addWidget(panel_font_group)
+
+        # Button Font
+        button_font_group = QGroupBox("Button Font")
+        button_font_layout = QHBoxLayout()
+
+        button_font_combo = QFontComboBox()
+        if hasattr(self, 'button_font'):
+            button_font_combo.setCurrentFont(self.button_font)
+        else:
+            button_font_combo.setCurrentFont(QFont("Arial", 10))
+        button_font_layout.addWidget(button_font_combo)
+
+        button_font_size = QSpinBox()
+        button_font_size.setRange(8, 16)
+        button_font_size.setValue(getattr(self, 'button_font', QFont("Arial", 10)).pointSize())
+        button_font_size.setSuffix(" pt")
+        button_font_size.setFixedWidth(80)
+        button_font_layout.addWidget(button_font_size)
+
+        button_font_group.setLayout(button_font_layout)
+        fonts_layout.addWidget(button_font_group)
+
+        # Info Bar Font
+        infobar_font_group = QGroupBox("Info Bar Font")
+        infobar_font_layout = QHBoxLayout()
+
+        infobar_font_combo = QFontComboBox()
+        if hasattr(self, 'infobar_font'):
+            infobar_font_combo.setCurrentFont(self.infobar_font)
+        else:
+            infobar_font_combo.setCurrentFont(QFont("Courier New", 9))
+        infobar_font_layout.addWidget(infobar_font_combo)
+
+        infobar_font_size = QSpinBox()
+        infobar_font_size.setRange(7, 14)
+        infobar_font_size.setValue(getattr(self, 'infobar_font', QFont("Courier New", 9)).pointSize())
+        infobar_font_size.setSuffix(" pt")
+        infobar_font_size.setFixedWidth(80)
+        infobar_font_layout.addWidget(infobar_font_size)
+
+        infobar_font_group.setLayout(infobar_font_layout)
+        fonts_layout.addWidget(infobar_font_group)
+
+        fonts_layout.addStretch()
+        tabs.addTab(fonts_tab, "Fonts")
+
+        # TAB 2: DISPLAY SETTINGS
+
+        display_tab = QWidget()
+        display_layout = QVBoxLayout(display_tab)
+
+        # Button display mode
+        button_group = QGroupBox("Button Display Mode")
+        button_layout = QVBoxLayout()
+
+        button_mode_combo = QComboBox()
+        button_mode_combo.addItems(["Icons + Text", "Icons Only", "Text Only"])
+        current_mode = getattr(self, 'button_display_mode', 'both')
+        mode_map = {'both': 0, 'icons': 1, 'text': 2}
+        button_mode_combo.setCurrentIndex(mode_map.get(current_mode, 0))
+        button_layout.addWidget(button_mode_combo)
+
+        button_hint = QLabel("Changes how toolbar buttons are displayed")
+        button_hint.setStyleSheet("color: #888; font-style: italic;")
+        button_layout.addWidget(button_hint)
+
+        button_group.setLayout(button_layout)
+        display_layout.addWidget(button_group)
+
+        # Table display
+        table_group = QGroupBox("Texture List Display")
+        table_layout = QVBoxLayout()
+
+        show_thumbnails = QCheckBox("Show texture thumbnails")
+        show_thumbnails.setChecked(True)
+        table_layout.addWidget(show_thumbnails)
+
+        show_warnings = QCheckBox("Show warning icons for suspicious textures")
+        show_warnings.setChecked(True)
+        show_warnings.setToolTip("Shows icon if normal and alpha appear identical")
+        table_layout.addWidget(show_warnings)
+
+        table_group.setLayout(table_layout)
+        display_layout.addWidget(table_group)
+
+        display_layout.addStretch()
+        tabs.addTab(display_tab, "Display")
+
+
+        # TAB 3: placeholder
+        # TAB 4: PERFORMANCE
+
+        perf_tab = QWidget()
+        perf_layout = QVBoxLayout(perf_tab)
+
+        perf_group = QGroupBox("Performance Settings")
+        perf_form = QFormLayout()
+
+        preview_quality = QComboBox()
+        preview_quality.addItems(["Low (Fast)", "Medium", "High (Slow)"])
+        preview_quality.setCurrentIndex(1)
+        perf_form.addRow("Preview Quality:", preview_quality)
+
+        thumb_size = QSpinBox()
+        thumb_size.setRange(32, 128)
+        thumb_size.setValue(64)
+        thumb_size.setSuffix(" px")
+        perf_form.addRow("Thumbnail Size:", thumb_size)
+
+        perf_group.setLayout(perf_form)
+        perf_layout.addWidget(perf_group)
+
+        # Caching
+        cache_group = QGroupBox("Caching")
+        cache_layout = QVBoxLayout()
+
+        enable_cache = QCheckBox("Enable texture preview caching")
+        enable_cache.setChecked(True)
+        cache_layout.addWidget(enable_cache)
+
+        cache_hint = QLabel("Caching improves performance but uses more memory")
+        cache_hint.setStyleSheet("color: #888; font-style: italic;")
+        cache_layout.addWidget(cache_hint)
+
+        cache_group.setLayout(cache_layout)
+        perf_layout.addWidget(cache_group)
+
+        perf_layout.addStretch()
+        tabs.addTab(perf_tab, "Performance")
+
+        # TAB 5: PREVIEW SETTINGS (LAST TAB)
+
+        preview_tab = QWidget()
+        preview_layout = QVBoxLayout(preview_tab)
+
+        # Zoom Settings
+        zoom_group = QGroupBox("Zoom Settings")
+        zoom_form = QFormLayout()
+
+        zoom_spin = QSpinBox()
+        zoom_spin.setRange(10, 500)
+        zoom_spin.setValue(int(getattr(self, 'zoom_level', 1.0) * 100))
+        zoom_spin.setSuffix("%")
+        zoom_form.addRow("Default Zoom:", zoom_spin)
+
+        zoom_group.setLayout(zoom_form)
+        preview_layout.addWidget(zoom_group)
+
+        # Background Settings
+        bg_group = QGroupBox("Background Settings")
+        bg_layout = QVBoxLayout()
+
+        # Background mode
+        bg_mode_layout = QFormLayout()
+        bg_mode_combo = QComboBox()
+        bg_mode_combo.addItems(["Solid Color", "Checkerboard", "Grid"])
+        current_bg_mode = getattr(self, 'background_mode', 'solid')
+        mode_idx = {"solid": 0, "checkerboard": 1, "checker": 1, "grid": 2}.get(current_bg_mode, 0)
+
+        bg_mode_combo.setCurrentIndex(mode_idx)
+        bg_mode_layout.addRow("Background Mode:", bg_mode_combo)
+        bg_layout.addLayout(bg_mode_layout)
+
+        bg_layout.addSpacing(10)
+
+        # Checkerboard size
+        cb_label = QLabel("Checkerboard Size:")
+        bg_layout.addWidget(cb_label)
+
+        cb_layout = QHBoxLayout()
+        cb_slider = QSlider(Qt.Orientation.Horizontal)
+        cb_slider.setMinimum(4)
+        cb_slider.setMaximum(64)
+        cb_slider.setValue(getattr(self, '_checkerboard_size', 16))
+        cb_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        cb_slider.setTickInterval(8)
+        cb_layout.addWidget(cb_slider)
+
+        cb_spin = QSpinBox()
+        cb_spin.setMinimum(4)
+        cb_spin.setMaximum(64)
+        cb_spin.setValue(getattr(self, '_checkerboard_size', 16))
+        cb_spin.setSuffix(" px")
+        cb_spin.setFixedWidth(80)
+        cb_layout.addWidget(cb_spin)
+
+        bg_layout.addLayout(cb_layout)
+
+        # Connect checkerboard controls
+        #cb_slider.valueChanged.connect(cb_spin.setValue)
+        #cb_spin.valueChanged.connect(cb_slider.setValue)
+
+        # Hint
+        cb_hint = QLabel("Smaller = tighter pattern, larger = bigger squares")
+        cb_hint.setStyleSheet("color: #888; font-style: italic; font-size: 10px;")
+        bg_layout.addWidget(cb_hint)
+
+        bg_group.setLayout(bg_layout)
+        preview_layout.addWidget(bg_group)
+
+        # Overlay Settings
+        overlay_group = QGroupBox("Overlay View Settings")
+        overlay_layout = QVBoxLayout()
+
+        overlay_label = QLabel("Overlay Opacity (Normal over Alpha):")
+        overlay_layout.addWidget(overlay_label)
+
+        opacity_layout = QHBoxLayout()
+        opacity_slider = QSlider(Qt.Orientation.Horizontal)
+        opacity_slider.setMinimum(0)
+        opacity_slider.setMaximum(100)
+        opacity_slider.setValue(getattr(self, '_overlay_opacity', 50))
+        opacity_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        opacity_slider.setTickInterval(10)
+        opacity_layout.addWidget(opacity_slider)
+
+        opacity_spin = QSpinBox()
+        opacity_spin.setMinimum(0)
+        opacity_spin.setMaximum(100)
+        opacity_spin.setValue(getattr(self, '_overlay_opacity', 50))
+        opacity_spin.setSuffix(" %")
+        opacity_spin.setFixedWidth(80)
+        opacity_layout.addWidget(opacity_spin)
+
+        overlay_layout.addLayout(opacity_layout)
+
+        # Connect opacity controls
+        #opacity_slider.valueChanged.connect(opacity_spin.setValue)
+        #opacity_spin.valueChanged.connect(opacity_slider.setValue)
+
+        # Hint
+        opacity_hint = QLabel("0")
+        opacity_hint.setStyleSheet("color: #888; font-style: italic; font-size: 10px;")
+        overlay_layout.addWidget(opacity_hint)
+
+        overlay_group.setLayout(overlay_layout)
+        preview_layout.addWidget(overlay_group)
+
+        preview_layout.addStretch()
+        tabs.addTab(preview_tab, "Preview")
+
+        # Add tabs to dialog
+        layout.addWidget(tabs)
+
+        # BUTTONS
+
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+
+        # Apply button
+        apply_btn = QPushButton("Apply Settings")
+        apply_btn.setStyleSheet("""
+            QPushButton {
+                background: #0078d4;
+                color: white;
+                padding: 10px 24px;
+                font-weight: bold;
+                border-radius: 4px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background: #1984d8;
+            }
+        """)
+
+        def apply_settings():
+            # FONTS
+            self.setFont(QFont(default_font_combo.currentFont().family(),
+                            default_font_size.value()))
+            self.title_font = QFont(title_font_combo.currentFont().family(),
+                                title_font_size.value())
+            self.panel_font = QFont(panel_font_combo.currentFont().family(),
+                                panel_font_size.value())
+            self.button_font = QFont(button_font_combo.currentFont().family(),
+                                    button_font_size.value())
+            self.infobar_font = QFont(infobar_font_combo.currentFont().family(),
+                                    infobar_font_size.value())
+
+            # Apply fonts to UI
+            self._apply_title_font()
+            self._apply_panel_font()
+            self._apply_button_font()
+            self._apply_infobar_font()
+
+            mode_map = {0: 'both', 1: 'icons', 2: 'text'}
+            self.button_display_mode = mode_map[button_mode_combo.currentIndex()]
+
+            # EXPORT
+            self.default_export_format = format_combo.currentText()
+
+            # PREVIEW
+            self.zoom_level = zoom_spin.value() / 100.0
+
+            bg_modes = ['solid', 'checkerboard', 'grid']
+            self.background_mode = bg_modes[bg_mode_combo.currentIndex()]
+
+            self._checkerboard_size = cb_spin.value()
+            self._overlay_opacity = opacity_spin.value()
+
+            # Update preview widget
+            if hasattr(self, 'preview_widget'):
+                if self.background_mode == 'checkerboard':
+                    self.preview_widget.set_checkerboard_background()
+                    self.preview_widget._checkerboard_size = self._checkerboard_size
+                else:
+                    self.preview_widget.set_background_color(self.preview_widget.bg_color)
+
+            # Apply button display mode
+            if hasattr(self, '_update_all_buttons'):
+                self._update_all_buttons()
+
+            # Refresh display
+
+            if self.main_window and hasattr(self.main_window, 'log_message'):
+                self.main_window.log_message("Workshop settings updated successfully")
+
+        apply_btn.clicked.connect(apply_settings)
+        btn_layout.addWidget(apply_btn)
+
+        # Close button
+        close_btn = QPushButton("Close")
+        close_btn.setStyleSheet("padding: 10px 24px; font-size: 13px;")
+        close_btn.clicked.connect(dialog.close)
+        btn_layout.addWidget(close_btn)
+
+        layout.addLayout(btn_layout)
+
+        # Show dialog
+        dialog.exec()
+
+
+    def _apply_window_flags(self): #vers 1
+        """Apply window flags based on settings"""
+        # Save current geometry
+        current_geometry = self.geometry()
+        was_visible = self.isVisible()
+
+        if self.use_system_titlebar:
+            # Use system window with title bar
+            self.setWindowFlags(
+                Qt.WindowType.Window |
+                Qt.WindowType.WindowMinimizeButtonHint |
+                Qt.WindowType.WindowMaximizeButtonHint |
+                Qt.WindowType.WindowCloseButtonHint
+            )
+        else:
+            # Use custom frameless window
+            self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+
+        # Restore geometry and visibility
+        self.setGeometry(current_geometry)
+
+        if was_visible:
+            self.show()
+
+        if self.main_window and hasattr(self.main_window, 'log_message'):
+            mode = "System title bar" if self.use_system_titlebar else "Custom frameless"
+            self.main_window.log_message(f"Window mode: {mode}")
+
+
+    def _apply_always_on_top(self): #vers 1
+        """Apply always on top window flag"""
+        current_flags = self.windowFlags()
+
+        if self.window_always_on_top:
+            new_flags = current_flags | Qt.WindowType.WindowStaysOnTopHint
+        else:
+            new_flags = current_flags & ~Qt.WindowType.WindowStaysOnTopHint
+
+        if new_flags != current_flags:
+            # Save state
+            current_geometry = self.geometry()
+            was_visible = self.isVisible()
+
+            self.setWindowFlags(new_flags)
+
+            self.setGeometry(current_geometry)
+            if was_visible:
+                self.show()
+
+
+    def _scan_available_locales(self): #vers 2
+        """Scan locale folder and return list of available languages"""
+        import os
+        import configparser
+
+        locales = []
+        locale_path = os.path.join(os.path.dirname(__file__), 'locale')
+
+        if not os.path.exists(locale_path):
+            # Easter egg: Amiga Workbench 3.1 style error
+            self._show_amiga_locale_error()
+            # Return default English
+            return [("English", "en", None)]
+
+        try:
+            for filename in os.listdir(locale_path):
+                if filename.endswith('.lang'):
+                    filepath = os.path.join(locale_path, filename)
+
+                    try:
+                        config = configparser.ConfigParser()
+                        config.read(filepath, encoding='utf-8')
+
+                        if 'Metadata' in config:
+                            lang_name = config['Metadata'].get('LanguageName', 'Unknown')
+                            lang_code = config['Metadata'].get('LanguageCode', 'unknown')
+                            locales.append((lang_name, lang_code, filepath))
+
+                    except Exception as e:
+                        if self.main_window and hasattr(self.main_window, 'log_message'):
+                            self.main_window.log_message(f"Failed to load locale {filename}: {e}")
+
+        except Exception as e:
+            if self.main_window and hasattr(self.main_window, 'log_message'):
+                self.main_window.log_message(f"Locale scan error: {e}")
+
+        locales.sort(key=lambda x: x[0])
+
+        if not locales:
+            locales = [("English", "en", None)]
+
+        return locales
+
+
+    def _show_amiga_locale_error(self): #vers 1
+        """Show Amiga Workbench 3.1 style error dialog"""
+        from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QHBoxLayout
+        from PyQt6.QtCore import Qt
+        from PyQt6.QtGui import QFont
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Workbench Request")
+        dialog.setFixedSize(450, 150)
+
+        # Amiga Workbench styling
+        dialog.setStyleSheet("""
+            QDialog {
+                background-color: #aaaaaa;
+                border: 2px solid #ffffff;
+            }
+            QLabel {
+                color: #000000;
+                background-color: #aaaaaa;
+            }
+            QPushButton {
+                background-color: #8899aa;
+                color: #000000;
+                border: 2px outset #ffffff;
+                padding: 5px 15px;
+                min-width: 80px;
+            }
+            QPushButton:pressed {
+                border: 2px inset #555555;
+            }
+        """)
+
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        # Amiga Topaz font style
+        amiga_font = QFont("Courier", 10, QFont.Weight.Normal)
+
+        # Error message
+        message = QLabel("Workbench 3.1 installer\n\nPlease insert Local disk in any drive")
+        message.setFont(amiga_font)
+        message.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(message)
+
+        layout.addStretch()
+
+        # Button layout
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+
+        # Retry and Cancel buttons (Amiga style)
+        retry_btn = QPushButton("Retry")
+        retry_btn.setFont(amiga_font)
+        retry_btn.clicked.connect(dialog.accept)
+        button_layout.addWidget(retry_btn)
+
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.setFont(amiga_font)
+        cancel_btn.clicked.connect(dialog.reject)
+        button_layout.addWidget(cancel_btn)
+
+        button_layout.addStretch()
+        layout.addLayout(button_layout)
+
+        dialog.exec()
+
+
+    def _update_dock_button_visibility(self): #vers 1
+        """Show/hide dock and tearoff buttons based on docked state"""
+        if hasattr(self, 'dock_btn'):
+            # Hide D button when docked, show when standalone
+            self.dock_btn.setVisible(not self.is_docked)
+
+        if hasattr(self, 'tearoff_btn'):
+            # T button only visible when docked and not in standalone mode
+            self.tearoff_btn.setVisible(self.is_docked and not self.standalone_mode)
+
+
+    def toggle_dock_mode(self): #vers 1
+        """Toggle between docked and standalone mode"""
+        if self.is_docked:
+            self._undock_from_main()
+        else:
+            self._dock_to_main()
+
+        self._update_dock_button_visibility()
+
+    def _dock_to_main(self): #vers 7
+        """Dock handled by overlay system in imgfactory"""
+        if hasattr(self, 'is_overlay') and self.is_overlay:
+            self.show()
+            self.raise_()
+
+    def _undock_from_main(self): #vers 3
+        """Undock from overlay mode to standalone window"""
+        if hasattr(self, 'is_overlay') and self.is_overlay:
+            self.setWindowFlags(Qt.WindowType.Window)
+            self.is_overlay = False
+            self.overlay_table = None
+
+        self.is_docked = False
+        self._update_dock_button_visibility()
+
+        self.show()
+
+        if hasattr(self.main_window, 'log_message'):
+            self.main_window.log_message(App_name + " undocked to standalone")
+
+    def _apply_button_mode(self, dialog): #vers 1
+        """Apply button display mode"""
+        mode_index = self.button_mode_combo.currentIndex()
+        mode_map = {0: 'both', 1: 'icons', 2: 'text'}
+
+        new_mode = mode_map[mode_index]
+
+        if new_mode != self.button_display_mode:
+            self.button_display_mode = new_mode
+            self._update_all_buttons()
+
+            if self.main_window and hasattr(self.main_window, 'log_message'):
+                mode_names = {0: 'Icons + Text', 1: 'Icons Only', 2: 'Text Only'}
+                self.main_window.log_message(f"✨ Button style: {mode_names[mode_index]}")
+
+        dialog.close()
+
+# - Window functionality
+
+    def _initialize_features(self): #vers 3
+        """Initialize all features after UI setup"""
+        try:
+            self._apply_theme()
+            self._update_status_indicators()
+
+            if self.main_window and hasattr(self.main_window, 'log_message'):
+                self.main_window.log_message("All features initialized")
+
+        except Exception as e:
+            if self.main_window and hasattr(self.main_window, 'log_message'):
+                self.main_window.log_message(f"Feature init error: {str(e)}")
 
 
     def _is_on_draggable_area(self, pos): #vers 2
@@ -2785,26 +3459,84 @@ class EmuLauncherGUI(QWidget): #vers 1
             if new_width >= min_width and new_height >= min_height:
                 self.resize(new_width, new_height)
 
+    def _update_all_buttons(self): #vers 4
+        """Update all buttons to match display mode"""
+        buttons_to_update = [
+            # Toolbar buttons
+            ('open_btn', 'Open'),
+            ('save_btn', 'Save'),
+        ]
 
-    def _update_cursor(self, corner): #vers 1
-        """Update cursor based on resize corner"""
-        if corner == "top-left" or corner == "bottom-right":
-            self.setCursor(Qt.CursorShape.SizeFDiagCursor)
-        elif corner == "top-right" or corner == "bottom-left":
-            self.setCursor(Qt.CursorShape.SizeBDiagCursor)
-        else:
-            self.setCursor(Qt.CursorShape.ArrowCursor)
+    def paintEvent(self, event): #vers 2
+        """Paint corner resize triangles"""
+        super().paintEvent(event)
+
+        from PyQt6.QtGui import QPainter, QColor, QPen, QBrush, QPainterPath
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        # Colors
+        normal_color = QColor(100, 100, 100, 150)
+        hover_color = QColor(150, 150, 255, 200)
+
+        w = self.width()
+        h = self.height()
+        size = self.corner_size
+
+        # Define corner triangles
+        corners = {
+            'top-left': [(0, 0), (size, 0), (0, size)],
+            'top-right': [(w, 0), (w-size, 0), (w, size)],
+            'bottom-left': [(0, h), (size, h), (0, h-size)],
+            'bottom-right': [(w, h), (w-size, h), (w, h-size)]
+        }
+
+        for corner_name, points in corners.items():
+            # Choose color based on hover state
+            if self.hover_corner == corner_name:
+                painter.setBrush(QBrush(hover_color))
+                painter.setPen(QPen(hover_color.darker(120), 1))
+            else:
+                painter.setBrush(QBrush(normal_color))
+                painter.setPen(QPen(normal_color.darker(120), 1))
+
+            # Draw triangle
+            path = QPainterPath()
+            path.moveTo(points[0][0], points[0][1])
+            path.lineTo(points[1][0], points[1][1])
+            path.lineTo(points[2][0], points[2][1])
+            path.closeSubpath()
+
+            painter.drawPath(path)
+
+        painter.end()
 
 
-    def _toggle_maximize(self): #vers 1
-        """Toggle window maximize state"""
-        if self.isMaximized():
-            self.showNormal()
-        else:
-            self.showMaximized()
 
 
-    def mousePressEvent(self, event): #vers 3
+    def _get_resize_corner(self, pos): #vers 2
+        """Determine which corner is under mouse position"""
+        size = self.corner_size
+        w = self.width()
+        h = self.height()
+
+        if pos.x() < size and pos.y() < size:
+            return "top-left"
+
+        if pos.x() > w - size and pos.y() < size:
+            return "top-right"
+
+        if pos.x() < size and pos.y() > h - size:
+            return "bottom-left"
+
+        if pos.x() > w - size and pos.y() > h - size:
+            return "bottom-right"
+
+        return None
+
+
+    def mousePressEvent(self, event): #vers 2
         """Handle mouse press for dragging and resizing"""
         if event.button() == Qt.MouseButton.LeftButton:
             self.resize_corner = self._get_resize_corner(event.pos())
@@ -2813,30 +3545,16 @@ class EmuLauncherGUI(QWidget): #vers 1
                 self.resizing = True
                 self.drag_position = event.globalPosition().toPoint()
                 self.initial_geometry = self.geometry()
-                event.accept()
-            elif self._is_on_draggable_area(event.pos()):
-                # Use system move for better compatibility
-                if hasattr(self.windowHandle(), 'startSystemMove'):
-                    self.windowHandle().startSystemMove()
-                    event.accept()
-                else:
-                    # Fallback to manual drag
+            else:
+                # Check if clicking on toolbar for dragging
+                if self._is_on_draggable_area(event.pos()):
                     self.dragging = True
                     self.drag_position = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
-                    event.accept()
-            else:
-                # Let event propagate to child widgets (buttons)
-                event.ignore()
-        elif event.button() == Qt.MouseButton.RightButton:
-            # Right-click on titlebar - show window menu
-            if self._is_on_draggable_area(event.pos()):
-                self._show_window_context_menu(event.pos())
-                event.accept()
-            else:
-                event.ignore()
+
+            event.accept()
 
 
-    def mouseMoveEvent(self, event): #vers 1
+    def mouseMoveEvent(self, event): #vers 2
         """Handle mouse move for dragging, resizing, and hover effects"""
         if event.buttons() == Qt.MouseButton.LeftButton:
             if self.resizing and self.resize_corner:
@@ -2848,11 +3566,11 @@ class EmuLauncherGUI(QWidget): #vers 1
             corner = self._get_resize_corner(event.pos())
             if corner != self.hover_corner:
                 self.hover_corner = corner
-                self.update()
+                self.update()  # Trigger repaint for hover effect
             self._update_cursor(corner)
 
 
-    def mouseReleaseEvent(self, event): #vers 1
+    def mouseReleaseEvent(self, event): #vers 2
         """Handle mouse release"""
         if event.button() == Qt.MouseButton.LeftButton:
             self.dragging = False
@@ -2863,7 +3581,7 @@ class EmuLauncherGUI(QWidget): #vers 1
 
 
     def mouseDoubleClickEvent(self, event): #vers 1
-        """Handle double-click on titlebar to maximize/restore"""
+        """Handle double-click on toolbar to maximize/restore"""
         if event.button() == Qt.MouseButton.LeftButton:
             if self._is_on_draggable_area(event.pos()):
                 self._toggle_maximize()
@@ -2873,55 +3591,163 @@ class EmuLauncherGUI(QWidget): #vers 1
 
 
     def resizeEvent(self, event): #vers 1
-        """Handle resize event"""
+        '''Keep resize grip in bottom-right corner'''
         super().resizeEvent(event)
+        if hasattr(self, 'size_grip'):
+            self.size_grip.move(self.width() - 16, self.height() - 16)
 
 
-    def paintEvent(self, event): #vers 1
-        """Paint corner resize indicators"""
-        super().paintEvent(event)
-
-        if not self.hover_corner:
+    def _handle_corner_resize(self, global_pos): #vers 2
+        """Handle window resizing from corners"""
+        if not self.resize_corner or not self.drag_position:
             return
 
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        delta = global_pos - self.drag_position
+        geometry = self.initial_geometry
 
-        # Draw corner indicator
-        size = self.corner_size
-        w = self.width()
-        h = self.height()
+        min_width = 800
+        min_height = 600
 
-        painter.setPen(QPen(QColor(0, 120, 212), 2))
+        # Calculate new geometry based on corner
+        if self.resize_corner == "top-left":
+            new_x = geometry.x() + delta.x()
+            new_y = geometry.y() + delta.y()
+            new_width = geometry.width() - delta.x()
+            new_height = geometry.height() - delta.y()
 
-        if self.hover_corner == "top-left":
-            points = [(0, size), (0, 0), (size, 0)]
-        elif self.hover_corner == "top-right":
-            points = [(w-size, 0), (w, 0), (w, size)]
-        elif self.hover_corner == "bottom-left":
-            points = [(0, h-size), (0, h), (size, h)]
-        elif self.hover_corner == "bottom-right":
-            points = [(w-size, h), (w, h), (w, h-size)]
+            if new_width >= min_width and new_height >= min_height:
+                self.setGeometry(new_x, new_y, new_width, new_height)
+
+        elif self.resize_corner == "top-right":
+            new_y = geometry.y() + delta.y()
+            new_width = geometry.width() + delta.x()
+            new_height = geometry.height() - delta.y()
+
+            if new_width >= min_width and new_height >= min_height:
+                self.setGeometry(geometry.x(), new_y, new_width, new_height)
+
+        elif self.resize_corner == "bottom-left":
+            new_x = geometry.x() + delta.x()
+            new_width = geometry.width() - delta.x()
+            new_height = geometry.height() + delta.y()
+
+            if new_width >= min_width and new_height >= min_height:
+                self.setGeometry(new_x, geometry.y(), new_width, new_height)
+
+        elif self.resize_corner == "bottom-right":
+            new_width = geometry.width() + delta.x()
+            new_height = geometry.height() + delta.y()
+
+            if new_width >= min_width and new_height >= min_height:
+                self.resize(new_width, new_height)
+
+
+    def _get_resize_direction(self, pos): #vers 1
+        """Determine resize direction based on mouse position"""
+        rect = self.rect()
+        margin = self.resize_margin
+
+        left = pos.x() < margin
+        right = pos.x() > rect.width() - margin
+        top = pos.y() < margin
+        bottom = pos.y() > rect.height() - margin
+
+        if left and top:
+            return "top-left"
+        elif right and top:
+            return "top-right"
+        elif left and bottom:
+            return "bottom-left"
+        elif right and bottom:
+            return "bottom-right"
+        elif left:
+            return "left"
+        elif right:
+            return "right"
+        elif top:
+            return "top"
+        elif bottom:
+            return "bottom"
+
+        return None
+
+
+    def _update_cursor(self, direction): #vers 1
+        """Update cursor based on resize direction"""
+        if direction == "top" or direction == "bottom":
+            self.setCursor(Qt.CursorShape.SizeVerCursor)
+        elif direction == "left" or direction == "right":
+            self.setCursor(Qt.CursorShape.SizeHorCursor)
+        elif direction == "top-left" or direction == "bottom-right":
+            self.setCursor(Qt.CursorShape.SizeFDiagCursor)
+        elif direction == "top-right" or direction == "bottom-left":
+            self.setCursor(Qt.CursorShape.SizeBDiagCursor)
         else:
-            points = []
+            self.setCursor(Qt.CursorShape.ArrowCursor)
 
-        if points:
-            from PyQt6.QtGui import QPainterPath
-            path = QPainterPath()
-            path.moveTo(points[0][0], points[0][1])
-            path.lineTo(points[1][0], points[1][1])
-            path.lineTo(points[2][0], points[2][1])
-            path.closeSubpath()
-            painter.drawPath(path)
 
-        painter.end()
+    def _handle_resize(self, global_pos): #vers 1
+        """Handle window resizing"""
+        if not self.resize_direction or not self.drag_position:
+            return
 
+        delta = global_pos - self.drag_position
+        geometry = self.frameGeometry()
+
+        min_width = 800
+        min_height = 600
+
+        # Handle horizontal resizing
+        if "left" in self.resize_direction:
+            new_width = geometry.width() - delta.x()
+            if new_width >= min_width:
+                geometry.setLeft(geometry.left() + delta.x())
+        elif "right" in self.resize_direction:
+            new_width = geometry.width() + delta.x()
+            if new_width >= min_width:
+                geometry.setRight(geometry.right() + delta.x())
+
+        # Handle vertical resizing
+        if "top" in self.resize_direction:
+            new_height = geometry.height() - delta.y()
+            if new_height >= min_height:
+                geometry.setTop(geometry.top() + delta.y())
+        elif "bottom" in self.resize_direction:
+            new_height = geometry.height() + delta.y()
+            if new_height >= min_height:
+                geometry.setBottom(geometry.bottom() + delta.y())
+
+        self.setGeometry(geometry)
+        self.drag_position = global_pos
+
+
+    def _toggle_maximize(self): #vers 1
+        """Toggle window maximize state"""
+        if self.isMaximized():
+            self.showNormal()
+        else:
+            self.showMaximized()
+
+    def _set_checkerboard_bg(self): #vers 1
+        """Set checkerboard background"""
+        # Create checkerboard pattern
+        self.preview_widget.setStyleSheet("""
+            border: 1px solid #3a3a3a;
+            background-image:
+                linear-gradient(45deg, #333 25%, transparent 25%),
+                linear-gradient(-45deg, #333 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #333 75%),
+                linear-gradient(-45deg, transparent 75%, #333 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        """)
 
     def closeEvent(self, event): #vers 1
         """Handle close event"""
         self.window_closed.emit()
         event.accept()
 
+# - Create
 
     def _create_properties_icon(self): #vers 1
         """Create settings (gear) icon"""
