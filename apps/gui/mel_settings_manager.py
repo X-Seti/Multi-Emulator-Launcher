@@ -26,6 +26,7 @@ import json
 # set_save_path
 # _load_settings (vers 2)
 
+
 class MELSettingsManager: #vers 2
     """Manages MEL-specific directory paths and display settings"""
     
@@ -41,7 +42,8 @@ class MELSettingsManager: #vers 2
             'core_path': 'cores',
             'save_path': 'saves',
             'cache_path': 'cache',
-            'icon_display_mode': 'icons_and_text'
+            'icon_display_mode': 'icons_and_text',
+            'use_themed_titlebar': True
         }
         
         if self.settings_file.exists():

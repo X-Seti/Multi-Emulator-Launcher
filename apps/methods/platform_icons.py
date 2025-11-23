@@ -51,6 +51,17 @@ class PlatformIcons: #vers 1
         return QIcon(pixmap)
     
     @staticmethod
+    def _create_amiga_500_icon(self, size=64):
+        """Amiga 500 with floppy drive graphic"""
+        svg_data = f'''<svg width="{size}" height="{size}" viewBox="0 0 64 64">
+            <rect width="64" height="64" fill="#c0c0c0" rx="4"/>
+            <rect x="8" y="12" width="48" height="40" fill="#333" rx="2"/>
+            <rect x="12" y="32" width="10" height="2" fill="#ff0000"/>
+            <text x="32" y="56" font-family="Arial" font-size="8" fill="#000" text-anchor="middle">A500</text>
+        </svg>'''
+        return self._create_icon_from_svg(svg_data, size)
+
+    @staticmethod
     def amiga_icon(color="#FF6B35", size=32): #vers 1
         """Amiga checkmark logo"""
         svg = f'''<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
@@ -256,6 +267,79 @@ class PlatformIcons: #vers 1
         </svg>'''
         return PlatformIcons._create_icon_from_svg(svg, size)
     
+    @staticmethod
+    def _create_controller_icon(self, size=64):
+        """Generic game controller for unknown platforms"""
+        svg_data = f'''<svg width="{size}" height="{size}" viewBox="0 0 64 64">
+            <rect width="64" height="64" fill="#34495e" rx="8"/>
+            <path d="M 16 24 Q 14 24 14 26 L 14 38 Q 14 40 16 40 L 22 40 Q 24 40 24 38 L 24 26 Q 24 24 22 24 Z"
+                fill="none" stroke="#ecf0f1" stroke-width="2"/>
+            <path d="M 42 24 Q 40 24 40 26 L 40 38 Q 40 40 42 40 L 48 40 Q 50 40 50 38 L 50 26 Q 50 24 48 24 Z"
+                fill="none" stroke="#ecf0f1" stroke-width="2"/>
+            <path d="M 24 32 L 40 32" stroke="#ecf0f1" stroke-width="2"/>
+        </svg>'''
+        return self._create_icon_from_svg(svg_data, size)
+
+    def _create_acorn_aton_icon(self, size=64):
+        """Acorn Aton / Genesis"""
+        svg_data = f'''<svg width="{size}" height="{size}" viewBox="0 0 64 64">
+            <rect width="64" height="64" fill="#34495e" rx="8"/>
+            <circle cx="32" cy="32" r="20" fill="none" stroke="#ecf0f1" stroke-width="2"/>
+            <line x1="16" y1="32" x2="48" y2="32" stroke="#ecf0f1" stroke-width="2"/>
+            <line x1="32" y1="16" x2="32" y2="48" stroke="#ecf0f1" stroke-width="2"/>
+        </svg>'''
+        return self._create_icon_from_svg(svg_data, size)
+
+    def _create_acorn_electron_icon(self, size=64):
+        """Acorn Electron"""
+        svg_data = f'''<svg width="{size}" height="{size}" viewBox="0 0 64 64">
+            <rect width="64" height="64" fill="#34495e" rx="8"/>
+            <rect x="12" y="20" width="40" height="24" fill="none" stroke="#ecf0f1" stroke-width="2"/>
+            <line x1="12" y1="32" x2="52" y2="32" stroke="#ecf0f1" stroke-width="2"/>
+        </svg>'''
+        return self._create_icon_from_svg(svg_data, size)
+
+    def _create_amiga1000_icon(self, size=64):
+        """Amiga 1000"""
+        svg_data = f'''<svg width="{size}" height="{size}" viewBox="0 0 64 64">
+            <rect width="64" height="64" fill="#34495e" rx="8"/>
+            <rect x="10" y="20" width="44" height="24" fill="none" stroke="#ecf0f1" stroke-width="2"/>
+            <line x1="10" y1="28" x2="54" y2="28" stroke="#ecf0f1" stroke-width="2"/>
+            <line x1="10" y1="36" x2="54" y2="36" stroke="#ecf0f1" stroke-width="2"/>
+        </svg>'''
+        return self._create_icon_from_svg(svg_data, size)
+
+    def _create_amiga500_icon(self, size=64):
+        """Amiga 500"""
+        svg_data = f'''<svg width="{size}" height="{size}" viewBox="0 0 64 64">
+            <rect width="64" height="64" fill="#34495e" rx="8"/>
+            <rect x="8" y="18" width="48" height="28" fill="none" stroke="#ecf0f1" stroke-width="2"/>
+            <circle cx="24" cy="32" r="4" fill="none" stroke="#ecf0f1" stroke-width="2"/>
+            <circle cx="40" cy="32" r="4" fill="none" stroke="#ecf0f1" stroke-width="2"/>
+        </svg>'''
+        return self._create_icon_from_svg(svg_data, size)
+
+    def _create_amiga600_icon(self, size=64):
+        """Amiga 600"""
+        svg_data = f'''<svg width="{size}" height="{size}" viewBox="0 0 64 64">
+            <rect width="64" height="64" fill="#34495e" rx="8"/>
+            <rect x="12" y="22" width="40" height="20" fill="none" stroke="#ecf0f1" stroke-width="2"/>
+            <circle cx="20" cy="32" r="3" fill="none" stroke="#ecf0f1" stroke-width="2"/>
+            <circle cx="44" cy="32" r="3" fill="none" stroke="#ecf0f1" stroke-width="2"/>
+        </svg>'''
+        return self._create_icon_from_svg(svg_data, size)
+
+    def _create_amiga1200_icon(self, size=64):
+        """Amiga 1200"""
+        svg_data = f'''<svg width="{size}" height="{size}" viewBox="0 0 64 64">
+            <rect width="64" height="64" fill="#34495e" rx="8"/>
+            <rect x="10" y="18" width="44" height="28" fill="none" stroke="#ecf0f1" stroke-width="2"/>
+            <line x1="10" y1="30" x2="54" y2="30" stroke="#ecf0f1" stroke-width="2"/>
+            <line x1="10" y1="38" x2="54" y2="38" stroke="#ecf0f1" stroke-width="2"/>
+        </svg>'''
+        return self._create_icon_from_svg(svg_data, size)
+
+
     @staticmethod
     def get_platform_icon(platform_name, size=32): #vers 1
         """Get icon for platform by name"""
