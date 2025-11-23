@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-#this belongs in apps/core/core_launcher.py - Version: 1
-# X-Seti - November19 2025 - Multi-Emulator Launcher - Direct Core Launcher
+#this belongs in apps/core/core_launcher.py - Version: 2
+# X-Seti - November23 2025 - Multi-Emulator Launcher - Direct Core Launcher
 
 """
 Direct Libretro Core Launcher
 Launches emulator cores directly without RetroArch
 Uses libretro API to load and run cores with ROMs
+NOW WITH FUZZY PLATFORM NAME MATCHING
 """
 
 import os
@@ -21,6 +22,7 @@ import subprocess
 # is_running
 # launch_game
 # launch_with_subprocess
+# normalize_platform_name
 # stop_emulation
 # _find_core_for_platform
 # _get_bios_path
@@ -29,15 +31,16 @@ import subprocess
 
 ##class CoreLauncher -
 
-class CoreLauncher: #vers 1
-    """Direct libretro core launcher"""
+class CoreLauncher: #vers 2
+    """Direct libretro core launcher with fuzzy platform matching"""
     
-    def __init__(self, base_dir: Path, core_database: Dict): #vers 1
+    def __init__(self, base_dir: Path, core_database: Dict, core_downloader=None): #vers 2
         """Initialize core launcher
         
         Args:
             base_dir: Base directory containing cores, roms, etc
             core_database: Platform -> core info mapping
+            core_downloader: CoreDownloader instance for normalize_platform_name (optional)
         """
         self.base_dir = Path(base_dir)
         self.cores_dir = self.base_dir / "cores"
@@ -46,14 +49,30 @@ class CoreLauncher: #vers 1
         self.saves_dir = self.base_dir / "saves"
         
         self.core_database = core_database
+        self.core_downloader = core_downloader
         self.current_process = None
         self.loaded_core = None
         
-    def launch_game(self, platform: str, rom_path: Path, core_name: Optional[str] = None) -> bool: #vers 1
-        """Launch a game using appropriate core
+    def normalize_platform_name(self, platform: str) -> str: #vers 1
+        """Normalize platform name using CoreDownloader's fuzzy matching
         
         Args:
-            platform: Platform name (e.g. "PlayStation 1")
+            platform: Platform name from folder
+            
+        Returns:
+            Normalized platform name
+        """
+        if self.core_downloader and hasattr(self.core_downloader, 'normalize_platform_name'):
+            return self.core_downloader.normalize_platform_name(platform)
+        
+        # Fallback: return original
+        return platform
+        
+    def launch_game(self, platform: str, rom_path: Path, core_name: Optional[str] = None) -> bool: #vers 2
+        """Launch a game using appropriate core with fuzzy platform matching
+        
+        Args:
+            platform: Platform name (e.g. "PlayStation 1", "Amstrad 464", "Genesis")
             rom_path: Path to ROM file
             core_name: Specific core to use (optional, will auto-select)
             
@@ -63,16 +82,19 @@ class CoreLauncher: #vers 1
         if not rom_path.exists():
             print(f"ROM not found: {rom_path}")
             return False
-            
+        
+        # Normalize platform name for fuzzy matching
+        normalized_platform = self.normalize_platform_name(platform)
+        
         # Get platform info
-        platform_info = self.core_database.get(platform)
+        platform_info = self.core_database.get(normalized_platform)
         if not platform_info:
-            print(f"Unknown platform: {platform}")
+            print(f"Unknown platform: {platform} (normalized: {normalized_platform})")
             return False
             
         # Select core
         if not core_name:
-            core_name = self._find_core_for_platform(platform)
+            core_name = self._find_core_for_platform(normalized_platform)
             
         if not core_name:
             print(f"No core available for {platform}")
@@ -86,13 +108,13 @@ class CoreLauncher: #vers 1
             
         # Check BIOS requirements
         if platform_info.get("bios_required"):
-            bios_valid = self._verify_bios(platform, platform_info)
+            bios_valid = self._verify_bios(normalized_platform, platform_info)
             if not bios_valid:
                 print(f"Required BIOS files missing for {platform}")
                 return False
                 
         # Launch using subprocess (simpler than ctypes for now)
-        return self.launch_with_subprocess(core_path, rom_path, platform)
+        return self.launch_with_subprocess(core_path, rom_path, normalized_platform)
         
     def launch_with_subprocess(self, core_path: Path, rom_path: Path, platform: str) -> bool: #vers 2
         """Launch core using subprocess
@@ -102,22 +124,33 @@ class CoreLauncher: #vers 1
         - mednafen (for some cores)
         - standalone emulators
         """
-        # Build command
-        # For now, use direct core execution or standalone emulators
-        
         # Check for standalone executables based on platform
         standalone_launchers = {
             "PlayStation 2": ["pcsx2", "pcsx2-qt"],
             "PlayStation 1": ["duckstation-qt", "epsxe"],
             "Nintendo 64": ["mupen64plus"],
             "Super Nintendo": ["snes9x-gtk", "bsnes"],
+            "SNES": ["snes9x-gtk", "bsnes"],
             "Nintendo Entertainment System": ["fceux"],
+            "NES": ["fceux"],
             "Game Boy Advance": ["mgba-qt", "visualboyadvance"],
+            "GBA": ["mgba-qt", "visualboyadvance"],
             "Nintendo DS": ["desmume", "melonDS"],
             "Sega Genesis": ["kega-fusion", "blastem"],
+            "Sega Mega Drive": ["kega-fusion", "blastem"],
             "Nintendo GameCube": ["dolphin-emu"],
             "Nintendo Wii": ["dolphin-emu"],
-            "PSP": ["ppsspp-qt", "ppsspp"]
+            "PSP": ["ppsspp-qt", "ppsspp"],
+            "Amiga": ["fs-uae"],
+            "Atari ST": ["hatari"],
+            "Atari 2600": ["stella"],
+            "Atari 800": ["atari800"],
+            "Amstrad CPC": ["cap32"],
+            "BBC Micro": ["b2"],
+            "Commodore 64": ["vice"],
+            "C64": ["vice"],
+            "ZX Spectrum": ["fuse"],
+            "ZX Spectrum 128": ["fuse"]
         }
         
         launchers = standalone_launchers.get(platform, [])
@@ -158,10 +191,7 @@ class CoreLauncher: #vers 1
         # Fallback: Try using the core directly with a generic runner
         print(f"No standalone launcher found for {platform}")
         print(f"Core: {core_path}")
-        print(f"ROM: {rom_path}")
-        
-        # For now, just report what would be launched
-        print("\nTo launch this game, you need to install one of:")
+        print(f"\nTo launch this game, you need to install one of:")
         for launcher in launchers:
             print(f"  - {launcher}")
             
@@ -279,6 +309,16 @@ def get_installed_emulators() -> Dict[str, str]: #vers 1
         "kega-fusion": "Sega Genesis",
         "blastem": "Sega Genesis",
         
+        # Retro computers
+        "fs-uae": "Amiga",
+        "hatari": "Atari ST",
+        "stella": "Atari 2600",
+        "atari800": "Atari 800",
+        "cap32": "Amstrad CPC",
+        "b2": "BBC Micro",
+        "vice": "Commodore 64",
+        "fuse": "ZX Spectrum",
+        
         # Multi-system
         "mame": "Arcade",
         "mednafen": "Multi-System"
@@ -326,7 +366,7 @@ if __name__ == "__main__":
         from core_downloader import CoreDownloader
         downloader = CoreDownloader(base_dir)
         
-        launcher = CoreLauncher(base_dir, downloader.CORE_DATABASE)
+        launcher = CoreLauncher(base_dir, downloader.CORE_DATABASE, downloader)
         
         print(f"Launching {platform}: {rom_path.name}")
         success = launcher.launch_game(platform, rom_path)

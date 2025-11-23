@@ -1,0 +1,10 @@
+{
+  "platform": "Atari ST",
+  "game": "Arkanoid III (1987)(Imagine)[cr Mario]",
+  "core": "hatari_libretro",
+  "custom_args": "",
+  "working_dir": "",
+  "fullscreen": false,
+  "auto_load_save": false,
+  "maintain_aspect": true
+}

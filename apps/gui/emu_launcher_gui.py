@@ -13,6 +13,11 @@ Clean version: No hardcoded colors, uses AppSettings theme system
 
 #Changelog
 
+#November23 v13 - Fixed main launcher parameter passing
+#- Updated __init__ (vers 13) to accept core_downloader, core_launcher, gamepad_config
+#- Parameters now passed from emu_launcher_main.py properly
+#- Maintains backward compatibility with existing initialization
+
 #November22 v12 - Fixed themed titlebar setting to actually work
 #- Updated _apply_titlebar_colors (vers 4) to check use_themed_titlebar setting
 #- Updated _open_mel_settings (vers 2) to reapply titlebar colors after saving settings
@@ -73,6 +78,8 @@ from pathlib import Path
 from typing import Optional, List, Dict, Tuple
 from PyQt6.QtSvg import QSvgRenderer
 
+base_dir = "config/"
+
 # PyQt6 imports
 from PyQt6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QSplitter, QListWidget, QListWidgetItem, QLabel, QPushButton, QFrame, QTabWidget, QGroupBox, QFormLayout, QDialog, QMessageBox, QTextBrowser)
 from PyQt6.QtWidgets import (QApplication, QSlider, QCheckBox,
@@ -89,6 +96,8 @@ from apps.methods.platform_icons import PlatformIcons
 from apps.methods.artwork_loader import ArtworkLoader
 from apps.gui.mel_settings_dialog import MELSettingsDialog
 from apps.utils.mel_settings_manager import MELSettingsManager
+from apps.gui.game_manager_dialog import GameManagerDialog, GameConfig
+from apps.methods.igdb_downloader import IGDBDownloader, IGDBSearchDialog
 
 # Import AppSettings
 try:
@@ -463,22 +472,30 @@ class EmulatorDisplayWidget(QWidget): #vers 3
         # Launch button
         self.launch_btn = QPushButton("Launch Game")
         self.launch_btn.setMinimumHeight(30)
+        self.launch_btn.setEnabled(False)
         if self.main_window:
             self.launch_btn.clicked.connect(self.main_window._on_launch_game)
         button_layout.addWidget(self.launch_btn)
 
-        # Stop button
-        self.gameart_btn = QPushButton("Game Art")
+        # Art manager
+        self.gameart_btn = QPushButton("Art Manager")
         self.gameart_btn.setMinimumHeight(30)
+        self.gameart_btn.clicked.connect(self.main_window._download_game_artwork)
         button_layout.addWidget(self.gameart_btn)
 
         button_layout.addStretch()
 
-        # Stop button
-        self.manage_btn = QPushButton("Manage")
+        # Games anager
+        self.manage_btn = QPushButton("Game Manager")
+        self.manage_btn.clicked.connect(self.main_window._show_game_manager)
         self.manage_btn.setMinimumHeight(30)
         button_layout.addWidget(self.manage_btn)
 
+        # Games ports list. Same game shown on different systems
+        self.ports_btn = QPushButton("Game Ports")
+        self.ports_btn.clicked.connect(self.main_window._show_ports_manager)
+        self.ports_btn.setMinimumHeight(30)
+        button_layout.addWidget(self.ports_btn)
 
         # Stop button
         self.stop_btn = QPushButton("Stop")
@@ -511,65 +528,18 @@ class EmulatorDisplayWidget(QWidget): #vers 3
             self.title_artwork_label.setText("No title artwork")
             self.title_artwork_label.setStyleSheet("font-size: 14pt; padding: 50px;")
         
-
-    def _create_icon_controls(self): #vers 2
-        """Create vertical icon control buttons"""
-        controls_frame = QFrame()
-        controls_frame.setFrameStyle(QFrame.Shape.StyledPanel)
-        controls_frame.setMaximumWidth(50)
-        controls_layout = QVBoxLayout(controls_frame)
-        controls_layout.setContentsMargins(5, 5, 5, 5)
-        controls_layout.setSpacing(5)
-        
-        # Volume Up
-        vol_up_btn = QPushButton()
-        vol_up_btn.setIcon(SVGIconFactory.volume_up_icon(20))
-        vol_up_btn.setIconSize(QSize(20, 20))
-        vol_up_btn.setFixedSize(40, 40)
-        vol_up_btn.setToolTip("Volume Up")
-        controls_layout.addWidget(vol_up_btn)
-        
-        # Volume Down
-        vol_down_btn = QPushButton()
-        vol_down_btn.setIcon(SVGIconFactory.volume_down_icon(20))
-        vol_down_btn.setIconSize(QSize(20, 20))
-        vol_down_btn.setFixedSize(40, 40)
-        vol_down_btn.setToolTip("Volume Down")
-        controls_layout.addWidget(vol_down_btn)
-        
-        controls_layout.addSpacing(10)
-        
-        # Screenshot
-        screenshot_btn = QPushButton()
-        screenshot_btn.setIcon(SVGIconFactory.screenshot_icon(20))
-        screenshot_btn.setIconSize(QSize(20, 20))
-        screenshot_btn.setFixedSize(40, 40)
-        screenshot_btn.setToolTip("Screenshot")
-        controls_layout.addWidget(screenshot_btn)
-        
-        # Record
-        record_btn = QPushButton()
-        record_btn.setIcon(SVGIconFactory.record_icon(20))
-        record_btn.setIconSize(QSize(20, 20))
-        record_btn.setFixedSize(40, 40)
-        record_btn.setToolTip("Record")
-        controls_layout.addWidget(record_btn)
-        
-        controls_layout.addStretch()
-        
-        return controls_frame
         
     def _create_control_buttons(self): #vers 2
         """Create bottom control buttons"""
         controls_frame = QFrame()
         controls_frame.setFrameStyle(QFrame.Shape.StyledPanel)
-
         layout = QHBoxLayout(controls_frame)
         layout.setContentsMargins(10, 5, 10, 5)
         layout.setSpacing(10)
 
         # Launch button
         self.launch_btn = QPushButton("Launch Game")
+        self.launch_btn.setEnabled(False)  # START DISABLED
         # Connect to main window's launch method
         if self.main_window:
             self.launch_btn.clicked.connect(self.main_window._on_launch_game)
@@ -585,14 +555,13 @@ class EmulatorDisplayWidget(QWidget): #vers 3
         layout.addWidget(stop_btn)
 
         return controls_frame
-
-        def enable_launch_buttons(self, enabled=True): #vers 1
-            """Enable/disable launch buttons"""
-            if hasattr(self, 'launch_btn'):
-                self.launch_btn.setEnabled(enabled)
-            if hasattr(self, 'quick_launch_btn'):
-                self.quick_launch_btn.setEnabled(enabled)
     
+    def enable_launch_buttons(self, enabled=True): #vers 1
+        """Enable/disable launch buttons"""
+        if hasattr(self, 'launch_btn'):
+            self.launch_btn.setEnabled(enabled)
+        if hasattr(self, 'quick_launch_btn'):
+            self.quick_launch_btn.setEnabled(enabled)
 
     def _on_launch_clicked(self): #vers 1
         """Handle launch button click"""
@@ -645,17 +614,24 @@ class EmuLauncherGUI(QWidget): #vers 1
     window_closed = pyqtSignal()
 
     def __init__(self, parent=None, main_window=None, core_downloader=None,
-             core_launcher=None, gamepad_config=None): #vers 5
+                 core_launcher=None, gamepad_config=None, game_config=None): #vers 13
         """Initialize GUI with AppSettings integration and core systems"""
         if DEBUG_STANDALONE:
             print(f"{App_name} Initializing...")
 
         super().__init__(parent)
 
+        # Store core systems passed from main launcher
+        self.core_downloader = core_downloader if core_downloader else getattr(self, 'core_downloader', None)
+        self.core_launcher = core_launcher if core_launcher else getattr(self, 'core_launcher', None)
+        self.gamepad_config = gamepad_config if gamepad_config else getattr(self, 'gamepad_config', None)
+
         self.main_window = main_window
         self.button_display_mode = 'both'
         self.last_save_directory = None
         self.standalone_mode = (main_window is None)
+        self.game_config = GameConfig("config")
+        self.game_config = game_config
 
         # Set default fonts
         from PyQt6.QtGui import QFont
@@ -672,6 +648,7 @@ class EmuLauncherGUI(QWidget): #vers 1
         # Initialize PlatformScanner with MEL settings path
         roms_dir = self.mel_settings.get_rom_path()
         self.platform_scanner = PlatformScanner(roms_dir)
+
 
         # Initialize core systems
         if not core_downloader:
@@ -932,7 +909,7 @@ class EmuLauncherGUI(QWidget): #vers 1
         self.save_btn.setText("Save Config")
         self.save_btn.setIconSize(QSize(20, 20))
         self.save_btn.setToolTip("Save Configuration")
-        self.save_btn.clicked.connect(self._save_config)  # WIRE IT
+        #self.save_btn.clicked.connect(self._save_config) bug
         self.layout.addWidget(self.save_btn)
 
         # Controller button
@@ -948,15 +925,13 @@ class EmuLauncherGUI(QWidget): #vers 1
         self.layout.addSpacing(10)
 
         # Info button
-        self.info_btn = QPushButton()
-        self.info_btn.setFont(self.button_font)
-        self.info_btn.setIcon(self._create_info_icon())
-        self.info_btn.setFixedSize(35, 35)
-        self.info_btn.setIconSize(QSize(20, 20))
-        self.info_btn.setToolTip("Information")
-        #self.info_btn.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.info_btn.customContextMenuRequested.connect(self._show_about_dialog)
-        self.layout.addWidget(self.info_btn)
+        info_btn = QPushButton()
+        info_btn.setIcon(self._create_info_icon())
+        info_btn.setFixedSize(35, 35)
+        info_btn.setIconSize(QSize(20, 20))
+        info_btn.setToolTip("Information")
+        info_btn.clicked.connect(self._show_about_dialog)  # ADD THIS LINE
+        self.layout.addWidget(info_btn)
 
         self.layout.addSpacing(10)
 
@@ -1075,27 +1050,86 @@ class EmuLauncherGUI(QWidget): #vers 1
         return panel
 
 
-    def _create_right_panel(self): #vers 1
-        """Create Panel 3: Emulator display and controls"""
+    def _create_right_panel(self): #vers 2
+        """Create Panel 3: Emulator display with vertical icon controls on right"""
         panel = QFrame()
         panel.setFrameStyle(QFrame.Shape.StyledPanel)
         panel.setMinimumWidth(400)
 
-        layout = QVBoxLayout(panel)
-        layout.setContentsMargins(5, 5, 5, 5)
-        #layout = QHBoxLayout()
+        # Main horizontal layout (display + icons)
+        main_layout = QHBoxLayout(panel)
+        main_layout.setContentsMargins(5, 5, 5, 5)
+        main_layout.setSpacing(5)
+
+        # Left side: Display widget container (takes most space)
+        display_container = QWidget()
+        display_layout = QVBoxLayout(display_container)
+        display_layout.setContentsMargins(0, 0, 0, 0)
 
         # Header
         header = QLabel("Emulator Display")
         header.setFont(self.panel_font)
         header.setStyleSheet("font-weight: bold; padding: 5px;")
-        layout.addWidget(header)
+        display_layout.addWidget(header)
 
-        # Display widget
-        self.display_widget = EmulatorDisplayWidget()
-        layout.addWidget(self.display_widget)
+        # Display widget - pass main_window (self), NOT artwork_loader
+        self.display_widget = EmulatorDisplayWidget(main_window=self)
+        display_layout.addWidget(self.display_widget)
+
+        main_layout.addWidget(display_container, stretch=1)
+
+        # Right side: Vertical icon controls
+        icon_controls = self._create_icon_controls()
+        main_layout.addWidget(icon_controls, stretch=0)
 
         return panel
+
+    def _create_icon_controls(self): #vers 3
+        """Create vertical icon control buttons"""
+        controls_frame = QFrame()
+        controls_frame.setFrameStyle(QFrame.Shape.StyledPanel)
+        controls_frame.setMaximumWidth(50)
+        controls_layout = QVBoxLayout(controls_frame)
+        controls_layout.setContentsMargins(5, 5, 5, 5)
+        controls_layout.setSpacing(5)
+
+        # Volume Up
+        vol_up_btn = QPushButton()
+        vol_up_btn.setIcon(SVGIconFactory.volume_up_icon(20))
+        vol_up_btn.setIconSize(QSize(20, 20))
+        vol_up_btn.setFixedSize(40, 40)
+        vol_up_btn.setToolTip("Volume Up")
+        controls_layout.addWidget(vol_up_btn)
+
+        # Volume Down
+        vol_down_btn = QPushButton()
+        vol_down_btn.setIcon(SVGIconFactory.volume_down_icon(20))
+        vol_down_btn.setIconSize(QSize(20, 20))
+        vol_down_btn.setFixedSize(40, 40)
+        vol_down_btn.setToolTip("Volume Down")
+        controls_layout.addWidget(vol_down_btn)
+
+        controls_layout.addSpacing(10)
+
+        # Screenshot
+        screenshot_btn = QPushButton()
+        screenshot_btn.setIcon(SVGIconFactory.screenshot_icon(20))
+        screenshot_btn.setIconSize(QSize(20, 20))
+        screenshot_btn.setFixedSize(40, 40)
+        screenshot_btn.setToolTip("Screenshot")
+        controls_layout.addWidget(screenshot_btn)
+
+        # Record
+        record_btn = QPushButton()
+        record_btn.setIcon(SVGIconFactory.record_icon(20))
+        record_btn.setIconSize(QSize(20, 20))
+        record_btn.setFixedSize(40, 40)
+        record_btn.setToolTip("Record")
+        controls_layout.addWidget(record_btn)
+
+        controls_layout.addStretch()
+
+        return controls_frame
 
 
     def _create_status_bar(self): #vers 1
@@ -1177,7 +1211,7 @@ class EmuLauncherGUI(QWidget): #vers 1
 
 
     def _on_game_selected(self, game): #vers 3
-        """Handle game selection - find ROM path and show title artwork"""
+        """Handle game selection - find ROM path and enable launch"""
         self.game_status.setText(f"Game: {game}")
 
         if not self.current_platform:
@@ -1191,8 +1225,11 @@ class EmuLauncherGUI(QWidget): #vers 1
             for rom_path in roms:
                 if rom_path.stem == game:
                     self.current_rom_path = rom_path
-                    if hasattr(self, 'status_label'):
-                        self.status_label.setText(f"Ready to launch: {game}")
+                    self.status_label.setText(f"Ready to launch: {game}")
+
+                    # Enable launch button
+                    if hasattr(self, 'display_widget') and hasattr(self.display_widget, 'launch_btn'):
+                        self.display_widget.launch_btn.setEnabled(True)  # ADD THIS
                     break
         
         # Load and display title artwork
@@ -1200,7 +1237,7 @@ class EmuLauncherGUI(QWidget): #vers 1
             title_artwork = self.artwork_loader.get_title_artwork(game, self.current_platform)
             self.display_widget.show_title_artwork(title_artwork)
 
-    def _on_launch_game(self): #vers 1
+    def _on_launch_game(self): #vers 2
         """Launch selected game with CoreLauncher"""
         if not self.current_platform or not self.current_rom_path:
             if hasattr(self, 'status_label'):
@@ -1212,15 +1249,22 @@ class EmuLauncherGUI(QWidget): #vers 1
                 self.status_label.setText("CoreLauncher not initialized")
             return
 
-        # Update status
+        # Load game config if available
         game_name = self.current_rom_path.stem
+        game_config = None
+        if self.game_config:
+            game_config = self.game_config.get_config(self.current_platform, game_name)
+
+        # Update status
         if hasattr(self, 'status_label'):
             self.status_label.setText(f"Launching {game_name}...")
 
-        # Launch game
+        # Launch game with config
         success = self.core_launcher.launch_game(
             self.current_platform,
-            self.current_rom_path
+            self.current_rom_path,
+            core_name=game_config.get("core") if game_config else None,
+            game_config=game_config
         )
 
         # Update status
@@ -1289,7 +1333,7 @@ class EmuLauncherGUI(QWidget): #vers 1
         self.status_label.setText(f"Found {rom_count} ROM(s) for {platform}")
 
 
-    def _on_game_selected(self, game): #vers 2
+    def _on_game_selected(self, game): #vers 4
         """Handle game selection - find ROM path and enable launch"""
         self.game_status.setText(f"Game: {game}")
 
@@ -1305,7 +1349,17 @@ class EmuLauncherGUI(QWidget): #vers 1
                 if rom_path.stem == game:
                     self.current_rom_path = rom_path
                     self.status_label.setText(f"Ready to launch: {game}")
+
+                    # ENABLE LAUNCH BUTTON
+                    if hasattr(self, 'display_widget') and hasattr(self.display_widget, 'launch_btn'):
+                        self.display_widget.launch_btn.setEnabled(True)
+
                     break
+
+        # Load and display title artwork
+        if hasattr(self, 'artwork_loader') and hasattr(self, 'display_widget'):
+            title_artwork = self.artwork_loader.get_title_artwork(game, self.current_platform)
+            self.display_widget.show_title_artwork(title_artwork)
 
 
     def _on_launch_game(self): #vers 1
@@ -1481,6 +1535,165 @@ class EmuLauncherGUI(QWidget): #vers 1
                     border: 1px solid {border};
                 }}
             """)
+
+    def _show_ports_manager(self): #vers 1
+        """Show ports manager dialog"""
+        if not self.available_roms:
+            QMessageBox.information(
+                self,
+                "No Games Found",
+                "No games found in any platform.\n\n"
+                "Add ROMs to platform directories to see ports."
+            )
+            return
+
+        # Check if any games have multiple ports
+        game_counts = {}
+        for platform, roms in self.available_roms.items():
+            for rom in roms:
+                game_name = rom.stem
+                # Normalize name
+                normalized = self._normalize_port_name(game_name)
+                if normalized not in game_counts:
+                    game_counts[normalized] = []
+                game_counts[normalized].append((platform, game_name))
+
+        # Filter to games with multiple ports
+        multi_ports = {k: v for k, v in game_counts.items() if len(v) > 1}
+
+        if not multi_ports:
+            QMessageBox.information(
+                self,
+                "No Ports Found",
+                "No games found on multiple platforms.\n\n"
+                "Add the same game to different platform folders to see ports."
+            )
+            return
+
+        # Show ports manager
+        dialog = PortsManagerDialog(
+            self.platform_scanner,
+            self.available_roms,
+            self.core_downloader,
+            self
+        )
+
+        # Connect signal to switch platform/game
+        dialog.port_selected.connect(self._on_port_selected)
+
+        dialog.exec()
+
+    def _normalize_port_name(self, game_name: str) -> str: #vers 1
+        """Normalize game name for port matching
+
+        Helper method for ports manager
+        """
+        import re
+
+        name = game_name
+
+        # Remove common ROM tags
+        patterns = [
+            r'\(USA\)', r'\(Europe\)', r'\(Japan\)', r'\(World\)',
+            r'\[!\]', r'\[a\d*\]', r'\[b\d*\]', r'\[t\d*\]',
+            r'\(Disk \d+\)', r'\(Disc \d+\)', r'\(Side \w\)',
+        ]
+
+        for pattern in patterns:
+            name = re.sub(pattern, '', name, flags=re.IGNORECASE)
+
+        name = re.sub(r'[\s_]+', ' ', name).strip()
+        return name.lower()
+
+    def _on_port_selected(self, platform: str, game_name: str): #vers 1
+        """Handle port selection from ports manager"""
+        # Switch to selected platform
+        self.current_platform = platform
+        self.platform_status.setText(f"Platform: {platform}")
+
+        # Trigger platform selection
+        self._on_platform_selected(platform)
+
+        # Find and select the game
+        if hasattr(self, 'game_list'):
+            for i in range(self.game_list.count()):
+                item = self.game_list.item(i)
+                if item.text() == game_name:
+                    self.game_list.setCurrentRow(i)
+                    break
+
+        # Update status
+        if hasattr(self, 'status_label'):
+            self.status_label.setText(f"Switched to: {platform} - {game_name}")
+
+    def _download_game_artwork(self): #vers 1
+        """Download artwork from IGDB for current game"""
+        if not self.current_platform or not self.current_rom_path:
+            QMessageBox.warning(
+                self,
+                "No Game Selected",
+                "Please select a game first."
+            )
+            return
+
+        game_name = self.current_rom_path.stem
+
+        # Check if IGDB downloader is initialized
+        if not hasattr(self, 'igdb_downloader'):
+            # Initialize on first use
+            from apps.methods.igdb_downloader import IGDBDownloader
+            self.igdb_downloader = IGDBDownloader(self.artwork_loader.artwork_dir)
+
+        # Check if IGDB credentials are configured
+        if not self.igdb_downloader.client_id or not self.igdb_downloader.client_secret:
+            QMessageBox.warning(
+                self,
+                "IGDB Not Configured",
+                "IGDB API credentials not found.\n\n"
+                "The developer needs to add their API key,\n"
+                "or you can add your own credentials to:\n"
+                "config/igdb_credentials.json\n\n"
+                "Get free credentials at:\n"
+                "https://dev.twitch.tv/console/apps"
+            )
+            return
+
+        # Show search dialog
+        dialog = IGDBSearchDialog(
+            game_name,
+            self.current_platform,
+            self.igdb_downloader,
+            self
+        )
+
+        # Connect signal to refresh artwork
+        dialog.artwork_downloaded.connect(self._on_artwork_downloaded)
+
+        dialog.exec()
+
+    def _on_artwork_downloaded(self, game_name: str, platform: str): #vers 1
+        """Handle artwork download completion"""
+        # Clear artwork cache
+        if hasattr(self, 'artwork_loader'):
+            self.artwork_loader.clear_cache()
+
+        # Reload artwork for current game
+        if game_name == self.current_rom_path.stem and platform == self.current_platform:
+            title_artwork = self.artwork_loader.get_title_artwork(game_name, platform)
+            if title_artwork and hasattr(self, 'display_widget'):
+                self.display_widget.show_title_artwork(title_artwork)
+
+        # Refresh game list to show new thumbnails
+        if hasattr(self, 'game_list') and self.current_platform:
+            current_selection = self.game_list.currentRow()
+            # Repopulate with artwork
+            game_names = [rom.stem for rom in self.available_roms.get(self.current_platform, [])]
+            self.game_list.populate_games(game_names, self.artwork_loader, self.current_platform)
+            self.game_list.setCurrentRow(current_selection)
+
+        # Update status
+        if hasattr(self, 'status_label'):
+            self.status_label.setText(f"✓ Artwork downloaded for: {game_name}")
 
 
     def _get_theme_colors(self, theme_name): #vers 3
@@ -2424,39 +2637,94 @@ class EmuLauncherGUI(QWidget): #vers 1
             QMessageBox.warning(self, "Error", f"Could not open folder:\n{e}")
 
 
-    def _save_config(self): #vers 1
-        """Save current MEL configuration"""
-        from PyQt6.QtWidgets import QMessageBox
+    def _show_game_manager(self): #vers 1
+        """Show game manager dialog for current platform"""
+        if not self.current_platform:
+            QMessageBox.warning(
+                self,
+                "No Platform Selected",
+                "Please select a platform first."
+            )
+            return
 
-        try:
-            # Save MEL settings
-            self.mel_settings.save_mel_settings()
+        # Get all games for current platform
+        if self.current_platform not in self.available_roms:
+            QMessageBox.warning(
+                self,
+                "No Games Found",
+                f"No games found for {self.current_platform}"
+            )
+            return
 
-            # Save hidden platforms list
-            if hasattr(self.platform_list, 'hidden_platforms'):
-                hidden_list = list(self.platform_list.hidden_platforms)
-                self.mel_settings.settings['hidden_platforms'] = hidden_list
+        # Get game names
+        game_names = [rom.stem for rom in self.available_roms[self.current_platform]]
+
+        if not game_names:
+            QMessageBox.information(
+                self,
+                "No Games",
+                f"No games found for {self.current_platform}\n\n"
+                f"Add ROMs to: roms/{self.current_platform}/"
+            )
+            return
+
+        # Show manager dialog
+        dialog = GameManagerDialog(
+            self.current_platform,
+            game_names,
+            self.core_downloader,
+            self.core_launcher,
+            self.game_config,
+            self
+        )
+
+        # Connect signal
+        dialog.config_saved.connect(self._on_game_config_saved)
+
+        dialog.exec()
+
+    def _on_game_config_saved(self, platform: str, game_name: str): #vers 1
+        """Handle game configuration saved"""
+        print(f"Configuration saved for {game_name} on {platform}")
+
+        # Update status
+        if hasattr(self, 'status_label'):
+            self.status_label.setText(f"✓ Configuration saved for {game_name}")
+
+
+        def _save_config(self): #vers 1
+            """Save current MEL configuration"""
+            from PyQt6.QtWidgets import QMessageBox
+
+            try:
+                # Save MEL settings
                 self.mel_settings.save_mel_settings()
 
-            # Save window geometry
-            geometry = {
-                'width': self.width(),
-                'height': self.height(),
-                'x': self.x(),
-                'y': self.y()
-            }
-            self.mel_settings.settings['window_geometry'] = geometry
-            self.mel_settings.save_mel_settings()
+                # Save hidden platforms list
+                if hasattr(self.platform_list, 'hidden_platforms'):
+                    hidden_list = list(self.platform_list.hidden_platforms)
+                    self.mel_settings.settings['hidden_platforms'] = hidden_list
+                    self.mel_settings.save_mel_settings()
 
-            QMessageBox.information(self, "Configuration Saved",
-                "All settings have been saved successfully!")
+                # Save window geometry
+                geometry = {
+                    'width': self.width(),
+                    'height': self.height(),
+                    'x': self.x(),
+                    'y': self.y()
+                }
+                self.mel_settings.settings['window_geometry'] = geometry
+                self.mel_settings.save_mel_settings()
 
-            if hasattr(self, 'status_label'):
-                self.status_label.setText("Configuration saved")
+                QMessageBox.information(self, "Configuration Saved",
+                    "All settings have been saved successfully!")
 
-        except Exception as e:
-            QMessageBox.critical(self, "Save Failed",
-                f"Failed to save configuration:\n{e}")
+                if hasattr(self, 'status_label'):
+                    self.status_label.setText("Configuration saved")
+
+            except Exception as e:
+                QMessageBox.critical(self, "Save Failed",
+                    f"Failed to save configuration:\n{e}")
 
 
     def _setup_controller(self): #vers 1
@@ -2648,30 +2916,6 @@ class EmuLauncherGUI(QWidget): #vers 1
         layout.addWidget(close_btn)
 
         dialog.setLayout(layout)
-
-        # Apply theme to dialog
-        if APPSETTINGS_AVAILABLE and self.app_settings:
-            theme_name = self.app_settings.get_current_theme()
-            if theme_name and theme_name in self.app_settings.themes:
-                theme_data = self.app_settings.themes[theme_name]
-                bg = theme_data.get('bg_secondary', '#2a2a2a')
-                text = theme_data.get('text_primary', '#ffffff')
-                accent = theme_data.get('accent', '#00d8ff')
-
-                dialog.setStyleSheet(f"""
-                    QDialog {{
-                        background-color: {bg};
-                        color: {text};
-                    }}
-                    QTextBrowser {{
-                        background-color: {bg};
-                        color: {text};
-                        border: 1px solid {accent};
-                    }}
-                    a {{
-                        color: {accent};
-                    }}
-                """)
 
         dialog.exec()
 
@@ -3470,11 +3714,21 @@ class EmuLauncherGUI(QWidget): #vers 1
     def paintEvent(self, event): #vers 2
         """Paint corner resize triangles"""
         super().paintEvent(event)
-
         from PyQt6.QtGui import QPainter, QColor, QPen, QBrush, QPainterPath
 
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        # Get theme colors for corner indicators
+        if self.app_settings:
+            theme_colors = self._get_theme_colors("default")
+            accent_color = QColor(theme_colors.get('accent_primary', '#1976d2'))
+            accent_color.setAlpha(180)
+        else:
+            accent_color = QColor(100, 150, 255, 180)
+
+        hover_color = QColor(accent_color)
+        hover_color.setAlpha(255)
 
         # Colors
         normal_color = QColor(100, 100, 100, 150)
@@ -3482,38 +3736,33 @@ class EmuLauncherGUI(QWidget): #vers 1
 
         w = self.width()
         h = self.height()
+        grip_size = 8  # Make corners visible (8x8px)
         size = self.corner_size
 
         # Define corner triangles
         corners = {
-            'top-left': [(0, 0), (size, 0), (0, size)],
-            'top-right': [(w, 0), (w-size, 0), (w, size)],
-            'bottom-left': [(0, h), (size, h), (0, h-size)],
-            'bottom-right': [(w, h), (w-size, h), (w, h-size)]
+            "top-left": [(0, grip_size), (0, 0), (grip_size, 0)],
+            "top-right": [(w-grip_size, 0), (w, 0), (w, grip_size)],
+            "bottom-left": [(0, h-grip_size), (0, h), (grip_size, h)],
+            "bottom-right": [(w-grip_size, h), (w, h), (w, h-grip_size)]
         }
 
+        # Draw all corners with hover effect
         for corner_name, points in corners.items():
-            # Choose color based on hover state
-            if self.hover_corner == corner_name:
-                painter.setBrush(QBrush(hover_color))
-                painter.setPen(QPen(hover_color.darker(120), 1))
-            else:
-                painter.setBrush(QBrush(normal_color))
-                painter.setPen(QPen(normal_color.darker(120), 1))
-
-            # Draw triangle
             path = QPainterPath()
             path.moveTo(points[0][0], points[0][1])
             path.lineTo(points[1][0], points[1][1])
             path.lineTo(points[2][0], points[2][1])
             path.closeSubpath()
 
+            # Use hover color if mouse is over this corner
+            color = hover_color if self.hover_corner == corner_name else accent_color
+
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QBrush(color))
             painter.drawPath(path)
 
         painter.end()
-
-
-
 
     def _get_resize_corner(self, pos): #vers 2
         """Determine which corner is under mouse position"""

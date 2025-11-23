@@ -83,9 +83,12 @@ class EmulatorLauncher: #vers 2
         # Initialize CoreLauncher with database from CoreDownloader
         self.core_launcher = CoreLauncher(
             self.base_dir, 
-            self.core_downloader.CORE_DATABASE
+            self.core_downloader.CORE_DATABASE,
+            self.core_downloader
         )
         
+        from apps.gui.game_manager_dialog import GameConfig
+        self.game_config = GameConfig(self.base_dir / "config")
         self.gamepad_config = GamepadConfig(self.base_dir)
         
         # Check for installed cores
@@ -109,7 +112,8 @@ class EmulatorLauncher: #vers 2
         window = EmuLauncherGUI(
             core_downloader=self.core_downloader,
             core_launcher=self.core_launcher,
-            gamepad_config=self.gamepad_config
+            gamepad_config=self.gamepad_config,
+            game_config=self.game_config
         )
         window.show()
         

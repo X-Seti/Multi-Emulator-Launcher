@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-#this belongs in apps/core/core_downloader.py - Version: 1
-# X-Seti - November19 2025 - Multi-Emulator Launcher - Core Downloader
+#this belongs in apps/core/core_downloader.py - Version: 2
+# X-Seti - November23 2025 - Multi-Emulator Launcher - Core Downloader
 
 """
 RetroArch Core Downloader
 Downloads and manages libretro cores for different platforms
+NOW WITH FUZZY NAME MATCHING - handles "AtariST", "Atari ST", "Atari_ST", etc.
 """
 
 import os
 import urllib.request
 import json
+import re
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -20,123 +22,361 @@ from typing import Dict, List, Optional
 # get_core_info
 # get_cores_for_platform
 # get_installed_cores
+# normalize_platform_name
 # _download_file
 # _get_core_url
 # _load_core_database
 
 ##class CoreDownloader -
 
-class CoreDownloader: #vers 1
-    """Manages downloading and organizing RetroArch cores"""
+class CoreDownloader: #vers 2
+    """Manages downloading and organizing RetroArch cores with fuzzy name matching"""
     
-    # Core database with platform mappings
+    # Core database with platform mappings - EXPANDED for all your platforms
     CORE_DATABASE = {
+        # Your platforms from tree.git
+        "Acorn Aton": {
+            "cores": ["mame_libretro"],
+            "extensions": [".adf", ".uef"],
+            "bios_required": False,
+            "bios_files": []
+        },
+        "Acorn Electron": {
+            "cores": ["mame_libretro"],
+            "extensions": [".adf", ".uef"],
+            "bios_required": False,
+            "bios_files": []
+        },
+        "Amiga": {
+            "cores": ["puae_libretro"],
+            "extensions": [".adf", ".ipf", ".dms", ".hdf", ".hdz", ".iso", ".cue"],
+            "bios_required": True,
+            "bios_files": ["kick34005.A500", "kick40068.A1200"]
+        },
+        "Amstrad CPC": {
+            "cores": ["cap32_libretro", "crocods_libretro"],
+            "extensions": [".dsk", ".sna", ".cdt", ".tap"],
+            "bios_required": False,
+            "bios_files": []
+        },
+        "Atari 2600": {
+            "cores": ["stella_libretro"],
+            "extensions": [".bin", ".a26", ".zip"],
+            "bios_required": False,
+            "bios_files": []
+        },
+        "Atari 5200": {
+            "cores": ["atari800_libretro"],
+            "extensions": [".a52", ".atr", ".xex"],
+            "bios_required": True,
+            "bios_files": ["5200.rom"]
+        },
+        "Atari 7800": {
+            "cores": ["prosystem_libretro"],
+            "extensions": [".a78", ".bin"],
+            "bios_required": True,
+            "bios_files": ["7800 BIOS (U).rom"]
+        },
+        "Atari 800": {
+            "cores": ["atari800_libretro"],
+            "extensions": [".atr", ".xex", ".xfd", ".dcm", ".zip"],
+            "bios_required": True,
+            "bios_files": ["ATARIXL.ROM", "ATARIBAS.ROM"]
+        },
+        "Atari 8-bit": {
+            "cores": ["atari800_libretro"],
+            "extensions": [".atr", ".xex", ".xfd", ".dcm", ".zip"],
+            "bios_required": True,
+            "bios_files": ["ATARIXL.ROM", "ATARIBAS.ROM"]
+        },
+        "Atari ST": {
+            "cores": ["hatari_libretro"],
+            "extensions": [".st", ".stx", ".msa", ".dim", ".zip"],
+            "bios_required": True,
+            "bios_files": ["tos.img"]
+        },
+        "BBC Micro": {
+            "cores": ["mame_libretro"],
+            "extensions": [".ssd", ".dsd", ".img", ".uef"],
+            "bios_required": False,
+            "bios_files": []
+        },
+        "Commodore 64": {
+            "cores": ["vice_x64_libretro"],
+            "extensions": [".d64", ".t64", ".crt", ".prg", ".tap"],
+            "bios_required": False,
+            "bios_files": []
+        },
+        "C64": {
+            "cores": ["vice_x64_libretro"],
+            "extensions": [".d64", ".t64", ".crt", ".prg", ".tap"],
+            "bios_required": False,
+            "bios_files": []
+        },
+        "MSX": {
+            "cores": ["fmsx_libretro", "bluemsx_libretro"],
+            "extensions": [".rom", ".mx1", ".mx2", ".dsk"],
+            "bios_required": True,
+            "bios_files": ["MSX.ROM", "MSX2.ROM"]
+        },
+        "MSX2": {
+            "cores": ["fmsx_libretro", "bluemsx_libretro"],
+            "extensions": [".rom", ".mx1", ".mx2", ".dsk"],
+            "bios_required": True,
+            "bios_files": ["MSX2.ROM", "MSX2EXT.ROM"]
+        },
+        "Plus4": {
+            "cores": ["vice_xplus4_libretro"],
+            "extensions": [".p41", ".prg", ".d64"],
+            "bios_required": False,
+            "bios_files": []
+        },
+        "Sam Coupe": {
+            "cores": ["mame_libretro"],
+            "extensions": [".mgt", ".sad", ".dsk"],
+            "bios_required": False,
+            "bios_files": []
+        },
+        "ZX Spectrum": {
+            "cores": ["fuse_libretro"],
+            "extensions": [".tap", ".tzx", ".z80", ".sna", ".dsk"],
+            "bios_required": False,
+            "bios_files": []
+        },
+        "ZX Spectrum 128": {
+            "cores": ["fuse_libretro"],
+            "extensions": [".tap", ".tzx", ".z80", ".sna", ".dsk"],
+            "bios_required": False,
+            "bios_files": []
+        },
+        "Z81-Spec256": {
+            "cores": ["fuse_libretro"],
+            "extensions": [".tap", ".tzx", ".z80", ".sna"],
+            "bios_required": False,
+            "bios_files": []
+        },
+        "Dragon 32-64": {
+            "cores": ["xroar_libretro"],
+            "extensions": [".cas", ".wav", ".k7", ".dsk", ".vdk"],
+            "bios_required": False,
+            "bios_files": []
+        },
+        "Fujitsu FM-7": {
+            "cores": ["mame_libretro"],
+            "extensions": [".d77", ".t77"],
+            "bios_required": False,
+            "bios_files": []
+        },
+        "Oric Atmos": {
+            "cores": ["mame_libretro"],
+            "extensions": [".tap", ".dsk"],
+            "bios_required": False,
+            "bios_files": []
+        },
+        "TRS-80": {
+            "cores": ["mame_libretro"],
+            "extensions": [".cas", ".cmd", ".dsk"],
+            "bios_required": False,
+            "bios_files": []
+        },
+        
+        # Modern platforms
         "PlayStation 2": {
             "cores": ["pcsx2_libretro"],
             "extensions": [".iso", ".bin", ".cue", ".img", ".mdf"],
             "bios_required": True,
             "bios_files": ["SCPH10000.bin", "SCPH39001.bin", "SCPH70012.bin"]
         },
-        "PlayStation 3": {
-            "cores": ["rpcs3"],
-            "extensions": [".iso", ".pkg"],
-            "bios_required": True,
-            "bios_files": ["PS3UPDAT.PUP"]
-        },
         "PlayStation 1": {
-            "cores": ["pcsx_rearmed", "beetle_psx", "beetle_psx_hw"],
+            "cores": ["pcsx_rearmed_libretro", "beetle_psx_libretro", "beetle_psx_hw_libretro"],
             "extensions": [".cue", ".bin", ".img", ".iso", ".chd", ".pbp"],
             "bios_required": True,
             "bios_files": ["scph1001.bin", "scph5501.bin", "scph7001.bin"]
         },
-        "Nintendo Switch": {
-            "cores": ["yuzu"],
-            "extensions": [".nsp", ".xci"],
-            "bios_required": True,
-            "bios_files": ["prod.keys", "title.keys"]
+        "PSP": {
+            "cores": ["ppsspp_libretro"],
+            "extensions": [".iso", ".cso", ".pbp"],
+            "bios_required": False,
+            "bios_files": []
         },
         "Nintendo 64": {
-            "cores": ["mupen64plus_next", "parallel_n64"],
+            "cores": ["mupen64plus_next_libretro", "parallel_n64_libretro"],
             "extensions": [".n64", ".v64", ".z64"],
             "bios_required": False,
             "bios_files": []
         },
         "Super Nintendo": {
-            "cores": ["snes9x", "bsnes", "bsnes_hd_beta"],
+            "cores": ["snes9x_libretro", "bsnes_libretro"],
+            "extensions": [".sfc", ".smc", ".fig", ".swc"],
+            "bios_required": False,
+            "bios_files": []
+        },
+        "SNES": {
+            "cores": ["snes9x_libretro", "bsnes_libretro"],
             "extensions": [".sfc", ".smc", ".fig", ".swc"],
             "bios_required": False,
             "bios_files": []
         },
         "Nintendo Entertainment System": {
-            "cores": ["nestopia", "fceumm", "mesen"],
+            "cores": ["nestopia_libretro", "fceumm_libretro", "mesen_libretro"],
+            "extensions": [".nes", ".fds", ".unf"],
+            "bios_required": False,
+            "bios_files": []
+        },
+        "NES": {
+            "cores": ["nestopia_libretro", "fceumm_libretro"],
             "extensions": [".nes", ".fds", ".unf"],
             "bios_required": False,
             "bios_files": []
         },
         "Game Boy Advance": {
-            "cores": ["mgba", "vba_next", "vba_m"],
+            "cores": ["mgba_libretro", "vba_next_libretro"],
             "extensions": [".gba", ".gb", ".gbc"],
             "bios_required": False,
             "bios_files": ["gba_bios.bin"]
         },
+        "GBA": {
+            "cores": ["mgba_libretro", "vba_next_libretro"],
+            "extensions": [".gba", ".gb", ".gbc"],
+            "bios_required": False,
+            "bios_files": []
+        },
         "Nintendo DS": {
-            "cores": ["desmume", "melonds"],
+            "cores": ["desmume_libretro", "melonds_libretro"],
             "extensions": [".nds"],
             "bios_required": True,
             "bios_files": ["bios7.bin", "bios9.bin", "firmware.bin"]
         },
         "Sega Genesis": {
-            "cores": ["genesis_plus_gx", "picodrive", "blastem"],
+            "cores": ["genesis_plus_gx_libretro", "picodrive_libretro"],
             "extensions": [".md", ".smd", ".gen", ".bin"],
             "bios_required": False,
             "bios_files": []
         },
-        "Sega Saturn": {
-            "cores": ["yabause", "kronos", "beetle_saturn"],
-            "extensions": [".cue", ".bin", ".iso", ".mds"],
-            "bios_required": True,
-            "bios_files": ["saturn_bios.bin", "sega_101.bin"]
-        },
-        "Sega Dreamcast": {
-            "cores": ["flycast", "redream"],
-            "extensions": [".cdi", ".gdi", ".chd"],
-            "bios_required": True,
-            "bios_files": ["dc_boot.bin", "dc_flash.bin"]
-        },
-        "Xbox 360": {
-            "cores": ["xenia"],
-            "extensions": [".iso", ".xex"],
+        "Sega Mega Drive": {
+            "cores": ["genesis_plus_gx_libretro", "picodrive_libretro"],
+            "extensions": [".md", ".smd", ".gen", ".bin"],
             "bios_required": False,
             "bios_files": []
         },
-        "Arcade": {
-            "cores": ["mame", "mame2003_plus", "fbneo", "fbalpha2012"],
-            "extensions": [".zip"],
+        "Nintendo Switch": {
+            "cores": ["yuzu_libretro"],
+            "extensions": [".nsp", ".xci"],
             "bios_required": True,
-            "bios_files": ["neogeo.zip", "qsound.zip"]
+            "bios_files": ["prod.keys", "title.keys"]
         },
         "Nintendo GameCube": {
-            "cores": ["dolphin"],
+            "cores": ["dolphin_libretro"],
             "extensions": [".iso", ".gcm", ".gcz", ".elf", ".dol"],
             "bios_required": False,
             "bios_files": []
         },
         "Nintendo Wii": {
-            "cores": ["dolphin"],
+            "cores": ["dolphin_libretro"],
             "extensions": [".iso", ".wbfs", ".wad"],
             "bios_required": False,
             "bios_files": []
+        },
+        "Arcade": {
+            "cores": ["mame_libretro", "mame2003_plus_libretro", "fbneo_libretro"],
+            "extensions": [".zip"],
+            "bios_required": True,
+            "bios_files": ["neogeo.zip", "qsound.zip"]
         }
+    }
+    
+    # Platform name aliases for fuzzy matching
+    PLATFORM_ALIASES = {
+        "atarist": "Atari ST",
+        "atari_st": "Atari ST",
+        "atari-st": "Atari ST",
+        "amstradcpc": "Amstrad CPC",
+        "amstrad_cpc": "Amstrad CPC",
+        "amstrad-cpc": "Amstrad CPC",
+        "amstrad464": "Amstrad CPC",
+        "amstrad_464": "Amstrad CPC",
+        "amstrad6128": "Amstrad CPC",
+        "amstrad_6128": "Amstrad CPC",
+        "atari8bit": "Atari 8-bit",
+        "atari-8-bit": "Atari 8-bit",
+        "atari_8_bit": "Atari 8-bit",
+        "dragon3264": "Dragon 32-64",
+        "dragon32": "Dragon 32-64",
+        "dragon64": "Dragon 32-64",
+        "fujitsu": "Fujitsu FM-7",
+        "oricatmos": "Oric Atmos",
+        "oric_atmos": "Oric Atmos",
+        "oric-atmos": "Oric Atmos",
+        "samcoupe": "Sam Coupe",
+        "sam_coupe": "Sam Coupe",
+        "spectrumtapfiles": "ZX Spectrum",
+        "spectrum_tap_files": "ZX Spectrum",
+        "tandy": "TRS-80",
+        "trs80": "TRS-80",
+        "trs-80": "TRS-80",
+        "z8148k128k": "ZX Spectrum",
+        "z81_48k_128k": "ZX Spectrum",
+        "sagagenesis": "Sega Genesis",
+        "genesis": "Sega Genesis",
+        "bbcmicro": "BBC Micro",
+        "bbc_micro": "BBC Micro",
+        "bbc-micro": "BBC Micro",
+        "commodore64": "Commodore 64",
+        "commodore_64": "Commodore 64",
+        "zxspectrum": "ZX Spectrum",
+        "zx_spectrum": "ZX Spectrum",
+        "zx-spectrum": "ZX Spectrum",
+        "zxspectrum128": "ZX Spectrum 128",
+        "playstation1": "PlayStation 1",
+        "playstation_1": "PlayStation 1",
+        "ps1": "PlayStation 1",
+        "playstation2": "PlayStation 2",
+        "playstation_2": "PlayStation 2",
+        "ps2": "PlayStation 2",
+        "n64": "Nintendo 64",
+        "nintendo64": "Nintendo 64",
+        "snes": "Super Nintendo",
+        "supernintendo": "Super Nintendo",
+        "nes": "Nintendo Entertainment System",
+        "gba": "Game Boy Advance",
+        "gameboyadvance": "Game Boy Advance",
+        "segagenesis": "Sega Genesis",
+        "segamegadrive": "Sega Mega Drive"
     }
     
     # RetroArch buildbot URLs
     BUILDBOT_BASE = "https://buildbot.libretro.com/nightly"
     
-    def __init__(self, base_dir: Path): #vers 1
+    def __init__(self, base_dir: Path): #vers 2
         """Initialize core downloader"""
         self.base_dir = Path(base_dir)
         self.cores_dir = self.base_dir / "cores"
         self.cores_dir.mkdir(parents=True, exist_ok=True)
+        
+    @staticmethod
+    def normalize_platform_name(name: str) -> str: #vers 1
+        """Normalize platform name for fuzzy matching
+        
+        Handles: "AtariST", "Atari ST", "Atari_ST", "atari-st" all → "Atari ST"
+        
+        Args:
+            name: Platform name from folder
+            
+        Returns:
+            Normalized platform name from database
+        """
+        # First try exact match
+        if name in CoreDownloader.CORE_DATABASE:
+            return name
+            
+        # Try normalized version (lowercase, no spaces/underscores/hyphens)
+        normalized = re.sub(r'[\s_-]', '', name.lower())
+        
+        if normalized in CoreDownloader.PLATFORM_ALIASES:
+            return CoreDownloader.PLATFORM_ALIASES[normalized]
+            
+        # Return original if no match (will be marked as unknown)
+        return name
         
     def get_available_cores(self) -> Dict[str, List[str]]: #vers 1
         """Get all available cores organized by platform"""
@@ -145,15 +385,31 @@ class CoreDownloader: #vers 1
             for platform, info in self.CORE_DATABASE.items()
         }
         
-    def get_cores_for_platform(self, platform: str) -> List[str]: #vers 1
-        """Get list of cores for a specific platform"""
-        if platform in self.CORE_DATABASE:
-            return self.CORE_DATABASE[platform]["cores"]
+    def get_cores_for_platform(self, platform: str) -> List[str]: #vers 2
+        """Get list of cores for a specific platform with fuzzy matching
+        
+        Args:
+            platform: Platform name (will be normalized)
+            
+        Returns:
+            List of core names
+        """
+        normalized = self.normalize_platform_name(platform)
+        if normalized in self.CORE_DATABASE:
+            return self.CORE_DATABASE[normalized]["cores"]
         return []
         
-    def get_core_info(self, platform: str) -> Optional[Dict]: #vers 1
-        """Get detailed info about platform cores"""
-        return self.CORE_DATABASE.get(platform)
+    def get_core_info(self, platform: str) -> Optional[Dict]: #vers 2
+        """Get detailed info about platform cores with fuzzy matching
+        
+        Args:
+            platform: Platform name (will be normalized)
+            
+        Returns:
+            Platform info dict or None
+        """
+        normalized = self.normalize_platform_name(platform)
+        return self.CORE_DATABASE.get(normalized)
         
     def get_installed_cores(self) -> List[str]: #vers 1
         """Get list of installed cores"""
@@ -170,88 +426,51 @@ class CoreDownloader: #vers 1
         """Download a specific core
         
         Args:
-            core_name: Name of the core (e.g. 'pcsx_rearmed')
-            platform: Target platform ('linux', 'windows', 'macos')
+            core_name: Name of the core (e.g. 'snes9x')
+            platform: Platform architecture (linux/windows/macos)
             
         Returns:
-            True if download successful, False otherwise
+            True if download successful
         """
-        try:
-            url = self._get_core_url(core_name, platform)
-            if not url:
-                print(f"Could not determine URL for core: {core_name}")
-                return False
-                
-            # Determine file extension based on platform
-            if platform == "windows":
-                ext = ".dll"
-            elif platform == "macos":
-                ext = ".dylib"
-            else:
-                ext = ".so"
-                
-            output_file = self.cores_dir / f"{core_name}_libretro{ext}"
-            
-            print(f"Downloading {core_name} from {url}")
-            success = self._download_file(url, output_file)
-            
-            if success:
-                print(f"✓ Downloaded: {output_file.name}")
-            else:
-                print(f"✗ Failed to download: {core_name}")
-                
-            return success
-            
-        except Exception as e:
-            print(f"Error downloading {core_name}: {e}")
+        url = self._get_core_url(core_name, platform)
+        if not url:
             return False
             
+        core_file = self.cores_dir / f"{core_name}_libretro.so"
+        return self._download_file(url, core_file)
+        
     def _get_core_url(self, core_name: str, platform: str) -> Optional[str]: #vers 1
-        """Construct download URL for a core"""
-        # Platform-specific paths
-        platform_paths = {
-            "linux": "linux/x86_64/latest",
-            "windows": "windows/x86_64/latest",
-            "macos": "apple/osx/x86_64/latest"
+        """Construct download URL for core"""
+        platform_map = {
+            "linux": "x86_64",
+            "windows": "windows",
+            "macos": "apple/osx"
         }
         
-        path = platform_paths.get(platform, platform_paths["linux"])
-        
-        # File extension based on platform
-        if platform == "windows":
-            ext = ".dll.zip"
-        elif platform == "macos":
-            ext = ".dylib.zip"
-        else:
-            ext = ".so.zip"
+        arch = platform_map.get(platform)
+        if not arch:
+            return None
             
-        return f"{self.BUILDBOT_BASE}/{path}/{core_name}_libretro{ext}"
+        return f"{self.BUILDBOT_BASE}/{arch}/latest/{core_name}_libretro.so.zip"
         
-    def _download_file(self, url: str, output_path: Path) -> bool: #vers 1
+    def _download_file(self, url: str, dest: Path) -> bool: #vers 1
         """Download file from URL"""
         try:
-            urllib.request.urlretrieve(url, output_path)
-            
-            # If it's a zip, extract it
-            if output_path.suffix == '.zip':
-                import zipfile
-                with zipfile.ZipFile(output_path, 'r') as zip_ref:
-                    zip_ref.extractall(output_path.parent)
-                output_path.unlink()  # Remove zip file
-                
+            print(f"Downloading: {url}")
+            urllib.request.urlretrieve(url, dest)
+            print(f"✓ Saved to: {dest}")
             return True
-            
         except Exception as e:
-            print(f"Download error: {e}")
+            print(f"✗ Download failed: {e}")
             return False
             
     def _load_core_database(self) -> Dict: #vers 1
-        """Load core database from file or use built-in"""
-        db_file = self.base_dir / "core_database.json"
+        """Load core database from JSON file (if exists)"""
+        db_file = self.base_dir / "config" / "core_database.json"
         
         if db_file.exists():
             try:
-                with open(db_file, 'r') as f:
+                with open(db_file) as f:
                     return json.load(f)
             except Exception as e:
                 print(f"Error loading core database: {e}")
@@ -279,74 +498,4 @@ def create_directory_structure(base_dir: Path): #vers 1
         dir_path.mkdir(parents=True, exist_ok=True)
         print(f"  ✓ {dir_name}/ - {description}")
         
-    # Create system-specific ROM folders
-    systems = [
-        "PlayStation 2", "PlayStation 1", "PSP", 
-        "Nintendo Switch", "Nintendo 64", "Super Nintendo",
-        "Nintendo Entertainment System", "Game Boy Advance",
-        "Sega Genesis", "Arcade"
-    ]
-    
-    roms_dir = base_dir / "roms"
-    bios_dir = base_dir / "bios"
-    
-    for system in systems:
-        (roms_dir / system).mkdir(exist_ok=True)
-        (bios_dir / system).mkdir(exist_ok=True)
-        
     print(f"\n✓ Directory structure created!")
-
-
-# CLI usage
-if __name__ == "__main__":
-    import sys
-    
-    base_dir = Path.cwd()
-    
-    if len(sys.argv) > 1 and sys.argv[1] == "init":
-        # Initialize directory structure
-        create_directory_structure(base_dir)
-        
-    elif len(sys.argv) > 1 and sys.argv[1] == "list":
-        # List available cores
-        downloader = CoreDownloader(base_dir)
-        cores = downloader.get_available_cores()
-        
-        print("\nAvailable Cores by Platform:")
-        print("=" * 60)
-        for platform, core_list in sorted(cores.items()):
-            print(f"\n{platform}:")
-            for core in core_list:
-                print(f"  - {core}")
-                
-    elif len(sys.argv) > 2 and sys.argv[1] == "download":
-        # Download specific core
-        core_name = sys.argv[2]
-        platform = sys.argv[3] if len(sys.argv) > 3 else "linux"
-        
-        downloader = CoreDownloader(base_dir)
-        downloader.download_core(core_name, platform)
-        
-    elif len(sys.argv) > 1 and sys.argv[1] == "installed":
-        # Show installed cores
-        downloader = CoreDownloader(base_dir)
-        installed = downloader.get_installed_cores()
-        
-        print("\nInstalled Cores:")
-        print("=" * 60)
-        for core in sorted(installed):
-            print(f"  ✓ {core}")
-        print(f"\nTotal: {len(installed)} cores")
-        
-    else:
-        print("Multi-Emulator Launcher - Core Downloader")
-        print("=" * 60)
-        print("\nUsage:")
-        print("  python core_downloader.py init                  - Create directory structure")
-        print("  python core_downloader.py list                  - List available cores")
-        print("  python core_downloader.py download <core> [os]  - Download core")
-        print("  python core_downloader.py installed             - Show installed cores")
-        print("\nExamples:")
-        print("  python core_downloader.py init")
-        print("  python core_downloader.py download pcsx_rearmed linux")
-        print("  python core_downloader.py download snes9x windows")
