@@ -12,5 +12,109 @@
     "x": 0,
     "y": 0
   },
-  "use_themed_titlebar": true
+  "use_themed_titlebar": true,
+  "bios_database": {
+    "PlayStation": {
+      "SCPH1001.BIN": {
+        "path": "/home/x2/Roms/system/PS1/SCPH1001.BIN",
+        "size": "0.50 MB",
+        "md5": "924e392ed05558ffdb115408c263dccf",
+        "status": "\u2713 Verified"
+      },
+      "scph1001.bin": {
+        "path": "/home/x2/Roms/system/scph1001.bin",
+        "size": "0.50 MB",
+        "md5": "924e392ed05558ffdb115408c263dccf",
+        "status": "\u2713 Verified"
+      },
+      "scph5501.bin": {
+        "path": "/home/x2/Roms/system/scph5501.bin",
+        "size": "0.50 MB",
+        "md5": "490f666e1afb15b7362b406ed1cea246",
+        "status": "\u2713 Verified"
+      },
+      "scph7001.bin": {
+        "path": "/home/x2/Roms/system/scph7001.bin",
+        "size": "0.50 MB",
+        "md5": "1e68c231d0896b7eadcad1d7d8e76129",
+        "status": "\u2713 Verified"
+      }
+    },
+    "Sega Saturn": {
+      "SEGA_101.BIN": {
+        "path": "/home/x2/Roms/SEGA_Satarn/SEGA_101.BIN",
+        "size": "0.50 MB",
+        "md5": "85ec9ca47d8f6807718151cbcca8b964",
+        "status": "\u2713 Verified"
+      },
+      "mpr-17933.bin": {
+        "path": "/home/x2/Roms/system/mpr-17933.bin",
+        "size": "0.50 MB",
+        "md5": "3240872c70984b6cbfda1586cab68dbe",
+        "status": "\u2713 Verified"
+      },
+      "sega_101.bin": {
+        "path": "/home/x2/Roms/system/sega_101.bin",
+        "size": "0.50 MB",
+        "md5": "85ec9ca47d8f6807718151cbcca8b964",
+        "status": "\u2713 Verified"
+      }
+    },
+    "Sega CD": {
+      "bios_CD_E.bin": {
+        "path": "/home/x2/Roms/system/bios_CD_E.bin",
+        "size": "0.12 MB",
+        "md5": "e66fa1dc5820d254611fdcdba0662372",
+        "status": "\u2713 Verified"
+      },
+      "bios_CD_J.bin": {
+        "path": "/home/x2/Roms/system/bios_CD_J.bin",
+        "size": "0.12 MB",
+        "md5": "bdeb4c47da613946d422d97d98b21cda",
+        "status": "\u26a0 Unknown Version"
+      },
+      "bios_CD_U.bin": {
+        "path": "/home/x2/Roms/system/bios_CD_U.bin",
+        "size": "0.12 MB",
+        "md5": "2efd74e3232ff260e371b99f84024f7f",
+        "status": "\u2713 Verified"
+      }
+    },
+    "Amiga": {
+      "kick34005.A500": {
+        "path": "/home/x2/Roms/system/kick34005.A500",
+        "size": "0.25 MB",
+        "md5": "82a21c1890cae844b3df741f2762d48d",
+        "status": "\u26a0 Unknown Version"
+      },
+      "kick31.rom": {
+        "path": "/home/x2/Roms/system/Amiga/generic/kick31.rom",
+        "size": "0.50 MB",
+        "md5": "e40a5dfb3d017ba8779faba30cbd1c8e",
+        "status": "\u26a0 Unknown Version"
+      }
+    },
+    "PC Engine CD": {
+      "syscard3.pce": {
+        "path": "/home/x2/Roms/system/syscard3.pce",
+        "size": "0.25 MB",
+        "md5": "38179df8f4ac870017db21ebcbf53114",
+        "status": "\u2713 Verified"
+      }
+    },
+    "Neo Geo CD": {
+      "neocd_f.rom": {
+        "path": "/home/x2/Roms/system/neocd/neocd_f.rom",
+        "size": "0.50 MB",
+        "md5": "8834880c33164ccbe6476b559f3e37de",
+        "status": "\u2713 Verified"
+      },
+      "neocd_z.rom": {
+        "path": "/home/x2/Roms/system/neocd/neocd_z.rom",
+        "size": "0.50 MB",
+        "md5": "f39572af7584cb5b3f70ae8cc848aba2",
+        "status": "\u2713 Verified"
+      }
+    }
+  }
 }
