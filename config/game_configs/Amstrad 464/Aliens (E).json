@@ -1,0 +1,10 @@
+{
+  "platform": "Amstrad 464",
+  "game": "Aliens (E)",
+  "core": "cap32",
+  "custom_args": "",
+  "working_dir": "",
+  "fullscreen": false,
+  "auto_load_save": false,
+  "maintain_aspect": true
+}

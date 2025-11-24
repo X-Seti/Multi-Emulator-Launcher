@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-#this belongs in apps/gui/emu_launcher_gui.py - Version: 12
-# X-Seti - November22 2025 - Multi-Emulator Launcher - Main GUI
+#this belongs in apps/gui/emu_launcher_gui.py - Version: 16
+# X-Seti - November24 2025 - Multi-Emulator Launcher - Main GUI
 
 """
 Multi-Emulator Launcher GUI
@@ -8,10 +8,98 @@ Main window with 3-panel layout for emulator management
 Clean version: No hardcoded colors, uses AppSettings theme system
 """
 
-#TODO - def _create_icon_controls(self): #vers 2 exists but the icons are missing from the _create_right_panel.
-
+#TODO - Artwork comes with RetroArch - if retroarch is installed, borrow the artwork from that, to replace the thumbnails and display window cover art.
 
 #Changelog
+
+#November24 v16 - Button Visibility and Font Support
+#- Fixed button colors for light themes - calculate from bg_primary with 0.85 brightness
+#- Buttons now visible on light backgrounds (no more white on white)
+#- Added _style_control_buttons (vers 1) to style Launch/Load/Manager buttons
+#- All buttons get proper contrast, borders, and hover states
+#- Added _apply_fonts_to_widgets (vers 1) to apply AppSettings fonts
+#- Fonts from AppSettings now properly applied to title, panels, buttons
+#- Debug output shows which fonts are being applied
+#- This fixes both button visibility and font customization support!
+
+#November24 v15.7 - Fix Titlebar Button Colors and Drag Debug
+#- Fixed _apply_titlebar_colors (vers 5 → 6) with !important flags
+#- Titlebar buttons now use theme colors (text_primary, button_normal) properly
+#- Added size constraints to buttons (30x30) for consistency
+#- Added debug output showing button colors being applied
+#- Added extensive debug to _is_on_draggable_area (vers 3 → 4)
+#- Debug shows titlebar detection, button positions, click locations
+#- This will help identify why drag isn't working
+
+#November24 v15.6 - Fix Theme Color Loading from AppSettings
+#- Fixed _get_theme_colors (vers 6 → 7) to load CURRENT active theme
+#- Now reads current_settings.theme to get active theme name
+#- Looks for colors in theme.colors or theme root
+#- Added extensive debug output showing what's being loaded
+#- setdefault() only fills MISSING keys, preserves AppSettings values
+#- Titlebar buttons use colors from _get_theme_colors via _apply_titlebar_colors
+#- This should now use your actual AppSettings theme colors!
+
+#November24 v15.5 - CRITICAL FIX: Removed Duplicate Method, Fixed Dark Defaults
+#- Found and removed duplicate _get_theme_colors at line 1834 (vers 5)
+#- Fixed actual _get_theme_colors (vers 6) to use light/dark defaults properly
+#- Root cause: Method had DARK defaults for ALL themes (bg_primary=#1a1a1a)
+#- Now checks is_dark FIRST, then sets appropriate defaults
+#- Light themes get light defaults (#ffffff, #f0f0f0, #000000)
+#- Dark themes get dark defaults (#1a1a1a, #2d2d2d, #ffffff)
+#- Added debug output to show theme detection and final colors
+#- This WILL fix the dark panels on light theme!
+
+#November24 v15.4 - Extreme Debug Mode (Fallback Disabled)
+#- Disabled fallback in _get_theme_colors (vers 4 → 5)
+#- Returns BRIGHT PINK/YELLOW colors if AppSettings fails
+#- Extensive debug output showing exactly what's happening
+#- If you see pink/yellow, AppSettings is NOT providing colors
+#- This will help identify the exact failure point
+
+#November24 v15.3 - Fix Theme Color Fetching from AppSettings
+#- Fixed _get_theme_colors (vers 3 → 4) to use self.app_settings instead of self.main_window.app_settings
+#- Root cause: Method was looking for app_settings in wrong place (main_window doesn't exist in this context)
+#- Now correctly accesses self.app_settings which is set in __init__
+#- Added better debug output with checkmarks and sample colors
+#- Added traceback on errors for easier debugging
+#- This should fix the dark panels on light theme issue
+
+#November24 v15.2 - Debug Version to Identify Theme Color Issues
+#- Added debug output in _apply_theme (vers 8 → 9) to print actual colors being used
+#- Prints bg_primary, panel_bg, text_primary, border, accent_primary to terminal
+#- This will help identify if AppSettings is providing dark colors on light theme
+#- Run app and check terminal output to see what colors are being applied
+
+#November24 v15.1 - Critical Hotfix for Theme Application
+#- Fixed _apply_theme (vers 7 → 8) to apply styles DIRECTLY to widgets
+#- AppSettings base stylesheet was overriding MEL-specific styles
+#- Now uses widget.setStyleSheet() with !important flags for precedence
+#- Lists now correctly show light background on light themes
+#- Alternating rows now visible
+#- Display frame now properly styled
+#- All visual improvements from v15 now working correctly
+
+#November24 v15 - UI Polish and Visual Consistency
+#- Added alternating row colors to platform and game lists (like file dialog)
+#- Comprehensive theme stylesheet for all widgets (buttons, frames, scrollbars, sliders)
+#- All gadgets now use uniform themed colors - no hardcoded styles
+#- Added frame around game display panel for professional appearance
+#- Welcome message in display panel before ROM scan
+#- Theme-based scrollbars and sliders with proper theming
+#- Added adjust_brightness helper for calculating alternate row colors
+#- Updated _apply_theme (vers 3) with comprehensive widget styling
+#- Updated EmulatorDisplayWidget (vers 4) with framed display and welcome message
+#- All visual elements now consistent between light and dark themes
+
+#November24 v14 - Fixed misplaced methods and titlebar theming
+#- Moved _show_load_core and _on_core_loaded from EmulatorDisplayWidget to EmuLauncherGUI (correct class)
+#- Fixed AttributeError: EmulatorDisplayWidget no longer tries to access self.core_launcher  
+#- Updated _apply_titlebar_colors (vers 5) to properly theme min/max/close buttons based on theme
+#- Light themes now show dark buttons, dark themes show light buttons for proper contrast
+#- Fixed window drag functionality - _is_on_draggable_area now properly detects titlebar
+#- Updated methods list to include _on_core_loaded and _show_load_core in correct alphabetical order
+#- All three manager buttons (Art Manager, Game Manager, Game Ports) fully functional
 
 #November23 v13 - Fixed main launcher parameter passing
 #- Updated __init__ (vers 13) to accept core_downloader, core_launcher, gamepad_config
@@ -97,7 +185,8 @@ from apps.methods.artwork_loader import ArtworkLoader
 from apps.gui.mel_settings_dialog import MELSettingsDialog
 from apps.utils.mel_settings_manager import MELSettingsManager
 from apps.gui.game_manager_dialog import GameManagerDialog, GameConfig
-from apps.methods.igdb_downloader import IGDBDownloader, IGDBSearchDialog
+from apps.gui.ports_manager_dialog import PortsManagerDialog
+from apps.gui.load_core_dialog import LoadCoreDialog
 
 # Import AppSettings
 try:
@@ -117,41 +206,53 @@ except ImportError:
 # paintEvent
 # resizeEvent
 # setup_ui
-# _apply_fallback_theme          # NEW - after _apply_table_theme_styling
-# _apply_theme                    # UPDATED vers 2
-# _apply_titlebar_colors          # NEW vers 1 - applies theme colors to titlebar
-# _browse_and_scan                # NEW - after _apply_theme, before _create_*
-# _create_close_icon              # NEW
+# _adjust_brightness
+# _apply_fallback_theme
+# _apply_fonts_to_widgets
+# _apply_theme
+# _apply_titlebar_colors
+# _browse_and_scan
+# _create_close_icon
 # _create_left_panel
-# _create_maximize_icon           # NEW
+# _create_maximize_icon
 # _create_middle_panel
-# _create_minimize_icon           # NEW
+# _create_minimize_icon
 # _create_right_panel
 # _create_status_bar
-# _create_titlebar                # UPDATED
+# _create_titlebar
+# _download_game_artwork
 # _enable_move_mode
 # _get_resize_corner
 # _get_theme_colors
 # _handle_corner_resize
 # _is_on_draggable_area
 # _load_fonts_from_settings
-# _on_game_selected               # UPDATED
-# _on_launch_game                 # NEW - after _on_game_selected
+# _normalize_port_name
+# _on_artwork_downloaded
+# _on_core_loaded
+# _on_game_config_saved
+# _on_game_selected
+# _on_launch_game
 # _on_platform_selected
-# _on_stop_emulation              # NEW - after _on_platform_selected
-# _on_theme_changed               # UPDATED
-# _open_mel_settings              # UPDATED - after _on_theme_changed
-# _open_rom_folder                # NEW - after _open_mel_settings
-# _refresh_platforms              # UPDATED
-# _save_config                    # NEW - after _refresh_platforms
-# _scan_roms                      # UPDATED
-# _setup_controller               # UPDATED
-# _show_about_dialog              # NEW - after _setup_controller
-# _show_scan_roms_context_menu    # NEW - after _show_about_dialog
+# _on_port_selected
+# _on_stop_emulation
+# _on_theme_changed
+# _open_mel_settings
+# _open_rom_folder
+# _refresh_platforms
+# _save_config
+# _scan_roms
+# _setup_controller
+# _show_about_dialog
+# _show_game_manager
+# _show_load_core
+# _show_ports_manager
+# _show_scan_roms_context_menu
 # _show_settings_context_menu
 # _show_settings_dialog
 # _show_shaders_dialog
 # _show_window_context_menu
+# _style_control_buttons
 # _toggle_maximize
 # _toggle_upscale_native
 # _update_cursor
@@ -166,12 +267,15 @@ class EmulatorListWidget(QListWidget): #vers 2
 
     platform_selected = pyqtSignal(str)
 
-    def __init__(self, parent=None, display_mode="icons_and_text"): #vers 4
+    def __init__(self, parent=None, display_mode="icons_and_text"): #vers 5
         super().__init__(parent)
         self.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
         self.currentRowChanged.connect(self.on_selection_changed)
         self.display_mode = display_mode
         self.setIconSize(QSize(64, 64))  # Increased from 32x32 to 64x64
+        
+        # Enable alternating row colors for visual distinction
+        self.setAlternatingRowColors(True)
 
         # Enable context menu
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -397,11 +501,15 @@ class GameListWidget(QListWidget): #vers 2
     
     game_selected = pyqtSignal(str)
     
-    def __init__(self, parent=None): #vers 2
+    def __init__(self, parent=None): #vers 3
         super().__init__(parent)
         self.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
         self.currentRowChanged.connect(self.on_selection_changed)
         self.setIconSize(QSize(64, 64))  # Set icon size for artwork
+        
+        # Enable alternating row colors for visual distinction
+        self.setAlternatingRowColors(True)
+        
         self.artwork_loader = None
         self.current_platform = None
         
@@ -437,34 +545,45 @@ class GameListWidget(QListWidget): #vers 2
             self.game_selected.emit(game)
 
 
-class EmulatorDisplayWidget(QWidget): #vers 3
-    """Panel 3: Emulator display with controls and title artwork"""
+class EmulatorDisplayWidget(QWidget): #vers 4
+    """Panel 3: Emulator display with framed controls and title artwork"""
     
-    def __init__(self, parent=None, main_window=None): #vers 3
+    def __init__(self, parent=None, main_window=None): #vers 4
         super().__init__(parent)
         self.main_window = main_window
         self.title_artwork_label = None
+        self.display_frame = None
         self.setup_ui()
         
 
-    def setup_ui(self): #vers 4
-        """Setup display panel with title artwork support"""
+    def setup_ui(self): #vers 5
+        """Setup display panel with framed display and welcome message"""
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setContentsMargins(5, 5, 5, 5)
         main_layout.setSpacing(5)
 
-        # Title artwork display (replaces generic label)
+        # Create framed container for display
+        self.display_frame = QFrame()
+        self.display_frame.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
+        self.display_frame.setLineWidth(2)
+        frame_layout = QVBoxLayout(self.display_frame)
+        frame_layout.setContentsMargins(10, 10, 10, 10)
+
+        # Title artwork display
         self.title_artwork_label = QLabel()
         self.title_artwork_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.title_artwork_label.setScaledContents(True)
-        self.title_artwork_label.setMinimumHeight(200)
-        self.title_artwork_label.setText("Select a game")
-        self.title_artwork_label.setStyleSheet("font-size: 14pt; padding: 50px;")
-        main_layout.addWidget(self.title_artwork_label)
+        self.title_artwork_label.setScaledContents(False)  # Better image quality
+        self.title_artwork_label.setMinimumHeight(300)
+        
+        # Show welcome message initially
+        self._show_welcome_message()
+        
+        frame_layout.addWidget(self.title_artwork_label)
+        frame_layout.addStretch()
+        
+        main_layout.addWidget(self.display_frame)
 
-        main_layout.addStretch()
-
-        # Control buttons at bottom
+        # Control buttons at bottom (outside frame)
         button_frame = QFrame()
         button_layout = QHBoxLayout(button_frame)
         button_layout.setContentsMargins(10, 5, 10, 5)
@@ -477,24 +596,36 @@ class EmulatorDisplayWidget(QWidget): #vers 3
             self.launch_btn.clicked.connect(self.main_window._on_launch_game)
         button_layout.addWidget(self.launch_btn)
 
+        self.load_core_btn = QPushButton()
+        self.load_core_btn.setIcon(SVGIconFactory.folder_icon())
+        self.load_core_btn.setText("Load Core")
+        self.load_core_btn.setIconSize(QSize(20, 20))
+        self.load_core_btn.setToolTip("Browse and load emulator cores")
+        if self.main_window:
+            self.load_core_btn.clicked.connect(self.main_window._show_load_core)
+        button_layout.addWidget(self.load_core_btn)
+
         # Art manager
         self.gameart_btn = QPushButton("Art Manager")
         self.gameart_btn.setMinimumHeight(30)
-        self.gameart_btn.clicked.connect(self.main_window._download_game_artwork)
+        if self.main_window:
+            self.gameart_btn.clicked.connect(self.main_window._download_game_artwork)
         button_layout.addWidget(self.gameart_btn)
 
         button_layout.addStretch()
 
-        # Games anager
+        # Games manager
         self.manage_btn = QPushButton("Game Manager")
-        self.manage_btn.clicked.connect(self.main_window._show_game_manager)
         self.manage_btn.setMinimumHeight(30)
+        if self.main_window:
+            self.manage_btn.clicked.connect(self.main_window._show_game_manager)
         button_layout.addWidget(self.manage_btn)
 
         # Games ports list. Same game shown on different systems
         self.ports_btn = QPushButton("Game Ports")
-        self.ports_btn.clicked.connect(self.main_window._show_ports_manager)
         self.ports_btn.setMinimumHeight(30)
+        if self.main_window:
+            self.ports_btn.clicked.connect(self.main_window._show_ports_manager)
         button_layout.addWidget(self.ports_btn)
 
         # Stop button
@@ -506,14 +637,16 @@ class EmulatorDisplayWidget(QWidget): #vers 3
 
         main_layout.addWidget(button_frame)
     
-    
-    def show_title_artwork(self, pixmap): #vers 1
+    def show_title_artwork(self, pixmap): #vers 2
         """Display title artwork
         
         Args:
             pixmap: QPixmap with title artwork or None to clear
         """
         if pixmap and not pixmap.isNull():
+            # Clear welcome message if showing
+            self.title_artwork_label.setTextFormat(Qt.TextFormat.PlainText)
+            
             # Scale pixmap to fit while maintaining aspect ratio
             scaled_pixmap = pixmap.scaled(
                 self.title_artwork_label.size(),
@@ -522,12 +655,50 @@ class EmulatorDisplayWidget(QWidget): #vers 3
             )
             self.title_artwork_label.setPixmap(scaled_pixmap)
             self.title_artwork_label.setText("")
+            self.title_artwork_label.setStyleSheet("")
         else:
             # Clear artwork and show text
             self.title_artwork_label.clear()
             self.title_artwork_label.setText("No title artwork")
             self.title_artwork_label.setStyleSheet("font-size: 14pt; padding: 50px;")
+    
+    def _show_welcome_message(self): #vers 1
+        """Show welcome message in display panel"""
+        welcome_html = """
+        <div style='text-align: center; padding: 20px;'>
+            <h1 style='color: #3498db; font-size: 32pt; margin-bottom: 10px;'>
+                Multi-Emulator Launcher
+            </h1>
+            <p style='font-size: 16pt; color: #7f8c8d; margin-bottom: 20px;'>
+                Welcome to MEL 1.0
+            </p>
+            <hr style='border: 1px solid #bdc3c7; margin: 20px 50px;'>
+            <p style='font-size: 14pt; color: #95a5a6; line-height: 1.8;'>
+                <b>Getting Started:</b><br><br>
+                1. Click <b>Scan ROMs</b> to detect your games<br>
+                2. Select a platform from the left panel<br>
+                3. Choose a game from the middle panel<br>
+                4. Click <b>Launch Game</b> to play!
+            </p>
+            <p style='font-size: 12pt; color: #95a5a6; margin-top: 30px;'>
+                Use the managers to configure cores,<br>
+                download artwork, and view game ports.
+            </p>
+        </div>
+        """
         
+        self.title_artwork_label.setText(welcome_html)
+        self.title_artwork_label.setTextFormat(Qt.TextFormat.RichText)
+        self.title_artwork_label.setWordWrap(True)
+        self.title_artwork_label.setStyleSheet("background-color: transparent; padding: 30px;")
+    
+    def clear_welcome_message(self): #vers 1
+        """Clear welcome message when games are loaded"""
+        # Only clear if showing welcome (check for HTML content)
+        if self.title_artwork_label.textFormat() == Qt.TextFormat.RichText:
+            self.title_artwork_label.clear()
+            self.title_artwork_label.setTextFormat(Qt.TextFormat.PlainText)
+            self.title_artwork_label.setStyleSheet("")
         
     def _create_control_buttons(self): #vers 2
         """Create bottom control buttons"""
@@ -1328,6 +1499,10 @@ class EmuLauncherGUI(QWidget): #vers 1
         # Populate game list with filenames AND artwork
         game_names = [rom.stem for rom in rom_files]
         self.game_list.populate_games(game_names, self.artwork_loader, platform)
+        
+        # Clear welcome message when games are loaded
+        if hasattr(self.display_widget, 'clear_welcome_message') and len(game_names) > 0:
+            self.display_widget.clear_welcome_message()
 
         rom_count = platform_info.get('rom_count', len(rom_files))
         self.status_label.setText(f"Found {rom_count} ROM(s) for {platform}")
@@ -1696,43 +1871,36 @@ class EmuLauncherGUI(QWidget): #vers 1
             self.status_label.setText(f"✓ Artwork downloaded for: {game_name}")
 
 
-    def _get_theme_colors(self, theme_name): #vers 3
-        """Get theme colors - properly connected to app_settings_system"""
+    def _adjust_brightness(self, hex_color, factor=None): #vers 1
+        """Adjust color brightness for alternate row colors
+        
+        Args:
+            hex_color: Hex color string (#RRGGBB)
+            factor: Brightness factor (None for auto-detect based on luminance)
+            
+        Returns:
+            Adjusted hex color string
+        """
         try:
-            # Method 1: Use app_settings get_theme_colors() method
-            if hasattr(self.main_window, 'app_settings') and hasattr(self.main_window.app_settings, 'get_theme_colors'):
-                colors = self.main_window.app_settings.get_theme_colors()
-                if colors:
-                    print(f"Using app_settings theme colors: {len(colors)} colors loaded")
-                    return colors
-
-            # Method 2: Try direct theme access
-            if hasattr(self.main_window, 'app_settings') and hasattr(self.main_window.app_settings, 'themes'):
-                current_theme = self.main_window.app_settings.current_settings.get("theme", "IMG_Factory")
-                theme_data = self.main_window.app_settings.themes.get(current_theme, {})
-                colors = theme_data.get('colors', {})
-                if colors:
-                    print(f"Using direct theme access: {current_theme}")
-                    return colors
-
-        except Exception as e:
-            print(f"Theme color lookup error: {e}")
-
-        # Fallback with proper theme variables
-        print("Using fallback theme colors")
-        is_dark = self._is_dark_theme()
-        if is_dark:
-            return {
-                'bg_primary': '#2b2b2b', 'bg_secondary': '#3c3c3c', 'bg_tertiary': '#4a4a4a',
-                'panel_bg': '#333333', 'text_primary': '#ffffff', 'text_secondary': '#cccccc',
-                'border': '#666666', 'accent_primary': '#FFECEE', 'button_normal': '#404040'
-            }
-        else:
-            return {
-                'bg_primary': '#ffffff', 'bg_secondary': '#f8f9fa', 'bg_tertiary': '#e9ecef',
-                'panel_bg': '#f0f0f0', 'text_primary': '#000000', 'text_secondary': '#495057',
-                'border': '#dee2e6', 'accent_primary': '#1976d2', 'button_normal': '#e0e0e0'
-            }
+            # Convert hex to RGB
+            rgb = tuple(int(hex_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
+            
+            # Calculate luminance to determine if we should lighten or darken
+            luminance = (0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]) / 255
+            
+            # Auto-detect factor if not provided
+            if factor is None:
+                if luminance > 0.5:  # Light theme - darken alternate rows
+                    factor = 0.95
+                else:  # Dark theme - lighten alternate rows
+                    factor = 1.05
+            
+            # Apply factor
+            new_rgb = tuple(min(255, max(0, int(c * factor))) for c in rgb)
+            return f"#{new_rgb[0]:02x}{new_rgb[1]:02x}{new_rgb[2]:02x}"
+        except:
+            # Return original on error
+            return hex_color
 
 
     def _apply_file_list_window_theme_styling(self): #vers 7
@@ -1805,29 +1973,73 @@ class EmuLauncherGUI(QWidget): #vers 1
 
         return True
 
-    def _get_theme_colors(self, theme_name: str):
+    def _get_theme_colors(self, theme_name: str): #vers 7
         """
-        Returns a dictionary of theme colors and dynamic stylesheet sections
-        for dark and light modes.
+        Returns a dictionary of theme colors from AppSettings current theme
         """
 
-        # Base colors from theme definitions (AppSettings)
+        theme_data = {}
+        
+        # Get the CURRENT active theme from AppSettings (not the theme_name parameter)
         if APPSETTINGS_AVAILABLE and self.app_settings:
-            theme_data = self.app_settings.themes.get(theme_name, {}).copy()
-        else:
-            theme_data = {}
-
-        # Ensure missing keys have defaults
-        theme_data.setdefault("bg_primary", "#1a1a1a")
-        theme_data.setdefault("bg_secondary", "#2a2a2a")
-        theme_data.setdefault("text_primary", "#ffffff")
-        theme_data.setdefault("text_secondary", "#cccccc")
-        theme_data.setdefault("accent", "#00d8ff")
-        theme_data.setdefault("border", "#3a3a3a")
-        theme_data.setdefault("panel_bg", "#2d2d2d")
+            # Get current theme name from settings
+            if hasattr(self.app_settings, 'current_settings'):
+                current_theme_name = self.app_settings.current_settings.get("theme", "")
+                print(f"\n=== Theme Loading Debug ===")
+                print(f"Current active theme: {current_theme_name}")
+                
+                # Try to load that theme's colors
+                if hasattr(self.app_settings, 'themes') and current_theme_name:
+                    theme_obj = self.app_settings.themes.get(current_theme_name, {})
+                    print(f"Theme object keys: {list(theme_obj.keys())}")
+                    
+                    # Colors might be nested under 'colors' key
+                    if 'colors' in theme_obj:
+                        theme_data = theme_obj['colors'].copy()
+                        print(f"✓ Loaded colors from theme.colors: {list(theme_data.keys())}")
+                    else:
+                        # Or they might be at the root level
+                        theme_data = theme_obj.copy()
+                        print(f"✓ Loaded colors from theme root: {list(theme_data.keys())}")
+                    
+                    print(f"Color values from AppSettings:")
+                    print(f"  bg_primary: {theme_data.get('bg_primary', 'NOT SET')}")
+                    print(f"  panel_bg: {theme_data.get('panel_bg', 'NOT SET')}")
+                    print(f"  text_primary: {theme_data.get('text_primary', 'NOT SET')}")
+                    print(f"  border: {theme_data.get('border', 'NOT SET')}")
 
         # Determine if this theme is dark or light
         is_dark = self._is_dark_theme()
+        print(f"Theme is dark: {is_dark}")
+        
+        # Only set defaults for MISSING keys (setdefault won't override existing)
+        if is_dark:
+            theme_data.setdefault("bg_primary", "#1a1a1a")
+            theme_data.setdefault("bg_secondary", "#2a2a2a")
+            theme_data.setdefault("text_primary", "#ffffff")
+            theme_data.setdefault("text_secondary", "#cccccc")
+            theme_data.setdefault("accent", "#00d8ff")
+            theme_data.setdefault("border", "#3a3a3a")
+            theme_data.setdefault("panel_bg", "#2d2d2d")
+            theme_data.setdefault("accent_primary", "#00d8ff")
+            theme_data.setdefault("button_normal", "#404040")
+        else:
+            theme_data.setdefault("bg_primary", "#ffffff")
+            theme_data.setdefault("bg_secondary", "#f8f9fa")
+            theme_data.setdefault("text_primary", "#000000")
+            theme_data.setdefault("text_secondary", "#495057")
+            theme_data.setdefault("accent", "#1976d2")
+            theme_data.setdefault("border", "#dee2e6")
+            theme_data.setdefault("panel_bg", "#f0f0f0")
+            theme_data.setdefault("accent_primary", "#1976d2")
+            theme_data.setdefault("button_normal", "#e0e0e0")
+        
+        print(f"Final colors after defaults:")
+        print(f"  bg_primary: {theme_data.get('bg_primary')}")
+        print(f"  panel_bg: {theme_data.get('panel_bg')}")
+        print(f"  text_primary: {theme_data.get('text_primary')}")
+        print(f"  border: {theme_data.get('border')}")
+        print("================================\n")
 
         # Build tearoff button stylesheet
         if is_dark:
@@ -1882,36 +2094,196 @@ class EmuLauncherGUI(QWidget): #vers 1
 
         return theme_data
 
-    def _apply_theme(self): #vers 6
-        """Apply theme to all GUI elements - extends AppSettings stylesheet"""
+    def _apply_theme(self): #vers 9
+        """Apply comprehensive theme to all GUI elements with direct widget styling"""
 
         if self.app_settings and APPSETTINGS_AVAILABLE:
-            # Get base AppSettings stylesheet (already complete)
+            # Get base AppSettings stylesheet
             base_stylesheet = self.app_settings.get_stylesheet()
 
-            # Get theme colors for any additional MEL-specific overrides
+            # Get theme colors for MEL-specific styling
             theme_colors = self._get_theme_colors("default")
+            
+            # DEBUG: Print theme colors being used
+            print("\n=== MEL Theme Colors Debug ===")
+            print(f"bg_primary: {theme_colors.get('bg_primary', 'NOT SET')}")
+            print(f"panel_bg: {theme_colors.get('panel_bg', 'NOT SET')}")
+            print(f"text_primary: {theme_colors.get('text_primary', 'NOT SET')}")
+            print(f"border: {theme_colors.get('border', 'NOT SET')}")
+            print(f"accent_primary: {theme_colors.get('accent_primary', 'NOT SET')}")
+            print("==============================\n")
+            
+            # Calculate alternate row color
+            panel_bg = theme_colors.get('panel_bg', '#f0f0f0')
+            panel_bg_alt = self._adjust_brightness(panel_bg)
+            
+            # Get other themed colors
+            text_primary = theme_colors.get('text_primary', '#000000')
+            border = theme_colors.get('border', '#dee2e6')
+            accent = theme_colors.get('accent_primary', '#1976d2')
+            bg_primary = theme_colors.get('bg_primary', '#ffffff')
+            
+            # Calculate button color with good contrast
+            # Check if theme is light or dark
+            bg_rgb = tuple(int(bg_primary.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
+            luminance = (0.299 * bg_rgb[0] + 0.587 * bg_rgb[1] + 0.114 * bg_rgb[2]) / 255
+            
+            if luminance > 0.5:
+                # Light theme - darken button background significantly for visibility
+                button_bg = self._adjust_brightness(bg_primary, 0.85)  # Much darker
+            else:
+                # Dark theme - lighten button background
+                button_bg = self._adjust_brightness(bg_primary, 1.15)
+            
+            print(f"Button background calculated: {button_bg} (from bg_primary {bg_primary}, luminance {luminance:.2f})")
+            
+            # Calculate hover/pressed colors
+            accent_hover = self._adjust_brightness(accent, 0.9)
+            button_hover = self._adjust_brightness(button_bg, 0.95)
 
-            # Only add minimal overrides for widgets AppSettings might miss
-            mel_overrides = f"""
-                /* MEL-specific panel styling */
-                QFrame[frameShape="4"] {{
-                    background-color: {theme_colors.get('panel_bg', '#253447')};
-                }}
-            """
+            # Apply base stylesheet first
+            self.setStyleSheet(base_stylesheet)
 
-            # Apply: base stylesheet + minimal overrides
-            self.setStyleSheet(base_stylesheet + mel_overrides)
-
+            # Now apply MEL-specific styling DIRECTLY to widgets to override AppSettings
+            # This ensures our styles take precedence
+            
+            # Style platform list
+            if hasattr(self, 'platform_list'):
+                self.platform_list.setStyleSheet(f"""
+                    QListWidget {{
+                        background-color: {bg_primary} !important;
+                        color: {text_primary} !important;
+                        border: 1px solid {border} !important;
+                        border-radius: 4px;
+                        padding: 2px;
+                    }}
+                    QListWidget::item {{
+                        padding: 5px;
+                        border-radius: 3px;
+                        color: {text_primary} !important;
+                    }}
+                    QListWidget::item:alternate {{
+                        background-color: {panel_bg_alt} !important;
+                    }}
+                    QListWidget::item:selected {{
+                        background-color: {accent} !important;
+                        color: #FFFFFF !important;
+                    }}
+                    QListWidget::item:hover {{
+                        background-color: {accent_hover} !important;
+                    }}
+                """)
+            
+            # Style game list
+            if hasattr(self, 'game_list'):
+                self.game_list.setStyleSheet(f"""
+                    QListWidget {{
+                        background-color: {bg_primary} !important;
+                        color: {text_primary} !important;
+                        border: 1px solid {border} !important;
+                        border-radius: 4px;
+                        padding: 2px;
+                    }}
+                    QListWidget::item {{
+                        padding: 5px;
+                        border-radius: 3px;
+                        color: {text_primary} !important;
+                    }}
+                    QListWidget::item:alternate {{
+                        background-color: {panel_bg_alt} !important;
+                    }}
+                    QListWidget::item:selected {{
+                        background-color: {accent} !important;
+                        color: #FFFFFF !important;
+                    }}
+                    QListWidget::item:hover {{
+                        background-color: {accent_hover} !important;
+                    }}
+                """)
+            
+            # Style display widget frame
+            if hasattr(self, 'display_widget') and hasattr(self.display_widget, 'display_frame'):
+                self.display_widget.display_frame.setStyleSheet(f"""
+                    QFrame {{
+                        background-color: {bg_primary} !important;
+                        border: 2px solid {border} !important;
+                        border-radius: 4px;
+                    }}
+                """)
+            
             # Apply titlebar colors
             self._apply_titlebar_colors()
-        #else:
-            # Fallback theme when AppSettings not available
-            #self._apply_log_theme_styling()
-            #self._apply_vertical_splitter_theme()
-            #self._apply_main_splitter_theme()
-            #self._apply_status_window_theme_styling()
-            #self._apply_file_list_window_theme_styling()
+            
+            # Style bottom control buttons for better visibility
+            self._style_control_buttons(button_bg, text_primary, accent, border)
+            
+            # Apply fonts from AppSettings to widgets
+            self._apply_fonts_to_widgets()
+        else:
+            # Fallback when AppSettings not available
+            self._apply_fallback_theme()
+    
+    def _apply_fonts_to_widgets(self): #vers 1
+        """Apply fonts from AppSettings to all widgets"""
+        if not hasattr(self, 'default_font'):
+            return
+        
+        print("\n=== Applying Fonts ===")
+        print(f"Default font: {self.default_font.family()} {self.default_font.pointSize()}pt")
+        print(f"Title font: {self.title_font.family()} {self.title_font.pointSize()}pt")
+        print(f"Panel font: {self.panel_font.family()} {self.panel_font.pointSize()}pt")
+        print(f"Button font: {self.button_font.family()} {self.button_font.pointSize()}pt")
+        
+        # Apply default font to main window
+        self.setFont(self.default_font)
+        
+        # Apply title font to titlebar
+        if hasattr(self, 'title_label'):
+            self.title_label.setFont(self.title_font)
+        
+        # Apply panel font to lists
+        if hasattr(self, 'platform_list'):
+            self.platform_list.setFont(self.panel_font)
+        if hasattr(self, 'game_list'):
+            self.game_list.setFont(self.panel_font)
+        
+        # Apply button font to all buttons
+        for btn in self.findChildren(QPushButton):
+            btn.setFont(self.button_font)
+        
+        print("✓ Fonts applied to widgets")
+        print("======================\n")
+    
+    def _style_control_buttons(self, button_bg, text_color, accent_color, border_color): #vers 1
+        """Style control buttons at bottom of display widget with proper contrast"""
+        button_style = f"""
+            QPushButton {{
+                background-color: {button_bg} !important;
+                color: {text_color} !important;
+                border: 2px solid {border_color} !important;
+                border-radius: 5px;
+                padding: 5px 10px;
+                font-weight: bold;
+                min-height: 28px;
+            }}
+            QPushButton:hover {{
+                background-color: {accent_color} !important;
+                color: #FFFFFF !important;
+                border-color: {accent_color} !important;
+            }}
+            QPushButton:pressed {{
+                background-color: {self._adjust_brightness(accent_color, 0.85)} !important;
+            }}
+            QPushButton:disabled {{
+                background-color: {self._adjust_brightness(button_bg, 1.1)} !important;
+                color: #888888 !important;
+            }}
+        """
+        
+        # Apply to all buttons in display widget
+        if hasattr(self, 'display_widget'):
+            for btn in self.display_widget.findChildren(QPushButton):
+                btn.setStyleSheet(button_style)
 
 
     def _apply_theme_not_found(self): #vers 5
@@ -2257,8 +2629,8 @@ class EmuLauncherGUI(QWidget): #vers 1
             self._apply_file_list_window_theme_styling()
 
 
-    def _apply_titlebar_colors(self): #vers 4
-        """Apply theme colors to titlebar elements - respects themed setting"""
+    def _apply_titlebar_colors(self): #vers 6
+        """Apply theme colors to titlebar elements - respects themed setting and detects light/dark"""
         if not self.app_settings:
             return
 
@@ -2270,36 +2642,72 @@ class EmuLauncherGUI(QWidget): #vers 1
             text_color = '#FFFFFF'
             bg_color = '#2c3e50'
             accent_color = '#3498db'
+            button_text_color = '#FFFFFF'
+            button_bg_color = '#3498db'
         else:
             # Use theme colors
             theme_colors = self._get_theme_colors("default")
             text_color = theme_colors.get('text_primary', '#000000')
             bg_color = theme_colors.get('panel_bg', '#ffffff')
             accent_color = theme_colors.get('accent', '#1976d2')
+            
+            # Detect if theme is light or dark based on background brightness
+            # Convert hex to RGB and calculate luminance
+            bg_rgb = tuple(int(bg_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
+            luminance = (0.299 * bg_rgb[0] + 0.587 * bg_rgb[1] + 0.114 * bg_rgb[2]) / 255
+            
+            print(f"\n=== Titlebar Button Colors ===")
+            print(f"Background luminance: {luminance:.2f}")
+            print(f"Theme colors used:")
+            print(f"  text_color: {text_color}")
+            print(f"  bg_color: {bg_color}")
+            print(f"  accent_color: {accent_color}")
+            
+            # Light theme (bright background): use dark buttons
+            # Dark theme (dark background): use light buttons
+            if luminance > 0.5:
+                # Light theme - use dark buttons for contrast
+                button_text_color = theme_colors.get('text_primary', '#2c3e50')
+                button_bg_color = theme_colors.get('button_normal', '#e0e0e0')
+                print(f"  Light theme detected")
+            else:
+                # Dark theme - use light buttons for contrast
+                button_text_color = '#FFFFFF'
+                button_bg_color = theme_colors.get('button_normal', '#404040')
+                print(f"  Dark theme detected")
+            
+            print(f"  button_text_color: {button_text_color}")
+            print(f"  button_bg_color: {button_bg_color}")
+            print("================================\n")
 
         # Apply to title label
         if hasattr(self, 'title_label'):
             self.title_label.setStyleSheet(f"""
                 QLabel {{
-                    color: {text_color};
-                    background-color: {bg_color};
+                    color: {text_color} !important;
+                    background-color: {bg_color} !important;
                     font-weight: bold;
                     padding: 5px;
                 }}
             """)
 
-        # Apply to titlebar buttons - ensure BOTH icons and backgrounds are visible
+        # Apply to titlebar buttons with !important to override AppSettings
         button_style = f"""
             QPushButton {{
-                background-color: {accent_color};
-                border: 1px solid {text_color};
+                background-color: {button_bg_color} !important;
+                border: 1px solid {button_text_color} !important;
                 border-radius: 3px;
-                color: {text_color};
+                color: {button_text_color} !important;
                 padding: 2px;
+                min-width: 30px;
+                max-width: 30px;
+                min-height: 30px;
+                max-height: 30px;
             }}
             QPushButton:hover {{
-                background-color: {text_color};
-                border-color: {accent_color};
+                background-color: {accent_color} !important;
+                border-color: {button_text_color} !important;
+                color: #FFFFFF !important;
             }}
         """
 
@@ -2691,8 +3099,41 @@ class EmuLauncherGUI(QWidget): #vers 1
         if hasattr(self, 'status_label'):
             self.status_label.setText(f"✓ Configuration saved for {game_name}")
 
+    def _show_load_core(self): #vers 1
+        """Show load core dialog"""
+        from apps.gui.load_core_dialog import LoadCoreDialog
 
-        def _save_config(self): #vers 1
+        if not self.core_launcher:
+            QMessageBox.warning(
+                self,
+                "Core Launcher Not Available",
+                "Core launcher system not initialized."
+            )
+            return
+
+        cores_dir = self.core_launcher.cores_dir
+
+        dialog = LoadCoreDialog(cores_dir, self)
+        dialog.exec()
+
+    def _on_core_loaded(self, core_name: str, core_path: str): #vers 1
+        """Handle core loaded from dialog"""
+        # Update status
+        if hasattr(self, 'status_label'):
+            self.status_label.setText(f"Loaded core: {core_name}")
+
+        # You can store this for next launch
+        self.preferred_core = core_name
+
+        QMessageBox.information(
+            self,
+            "Core Loaded",
+            f"Core loaded: {core_name}\n\n"
+            f"This core will be used for the next game launch.\n"
+            f"Or configure it per-game in Game Manager."
+        )
+
+    def _save_config(self): #vers 1
             """Save current MEL configuration"""
             from PyQt6.QtWidgets import QMessageBox
 
@@ -3617,29 +4058,45 @@ class EmuLauncherGUI(QWidget): #vers 1
                 self.main_window.log_message(f"Feature init error: {str(e)}")
 
 
-    def _is_on_draggable_area(self, pos): #vers 2
-        """Check if position is on draggable titlebar area - not on buttons"""
+    def _is_on_draggable_area(self, pos): #vers 4
+        """Check if position is on draggable titlebar area - not on buttons
+        
+        Returns True if position is on titlebar and not on any interactive widget
+        """
         if not hasattr(self, 'titlebar'):
+            print("DEBUG: No titlebar attribute found")
             return False
 
         titlebar_rect = self.titlebar.geometry()
+        
+        # Check if position is within titlebar bounds
         if not titlebar_rect.contains(pos):
+            print(f"DEBUG: Position {pos} not in titlebar rect {titlebar_rect}")
             return False
 
         # Convert position to titlebar coordinates
         titlebar_local_pos = self.titlebar.mapFrom(self, pos)
+        
+        print(f"DEBUG: Checking position - global: {pos}, local: {titlebar_local_pos}")
 
         # Check if clicking on any button - if so, not draggable
-        for widget in self.titlebar.findChildren(QPushButton):
-            if widget.geometry().contains(titlebar_local_pos):
+        buttons = self.titlebar.findChildren(QPushButton)
+        print(f"DEBUG: Found {len(buttons)} buttons in titlebar")
+        
+        for widget in buttons:
+            widget_rect = widget.geometry()
+            is_visible = widget.isVisible()
+            contains = widget_rect.contains(titlebar_local_pos)
+            print(f"  Button: visible={is_visible}, rect={widget_rect}, contains={contains}")
+            
+            if is_visible and contains:
+                print(f"DEBUG: Click on button - NOT draggable")
                 return False
 
-        # Check title label - draggable
-        for widget in self.titlebar.findChildren(QLabel):
-            if widget.geometry().contains(titlebar_local_pos):
-                return True
-
-        return True  # On empty stretch area, draggable
+        # If we're on the titlebar but not on a button, it's draggable
+        # This includes title label and empty space
+        print(f"DEBUG: On titlebar, not on button - IS draggable")
+        return True
 
 
     def _get_resize_corner(self, pos): #vers 1
@@ -4298,6 +4755,617 @@ class EmuLauncherGUI(QWidget): #vers 1
         painter.end()
 
         return QIcon(pixmap)
+
+
+    def _create_bitdepth_icon(self): #vers 3
+        """Create bit depth icon"""
+        svg_data = b'''<svg viewBox="0 0 24 24">
+            <path fill="currentColor"
+                d="M3,5H9V11H3V5M5,7V9H7V7H5M11,7H21V9H11V7M11,15H21V17H11V15M5,20L1.5,16.5L2.91,15.09L5,17.17L9.59,12.59L11,14L5,20Z"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_resize_icon(self): #vers 2
+        """Create resize icon"""
+        svg_data = b'''<svg viewBox="0 0 24 24">
+            <path fill="currentColor"
+                d="M10,21V19H6.41L10.91,14.5L9.5,13.09L5,17.59V14H3V21H10M14.5,10.91L19,6.41V10H21V3H14V5H17.59L13.09,9.5L14.5,10.91Z"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_warning_icon_svg(self): #vers 1
+        """Create SVG warning icon for table display"""
+        svg_data = b"""
+        <svg width="16" height="16" viewBox="0 0 16 16">
+            <path fill="#FFA500" d="M8 1l7 13H1z"/>
+            <text x="8" y="12" font-size="10" fill="black" text-anchor="middle">!</text>
+        </svg>
+        """
+        return QIcon(QPixmap.fromImage(
+            QImage.fromData(QByteArray(svg_data))
+        ))
+
+    def _create_resize_icon_a(self): #vers 1
+        """Resize grip icon - diagonal arrows"""
+        svg_data = b'''<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M14 6l-8 8M10 6h4v4M6 14v-4h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+
+    def _create_upscale_icon(self): #vers 3
+        """Create AI upscale icon - neural network style"""
+        svg_data = b'''<svg viewBox="0 0 24 24">
+            <!-- Neural network nodes -->
+            <circle cx="6" cy="6" r="2" fill="currentColor"/>
+            <circle cx="18" cy="6" r="2" fill="currentColor"/>
+            <circle cx="6" cy="18" r="2" fill="currentColor"/>
+            <circle cx="18" cy="18" r="2" fill="currentColor"/>
+            <circle cx="12" cy="12" r="2.5" fill="currentColor"/>
+
+            <!-- Connecting lines -->
+            <path d="M7.5 7.5 L10.5 10.5 M13.5 10.5 L16.5 7.5 M7.5 16.5 L10.5 13.5 M13.5 13.5 L16.5 16.5"
+                stroke="currentColor" stroke-width="1.5" fill="none"/>
+
+            <!-- Upward arrow overlay -->
+            <path d="M12 3 L12 9 M9 6 L12 3 L15 6"
+                stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_manage_icon(self): #vers 1
+        """Create manage/settings icon for bumpmap manager"""
+        svg_data = b'''<svg viewBox="0 0 24 24">
+            <!-- Gear/cog icon for management -->
+            <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" fill="none"/>
+            <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_paint_icon(self): #vers 1
+        """Create paint brush icon"""
+        svg_data = b'''<svg viewBox="0 0 24 24">
+            <path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25z"
+                fill="currentColor"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_compress_icon(self): #vers 2
+        """Create compress icon"""
+        svg_data = b'''<svg viewBox="0 0 24 24">
+            <path fill="currentColor"
+                d="M4,2H20V4H13V10H20V12H4V10H11V4H4V2M4,13H20V15H13V21H20V23H4V21H11V15H4V13Z"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_build_icon(self): #vers 1
+        """Create build/construct icon"""
+        svg_data = b'''<svg viewBox="0 0 24 24">
+            <path d="M22,9 L12,2 L2,9 L12,16 L22,9 Z M12,18 L4,13 L4,19 L12,24 L20,19 L20,13 L12,18 Z"
+                fill="currentColor"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_uncompress_icon(self): #vers 2
+        """Create uncompress icon"""
+        svg_data = b'''<svg viewBox="0 0 24 24">
+            <path fill="currentColor" d="M11,4V2H13V4H11M13,21V19H11V21H13M4,12V10H20V12H4Z"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_view_icon(self): #vers 2
+        """Create view/eye icon"""
+        svg_data = b'''<svg viewBox="0 0 24 24">
+            <path fill="currentColor"
+                d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9
+                    M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17
+                    M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5
+                    C17,19.5 21.27,16.39 23,12
+                    C21.27,7.61 17,4.5 12,4.5Z"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_add_icon(self): #vers 2
+        """Create add/plus icon"""
+        svg_data = b'''<svg viewBox="0 0 24 24">
+            <path fill="currentColor" d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_delete_icon(self): #vers 2
+        """Create delete/minus icon"""
+        svg_data = b'''<svg viewBox="0 0 24 24">
+            <path fill="currentColor" d="M19,13H5V11H19V13Z"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_color_picker_icon(self): #vers 1
+        """Color picker icon"""
+        svg_data = b'''<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="2"/>
+            <path d="M10 3v4M10 13v4M3 10h4M13 10h4" stroke="currentColor" stroke-width="2"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_zoom_in_icon(self): #vers 1
+        """Zoom in icon (+)"""
+        svg_data = b'''<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="2"/>
+            <path d="M8 5v6M5 8h6" stroke="currentColor" stroke-width="2"/>
+            <path d="M13 13l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_zoom_out_icon(self): #vers 1
+        """Zoom out icon (-)"""
+        svg_data = b'''<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="2"/>
+            <path d="M5 8h6" stroke="currentColor" stroke-width="2"/>
+            <path d="M13 13l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_reset_icon(self): #vers 1
+        """Reset/1:1 icon"""
+        svg_data = b'''<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M16 10A6 6 0 1 1 4 10M4 10l3-3m-3 3l3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_fit_icon(self): #vers 1
+        """Fit to window icon"""
+        svg_data = b'''<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="3" y="3" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"/>
+            <path d="M7 7l6 6M13 7l-6 6" stroke="currentColor" stroke-width="2"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_arrow_up_icon(self): #vers 1
+        """Arrow up"""
+        svg_data = b'''<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M8 3v10M4 7l4-4 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=16)
+
+    def _create_arrow_down_icon(self): #vers 1
+        """Arrow down"""
+        svg_data = b'''<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M8 13V3M12 9l-4 4-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=16)
+
+    def _create_arrow_left_icon(self): #vers 1
+        """Arrow left"""
+        svg_data = b'''<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 8h10M7 4L3 8l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=16)
+
+    def _create_arrow_right_icon(self): #vers 1
+        """Arrow right"""
+        svg_data = b'''<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M13 8H3M9 12l4-4-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=16)
+
+    def _create_flip_vert_icon(self): #vers 1
+        """Create vertical flip SVG icon"""
+        from PyQt6.QtGui import QIcon, QPixmap, QPainter
+        from PyQt6.QtSvg import QSvgRenderer
+
+        svg_data = b'''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 12h18M8 7l-4 5 4 5M16 7l4 5-4 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>'''
+
+        return self._svg_to_icon(svg_data)
+
+    def _create_flip_horz_icon(self): #vers 1
+        """Create horizontal flip SVG icon"""
+        from PyQt6.QtGui import QIcon, QPixmap, QPainter
+        from PyQt6.QtSvg import QSvgRenderer
+
+        svg_data = b'''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 3v18M7 8l5-4 5 4M7 16l5 4 5-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>'''
+
+        return self._svg_to_icon(svg_data)
+
+    def _create_rotate_cw_icon(self): #vers 1
+        """Create clockwise rotation SVG icon"""
+        svg_data = b'''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M21 12a9 9 0 11-9-9v6M21 3l-3 6-6-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>'''
+
+        return self._svg_to_icon(svg_data)
+
+    def _create_rotate_ccw_icon(self): #vers 1
+        """Create counter-clockwise rotation SVG icon"""
+        svg_data = b'''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 12a9 9 0 109-9v6M3 3l3 6 6-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>'''
+
+        return self._svg_to_icon(svg_data)
+
+    def _create_copy_icon(self): #vers 1
+        """Create copy SVG icon"""
+        svg_data = b'''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2"/>
+            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="2"/>
+        </svg>'''
+
+        return self._svg_to_icon(svg_data)
+
+    def _create_paste_icon(self): #vers 1
+        """Create paste SVG icon"""
+        svg_data = b'''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2" stroke="currentColor" stroke-width="2"/>
+            <rect x="8" y="2" width="8" height="4" rx="1" stroke="currentColor" stroke-width="2"/>
+        </svg>'''
+
+        return self._svg_to_icon(svg_data)
+
+    def _create_edit_icon(self): #vers 1
+        """Create edit SVG icon"""
+        svg_data = b'''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" stroke-width="2"/>
+            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2"/>
+        </svg>'''
+
+        return self._svg_to_icon(svg_data)
+
+    def _create_convert_icon(self): #vers 1
+        """Create convert SVG icon"""
+        svg_data = b'''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 12h18M3 12l4-4M3 12l4 4M21 12l-4-4M21 12l-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+        </svg>'''
+
+        return self._svg_to_icon(svg_data)
+
+    def _create_undo_icon_a(self): #vers 2
+        """Undo - Curved arrow icon"""
+        svg_data = b'''<svg viewBox="0 0 24 24">
+            <path d="M3 7v6h6M3 13a9 9 0 1018 0 9 9 0 00-18 0z"
+                stroke="currentColor" stroke-width="2" fill="none"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_info_icon_a(self): #vers 1
+        """Info - circle with 'i' icon"""
+        svg_data = b'''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+            <path d="M12 11v6M12 8v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data)
+
+    def _create_folder_icon_a(self): #vers 1
+        """Open IMG - Folder icon"""
+        svg_data = b'''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-7l-2-2H5a2 2 0 00-2 2z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data)
+
+    def _create_file_icon_a(self): #vers 1
+        """Open TXD - File icon"""
+        svg_data = b'''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="currentColor" stroke-width="2"/>
+            <path d="M14 2v6h6" stroke="currentColor" stroke-width="2"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data)
+
+    def _create_save_icon_a(self): #vers 1
+        """Save TXD - Floppy disk icon"""
+        svg_data = b'''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" stroke="currentColor" stroke-width="2"/>
+            <path d="M17 21v-8H7v8M7 3v5h8" stroke="currentColor" stroke-width="2"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data)
+
+    def _create_import_icon(self): #vers 1
+        """Import - Download/Import icon"""
+        svg_data = b'''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data)
+
+    def _create_export_icon(self): #vers 1
+        """Export - Upload/Export icon"""
+        svg_data = b'''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data)
+
+    def _create_package_icon(self): #vers 1
+        """Export All - Package/Box icon"""
+        svg_data = b'''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" stroke="currentColor" stroke-width="2"/>
+            <path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12" stroke="currentColor" stroke-width="2"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data)
+
+    def _create_properties_icon_a(self): #vers 1
+        """Properties - Info/Details icon"""
+        svg_data = b'''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+            <path d="M12 16v-4M12 8h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data)
+
+    # CONTEXT MENU ICONS
+
+    def _create_plus_icon(self): #vers 1
+        """Create New Entry - Plus icon"""
+        svg_data = b'''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+            <path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data)
+
+    def _create_document_icon(self): #vers 1
+        """Create New TXD - Document icon"""
+        svg_data = b'''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="currentColor" stroke-width="2"/>
+            <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" stroke-width="2"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data)
+
+    def _create_filter_icon(self): #vers 1
+        """Filter/sliders icon"""
+        svg_data = b'''<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="6" cy="4" r="2" fill="currentColor"/>
+            <rect x="5" y="8" width="2" height="8" fill="currentColor"/>
+            <circle cx="14" cy="12" r="2" fill="currentColor"/>
+            <rect x="13" y="4" width="2" height="6" fill="currentColor"/>
+            <circle cx="10" cy="8" r="2" fill="currentColor"/>
+            <rect x="9" y="12" width="2" height="4" fill="currentColor"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_add_icon_a(self): #vers 1
+        """Add/plus icon"""
+        svg_data = b'''<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_trash_icon(self): #vers 1
+        """Delete/trash icon"""
+        svg_data = b'''<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 5h14M8 5V3h4v2M6 5v11a1 1 0 001 1h6a1 1 0 001-1V5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_filter_icon(self): #vers 1
+        """Filter/sliders icon"""
+        svg_data = b'''<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="6" cy="4" r="2" fill="currentColor"/>
+            <rect x="5" y="8" width="2" height="8" fill="currentColor"/>
+            <circle cx="14" cy="12" r="2" fill="currentColor"/>
+            <rect x="13" y="4" width="2" height="6" fill="currentColor"/>
+            <circle cx="10" cy="8" r="2" fill="currentColor"/>
+            <rect x="9" y="12" width="2" height="4" fill="currentColor"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_delete_icon_a(self): #vers 1
+        """Delete/trash icon"""
+        svg_data = b'''<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 5h14M8 5V3h4v2M6 5v11a1 1 0 001 1h6a1 1 0 001-1V5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_duplicate_icon(self): #vers 1
+        """Duplicate/copy icon"""
+        svg_data = b'''<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="6" y="6" width="10" height="10" stroke="currentColor" stroke-width="2" fill="none"/>
+            <path d="M4 4h8v2H6v8H4V4z" fill="currentColor"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_create_icon(self): #vers 1
+        """Create/new icon"""
+        svg_data = b'''<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_filter_icon(self): #vers 1
+        """Filter/sliders icon"""
+        svg_data = b'''<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="6" cy="4" r="2" fill="currentColor"/>
+            <rect x="5" y="8" width="2" height="8" fill="currentColor"/>
+            <circle cx="14" cy="12" r="2" fill="currentColor"/>
+            <rect x="13" y="4" width="2" height="6" fill="currentColor"/>
+            <circle cx="10" cy="8" r="2" fill="currentColor"/>
+            <rect x="9" y="12" width="2" height="4" fill="currentColor"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_pencil_icon(self): #vers 1
+        """Edit - Pencil icon"""
+        svg_data = b'''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke="currentColor" stroke-width="2"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data)
+
+
+    def _create_trash_icon_a(self): #vers 1
+        """Delete - Trash icon"""
+        svg_data = b'''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data)
+
+    def _create_check_icon(self): #vers 2
+        """Create check/verify icon - document with checkmark"""
+        svg_data = b'''<svg viewBox="0 0 24 24">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"
+                fill="none" stroke="currentColor" stroke-width="2"/>
+            <path d="M14 2v6h6"
+                stroke="currentColor" stroke-width="2" fill="none"/>
+            <path d="M9 13l2 2 4-4"
+                stroke="currentColor" stroke-width="2" fill="none"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_eye_icon(self): #vers 1
+        """View - Eye icon"""
+        svg_data = b'''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="2"/>
+            <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data)
+
+
+    def _create_list_icon(self): #vers 1
+        """Properties List - List icon"""
+        svg_data = b'''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data)
+
+    # WINDOW CONTROL ICONS
+
+    def _create_minimize_icon_a(self): #vers 1
+        """Minimize - Horizontal line"""
+        svg_data = b'''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data)
+
+
+    def _create_maximize_icon_a(self): #vers 1
+        """Maximize - Square"""
+        svg_data = b'''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokea-width="2"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data)
+
+
+    def _create_close_icon_a(self): #vers 1
+        """Close - X icon"""
+        svg_data = b'''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data)
+
+    def _create_settings_icon_a(self): #vers 1
+        """Settings/gear icon"""
+        svg_data = b'''<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="2"/>
+            <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.93 4.93l1.41 1.41M13.66 13.66l1.41 1.41M4.93 15.07l1.41-1.41M13.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_minimize_b_icon(self): #vers 1
+        """Minimize - Horizontal line icon"""
+        svg_data = b'''<svg viewBox="0 0 24 24">
+            <line x1="5" y1="12" x2="19" y2="12"
+                stroke="currentColor" stroke-width="2"
+                stroke-linecap="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_maximize_b_icon(self): #vers 1
+        """Maximize - Square icon"""
+        svg_data = b'''<svg viewBox="0 0 24 24">
+            <rect x="5" y="5" width="14" height="14"
+                stroke="currentColor" stroke-width="2"
+                fill="none" rx="2"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_close_icon_b(self): #vers 1
+        """Close - X icon"""
+        svg_data = b'''<svg viewBox="0 0 24 24">
+            <line x1="6" y1="6" x2="18" y2="18"
+                stroke="currentColor" stroke-width="2"
+                stroke-linecap="round"/>
+            <line x1="18" y1="6" x2="6" y2="18"
+                stroke="currentColor" stroke-width="2"
+                stroke-linecap="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_add_icon_b(self): #vers 1
+        """Add - Plus icon"""
+        svg_data = b'''<svg viewBox="0 0 24 24">
+            <line x1="12" y1="5" x2="12" y2="19"
+                stroke="currentColor" stroke-width="2"
+                stroke-linecap="round"/>
+            <line x1="5" y1="12" x2="19" y2="12"
+                stroke="currentColor" stroke-width="2"
+                stroke-linecap="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_delete_icon_b(self): #vers 1
+        """Delete - Trash icon"""
+        svg_data = b'''<svg viewBox="0 0 24 24">
+            <polyline points="3 6 5 6 21 6"
+                    stroke="currentColor" stroke-width="2"
+                    fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"
+                stroke="currentColor" stroke-width="2"
+                fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_import_icon_a(self): #vers 1
+        """Import - Download arrow icon"""
+        svg_data = b'''<svg viewBox="0 0 24 24">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"
+                stroke="currentColor" stroke-width="2"
+                fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <polyline points="7 10 12 15 17 10"
+                    stroke="currentColor" stroke-width="2"
+                    fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <line x1="12" y1="15" x2="12" y2="3"
+                stroke="currentColor" stroke-width="2"
+                stroke-linecap="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_export_icon_a(self): #vers 1
+        """Export - Upload arrow icon"""
+        svg_data = b'''<svg viewBox="0 0 24 24">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"
+                stroke="currentColor" stroke-width="2"
+                fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <polyline points="17 8 12 3 7 8"
+                    stroke="currentColor" stroke-width="2"
+                    fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <line x1="12" y1="3" x2="12" y2="15"
+                stroke="currentColor" stroke-width="2"
+                stroke-linecap="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_checkerboard_icon(self): #vers 1
+        """Create checkerboard pattern icon"""
+        svg_data = b'''<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="0" y="0" width="5" height="5" fill="currentColor"/>
+            <rect x="5" y="5" width="5" height="5" fill="currentColor"/>
+            <rect x="10" y="0" width="5" height="5" fill="currentColor"/>
+            <rect x="15" y="5" width="5" height="5" fill="currentColor"/>
+            <rect x="0" y="10" width="5" height="5" fill="currentColor"/>
+            <rect x="5" y="15" width="5" height="5" fill="currentColor"/>
+            <rect x="10" y="10" width="5" height="5" fill="currentColor"/>
+            <rect x="15" y="15" width="5" height="5" fill="currentColor"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
+
+    def _create_undo_icon(self): #vers 2
+        """Undo - Curved arrow icon"""
+        svg_data = b'''<svg viewBox="0 0 24 24">
+            <path d="M3 7v6h6M3 13a9 9 0 1018 0 9 9 0 00-18 0z"
+                stroke="currentColor" stroke-width="2" fill="none"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>'''
+        return self._svg_to_icon(svg_data, size=20)
 
     def _svg_to_icon(self, svg_data, size=24): #vers 2
         """Convert SVG data to QIcon with theme color support"""

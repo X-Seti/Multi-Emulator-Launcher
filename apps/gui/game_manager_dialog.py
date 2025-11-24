@@ -24,6 +24,9 @@ from PyQt6.QtGui import QFont
 # load_game_config
 # save_game_config
 # _apply_config
+# _browse_bios
+# _browse_core
+# _browse_working_dir
 # _create_core_tab
 # _create_launch_tab
 # _create_ui
@@ -31,6 +34,7 @@ from PyQt6.QtGui import QFont
 # _load_config_for_game
 # _on_game_selected
 # _save_current_config
+# _test_launch
 
 ##class GameConfig -
 # __init__
@@ -208,6 +212,19 @@ class GameManagerDialog(QDialog): #vers 1
         self.core_combo = QComboBox()
         self.core_combo.addItem("(Auto-detect)", None)
         core_layout.addRow("Core:", self.core_combo)
+        
+        # Browse Core button
+        browse_core_layout = QHBoxLayout()
+        self.core_path_edit = QLineEdit()
+        self.core_path_edit.setReadOnly(True)
+        self.core_path_edit.setPlaceholderText("Or browse for core file...")
+        browse_core_layout.addWidget(self.core_path_edit)
+        
+        browse_core_btn = QPushButton("Browse Core...")
+        browse_core_btn.clicked.connect(self._browse_core)
+        browse_core_layout.addWidget(browse_core_btn)
+        
+        core_layout.addRow("Custom:", browse_core_layout)
         
         # Core info
         self.core_info = QTextEdit()
@@ -405,6 +422,92 @@ class GameManagerDialog(QDialog): #vers 1
             f"Would launch: {self.current_game}\n"
             f"Core: {self.core_combo.currentData() or 'Auto'}\n"
             f"Args: {self.custom_args.text()}"
+        )
+    
+    def _browse_core(self): #vers 1
+        """Browse for core file"""
+        from PyQt6.QtWidgets import QFileDialog
+        
+        # Determine file filter based on OS
+        import platform
+        system = platform.system()
+        
+        if system == "Windows":
+            filter_str = "Core Files (*.dll);;All Files (*)"
+            extension = ".dll"
+        elif system == "Darwin":  # macOS
+            filter_str = "Core Files (*.dylib);;All Files (*)"
+            extension = ".dylib"
+        else:  # Linux
+            filter_str = "Core Files (*.so);;All Files (*)"
+            extension = ".so"
+        
+        # Start in cores directory
+        start_dir = str(self.core_launcher.cores_dir)
+        
+        filename, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select Core File",
+            start_dir,
+            filter_str
+        )
+        
+        if not filename:
+            return
+        
+        core_path = Path(filename)
+        
+        # Validate it's a core file
+        if not core_path.exists():
+            QMessageBox.warning(
+                self,
+                "Invalid File",
+                "Selected file does not exist."
+            )
+            return
+        
+        if core_path.suffix not in ['.so', '.dll', '.dylib']:
+            QMessageBox.warning(
+                self,
+                "Invalid Core",
+                f"Selected file does not appear to be a core file.\n\n"
+                f"Expected extension: {extension}\n"
+                f"Got: {core_path.suffix}"
+            )
+            return
+        
+        # Extract core name from filename
+        # e.g., "puae_libretro.so" -> "puae"
+        core_filename = core_path.stem
+        if "_libretro" in core_filename:
+            core_name = core_filename.replace("_libretro", "")
+        else:
+            core_name = core_filename
+        
+        # Update UI
+        self.core_path_edit.setText(str(core_path))
+        
+        # Update core info
+        self.core_info.setHtml(
+            f"<b>Custom Core Selected:</b><br>"
+            f"Name: {core_name}<br>"
+            f"Path: {core_path}<br>"
+            f"Size: {core_path.stat().st_size / 1024:.1f} KB"
+        )
+        
+        # Add to combo if not already there
+        index = self.core_combo.findData(core_name)
+        if index < 0:
+            self.core_combo.addItem(f"{core_name} (custom)", core_name)
+            index = self.core_combo.count() - 1
+        
+        self.core_combo.setCurrentIndex(index)
+        
+        QMessageBox.information(
+            self,
+            "Core Loaded",
+            f"Loaded core: {core_name}\n\n"
+            f"This core will be saved with the game configuration."
         )
     
     def _browse_bios(self): #vers 1
