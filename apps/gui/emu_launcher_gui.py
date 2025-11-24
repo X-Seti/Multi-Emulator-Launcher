@@ -9,6 +9,9 @@ Clean version: No hardcoded colors, uses AppSettings theme system
 """
 
 #TODO - Artwork comes with RetroArch - if retroarch is installed, borrow the artwork from that, to replace the thumbnails and display window cover art.
+#TODO - Fix the icons in the svg section, so we can uncomment the SVG icons in the right panel.
+#TODO - #ccd2cc hex appears in the buttom right button background.
+#TODO - All SVG icons should be theme aware, Dark on light themes, Light on dark themes.
 
 #Changelog
 
@@ -170,7 +173,7 @@ base_dir = "config/"
 
 # PyQt6 imports
 from PyQt6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QSplitter, QListWidget, QListWidgetItem, QLabel, QPushButton, QFrame, QTabWidget, QGroupBox, QFormLayout, QDialog, QMessageBox, QTextBrowser)
-from PyQt6.QtWidgets import (QApplication, QSlider, QCheckBox,
+from PyQt6.QtWidgets import (QApplication, QSlider, QCheckBox, QTreeWidget,
     QWidget, QVBoxLayout, QHBoxLayout, QSplitter, QListWidget, QDialog, QFormLayout, QSpinBox,  QListWidgetItem, QLabel, QPushButton, QFrame, QFileDialog, QLineEdit, QTextEdit, QMessageBox, QScrollArea, QGroupBox, QTableWidget, QTableWidgetItem, QColorDialog, QHeaderView, QAbstractItemView, QMenu, QComboBox, QInputDialog, QTabWidget, QDoubleSpinBox, QRadioButton
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QSize, QPoint, QRect, QByteArray
@@ -590,13 +593,16 @@ class EmulatorDisplayWidget(QWidget): #vers 4
 
         # Launch button
         self.launch_btn = QPushButton("Launch Game")
+        #self.launch_btn.setIcon(SVGIconFactory._create_launch_icon())
+        self.launch_btn.setText("Launch Game")
         self.launch_btn.setMinimumHeight(30)
         self.launch_btn.setEnabled(False)
+        self.launch_btn.setToolTip("Launch emulator")
         if self.main_window:
             self.launch_btn.clicked.connect(self.main_window._on_launch_game)
         button_layout.addWidget(self.launch_btn)
 
-        self.load_core_btn = QPushButton()
+        self.load_core_btn = QPushButton("Load Core")
         self.load_core_btn.setIcon(SVGIconFactory.folder_icon())
         self.load_core_btn.setText("Load Core")
         self.load_core_btn.setIconSize(QSize(20, 20))
@@ -607,6 +613,8 @@ class EmulatorDisplayWidget(QWidget): #vers 4
 
         # Art manager
         self.gameart_btn = QPushButton("Art Manager")
+        #self.gameart_btn.setIcon(SVGIconFactory._create_paint_icon())
+        self.gameart_btn.setText("Art Library")
         self.gameart_btn.setMinimumHeight(30)
         if self.main_window:
             self.gameart_btn.clicked.connect(self.main_window._download_game_artwork)
@@ -616,6 +624,8 @@ class EmulatorDisplayWidget(QWidget): #vers 4
 
         # Games manager
         self.manage_btn = QPushButton("Game Manager")
+        #self.manage_btn.setIcon(SVGIconFactory._create_manage_icon())
+        self.manage_btn.setText("Game Manager")
         self.manage_btn.setMinimumHeight(30)
         if self.main_window:
             self.manage_btn.clicked.connect(self.main_window._show_game_manager)
@@ -623,6 +633,8 @@ class EmulatorDisplayWidget(QWidget): #vers 4
 
         # Games ports list. Same game shown on different systems
         self.ports_btn = QPushButton("Game Ports")
+        #self.ports_btn.setIcon(SVGIconFactory._create_package_icon())
+        self.ports_btn.setText("Game Ports")
         self.ports_btn.setMinimumHeight(30)
         if self.main_window:
             self.ports_btn.clicked.connect(self.main_window._show_ports_manager)
@@ -630,6 +642,8 @@ class EmulatorDisplayWidget(QWidget): #vers 4
 
         # Stop button
         self.stop_btn = QPushButton("Stop")
+        #self.stop_btn.setIcon(SVGIconFactory._create_stop_icon())
+        self.stop_btn.setText("Stop")
         self.stop_btn.setMinimumHeight(30)
         if self.main_window:
             self.stop_btn.clicked.connect(self.main_window._on_stop_emulation)
@@ -637,6 +651,7 @@ class EmulatorDisplayWidget(QWidget): #vers 4
 
         main_layout.addWidget(button_frame)
     
+
     def show_title_artwork(self, pixmap): #vers 2
         """Display title artwork
         
@@ -662,6 +677,7 @@ class EmulatorDisplayWidget(QWidget): #vers 4
             self.title_artwork_label.setText("No title artwork")
             self.title_artwork_label.setStyleSheet("font-size: 14pt; padding: 50px;")
     
+
     def _show_welcome_message(self): #vers 1
         """Show welcome message in display panel"""
         welcome_html = """
@@ -692,6 +708,7 @@ class EmulatorDisplayWidget(QWidget): #vers 4
         self.title_artwork_label.setWordWrap(True)
         self.title_artwork_label.setStyleSheet("background-color: transparent; padding: 30px;")
     
+
     def clear_welcome_message(self): #vers 1
         """Clear welcome message when games are loaded"""
         # Only clear if showing welcome (check for HTML content)
@@ -699,7 +716,8 @@ class EmulatorDisplayWidget(QWidget): #vers 4
             self.title_artwork_label.clear()
             self.title_artwork_label.setTextFormat(Qt.TextFormat.PlainText)
             self.title_artwork_label.setStyleSheet("")
-        
+
+
     def _create_control_buttons(self): #vers 2
         """Create bottom control buttons"""
         controls_frame = QFrame()
@@ -726,6 +744,7 @@ class EmulatorDisplayWidget(QWidget): #vers 4
         layout.addWidget(stop_btn)
 
         return controls_frame
+
     
     def enable_launch_buttons(self, enabled=True): #vers 1
         """Enable/disable launch buttons"""
@@ -733,6 +752,7 @@ class EmulatorDisplayWidget(QWidget): #vers 4
             self.launch_btn.setEnabled(enabled)
         if hasattr(self, 'quick_launch_btn'):
             self.quick_launch_btn.setEnabled(enabled)
+
 
     def _on_launch_clicked(self): #vers 1
         """Handle launch button click"""
@@ -1041,7 +1061,7 @@ class EmuLauncherGUI(QWidget): #vers 1
         self.settings_btn.setFont(self.button_font)
         self.settings_btn.setIcon(SVGIconFactory.settings_icon())
         self.settings_btn.setText("Settings")
-        self.settings_btn.setIconSize(QSize(20, 20))
+        self.settings_btn.setIconSize(QSize(30, 30))
         self.settings_btn.setToolTip("Settings")
         self.settings_btn.clicked.connect(self._open_mel_settings)
         self.settings_btn.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -1064,7 +1084,7 @@ class EmuLauncherGUI(QWidget): #vers 1
         self.scan_roms_btn.setFont(self.button_font)
         self.scan_roms_btn.setIcon(SVGIconFactory.folder_icon())
         self.scan_roms_btn.setText("Scan ROMs")
-        self.scan_roms_btn.setIconSize(QSize(20, 20))
+        self.scan_roms_btn.setIconSize(QSize(30, 30))
         self.scan_roms_btn.setToolTip("Scan for ROM files")
         self.scan_roms_btn.clicked.connect(self._scan_roms)
 
@@ -1078,7 +1098,7 @@ class EmuLauncherGUI(QWidget): #vers 1
         self.save_btn.setFont(self.button_font)
         self.save_btn.setIcon(SVGIconFactory.save_icon())
         self.save_btn.setText("Save Config")
-        self.save_btn.setIconSize(QSize(20, 20))
+        self.save_btn.setIconSize(QSize(30, 30))
         self.save_btn.setToolTip("Save Configuration")
         #self.save_btn.clicked.connect(self._save_config) bug
         self.layout.addWidget(self.save_btn)
@@ -1088,7 +1108,7 @@ class EmuLauncherGUI(QWidget): #vers 1
         self.controller_btn.setFont(self.button_font)
         self.controller_btn.setIcon(SVGIconFactory.controller_icon())
         self.controller_btn.setText("Setup Controller")
-        self.controller_btn.setIconSize(QSize(20, 20))
+        self.controller_btn.setIconSize(QSize(30, 30))
         self.controller_btn.setToolTip("Configure Controller")
         self.controller_btn.clicked.connect(self._setup_controller)  # WIRE IT
         self.layout.addWidget(self.controller_btn)
@@ -1099,7 +1119,7 @@ class EmuLauncherGUI(QWidget): #vers 1
         info_btn = QPushButton()
         info_btn.setIcon(self._create_info_icon())
         info_btn.setFixedSize(35, 35)
-        info_btn.setIconSize(QSize(20, 20))
+        info_btn.setIconSize(QSize(30, 30))
         info_btn.setToolTip("Information")
         info_btn.clicked.connect(self._show_about_dialog)  # ADD THIS LINE
         self.layout.addWidget(info_btn)
@@ -1109,7 +1129,6 @@ class EmuLauncherGUI(QWidget): #vers 1
         self.properties_btn.setText("")
         self.properties_btn = QPushButton()
         self.properties_btn.setFont(self.button_font)
-        #self.properties_btn.setIcon(self._create_info_icon())
         self.properties_btn.setIcon(self._create_properties_icon())
         self.properties_btn.setToolTip("Theme")
         self.properties_btn.setFixedSize(35, 35)
@@ -1120,7 +1139,7 @@ class EmuLauncherGUI(QWidget): #vers 1
 
         # Minimize button
         self.minimize_btn = QPushButton()
-        self.minimize_btn.setIcon(self._create_minimize_icon())
+        self.minimize_btn.setIcon(self._create_minimize_icon_a())
         self.minimize_btn.setFixedSize(35, 35)
         self.minimize_btn.clicked.connect(self.showMinimized)
         self.minimize_btn.setToolTip("Minimize")
@@ -1128,7 +1147,7 @@ class EmuLauncherGUI(QWidget): #vers 1
 
         # Maximize button
         self.maximize_btn = QPushButton()
-        self.maximize_btn.setIcon(self._create_maximize_icon())
+        self.maximize_btn.setIcon(self._create_maximize_icon_a())
         self.maximize_btn.setFixedSize(35, 35)
         self.maximize_btn.clicked.connect(self._toggle_maximize)
         self.maximize_btn.setToolTip("Maximize")
@@ -1136,7 +1155,7 @@ class EmuLauncherGUI(QWidget): #vers 1
 
         # Close button
         self.close_btn = QPushButton()
-        self.close_btn.setIcon(self._create_close_icon())
+        self.close_btn.setIcon(self._create_close_icon_b())
         self.close_btn.setFixedSize(35, 35)
         self.close_btn.clicked.connect(self.close)
         self.close_btn.setToolTip("Close")
@@ -4453,7 +4472,7 @@ class EmuLauncherGUI(QWidget): #vers 1
         self.window_closed.emit()
         event.accept()
 
-# - Create
+# - SVG ICONS -- Section.
 
     def _create_properties_icon(self): #vers 1
         """Create settings (gear) icon"""
@@ -5137,7 +5156,7 @@ class EmuLauncherGUI(QWidget): #vers 1
         </svg>'''
         return self._svg_to_icon(svg_data, size=20)
 
-    def _create_filter_icon(self): #vers 1
+    def _create_filter_icon_a(self): #vers 1
         """Filter/sliders icon"""
         svg_data = b'''<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
             <circle cx="6" cy="4" r="2" fill="currentColor"/>
@@ -5171,7 +5190,7 @@ class EmuLauncherGUI(QWidget): #vers 1
         </svg>'''
         return self._svg_to_icon(svg_data, size=20)
 
-    def _create_filter_icon(self): #vers 1
+    def _create_filter_icon_c(self): #vers 1
         """Filter/sliders icon"""
         svg_data = b'''<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
             <circle cx="6" cy="4" r="2" fill="currentColor"/>

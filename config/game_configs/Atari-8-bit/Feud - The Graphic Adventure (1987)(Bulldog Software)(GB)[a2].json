@@ -1,0 +1,10 @@
+{
+  "platform": "Atari-8-bit",
+  "game": "Feud - The Graphic Adventure (1987)(Bulldog Software)(GB)[a2]",
+  "core": "atari800",
+  "custom_args": "",
+  "working_dir": "",
+  "fullscreen": false,
+  "auto_load_save": false,
+  "maintain_aspect": true
+}
