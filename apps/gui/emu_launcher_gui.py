@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-#this belongs in apps/gui/emu_launcher_gui.py - Version: 20
+#this belongs in apps/gui/emu_launcher_gui.py - Version: 21
 # X-Seti - November24 2025 - Multi-Emulator Launcher - Main GUI
 
 """
@@ -12,6 +12,11 @@ Main window with 3-panel layout for emulator management
 #TODO - Controller layout models, Playstation 4, 5, X-Box, Generic Layouts.
 
 #Changelog
+
+#November27 v18 - Button Visibility and Font Support
+#- Move window functionality is fixed
+#- Controller layout models, Playstation 4, 5, X-Box, Generic Layouts added
+#-
 
 #November26 v17 - Button Visibility and Font Support
 #- Fixed the icons in the svg section, now in their own file..
@@ -190,7 +195,8 @@ from apps.methods.platform_scanner import PlatformScanner
 from apps.methods.platform_icons import PlatformIcons
 from apps.methods.artwork_loader import ArtworkLoader
 from apps.gui.mel_settings_dialog import MELSettingsDialog
-from apps.utils.mel_settings_manager import MELSettingsManager
+from apps.gui.mel_settings_manager import MELSettingsManager
+from apps.utils.debug_logger import debug, info, warning, error, verbose, init_logger
 from apps.gui.game_manager_dialog import GameManagerDialog, GameConfig
 from apps.gui.ports_manager_dialog import PortsManagerDialog
 from apps.gui.load_core_dialog import LoadCoreDialog
@@ -679,7 +685,7 @@ class EmulatorDisplayWidget(QWidget): #vers 4
         self.launch_btn = QPushButton("Launch Game")
         self.launch_btn.setIcon(SVGIconFactory.launch_icon(20, icon_color))
         self.launch_btn.setIconSize(QSize(20, 20))
-        self.launch_btn.setMinimumHeight(35)
+        self.launch_btn.setMinimumHeight(30)
         self.launch_btn.setToolTip("Launch Emulator")
         self.launch_btn.setEnabled(False)  # Start disabled
         if self.main_window:
@@ -690,7 +696,7 @@ class EmulatorDisplayWidget(QWidget): #vers 4
         self.load_core_btn = QPushButton("Load Core")
         self.load_core_btn.setIcon(SVGIconFactory.folder_icon(20, icon_color))
         self.load_core_btn.setIconSize(QSize(20, 20))
-        self.load_core_btn.setMinimumHeight(35)
+        self.load_core_btn.setMinimumHeight(30)
         self.load_core_btn.setToolTip("Browse and load emulator cores")
         if self.main_window:
             self.load_core_btn.clicked.connect(self.main_window._show_load_core)
@@ -700,7 +706,7 @@ class EmulatorDisplayWidget(QWidget): #vers 4
         self.gameart_btn = QPushButton("Art Manager")
         self.gameart_btn.setIcon(SVGIconFactory.paint_icon(20, icon_color))
         self.gameart_btn.setIconSize(QSize(20, 20))
-        self.gameart_btn.setMinimumHeight(35)
+        self.gameart_btn.setMinimumHeight(30)
         self.gameart_btn.setToolTip("Download and manage game artwork")
         if self.main_window:
             self.gameart_btn.clicked.connect(self.main_window._download_game_artwork)
@@ -712,7 +718,7 @@ class EmulatorDisplayWidget(QWidget): #vers 4
         self.manage_btn = QPushButton("Game Manager")
         self.manage_btn.setIcon(SVGIconFactory.manage_icon(20, icon_color))
         self.manage_btn.setIconSize(QSize(20, 20))
-        self.manage_btn.setMinimumHeight(35)
+        self.manage_btn.setMinimumHeight(30)
         self.manage_btn.setToolTip("Configure game settings")
         if self.main_window:
             self.manage_btn.clicked.connect(self.main_window._show_game_manager)
@@ -722,7 +728,7 @@ class EmulatorDisplayWidget(QWidget): #vers 4
         self.ports_btn = QPushButton("Game Ports")
         self.ports_btn.setIcon(SVGIconFactory.package_icon(20, icon_color))
         self.ports_btn.setIconSize(QSize(20, 20))
-        self.ports_btn.setMinimumHeight(35)
+        self.ports_btn.setMinimumHeight(30)
         self.ports_btn.setToolTip("View game ports across systems")
         if self.main_window:
             self.ports_btn.clicked.connect(self.main_window._show_ports_manager)
@@ -732,7 +738,7 @@ class EmulatorDisplayWidget(QWidget): #vers 4
         self.stop_btn = QPushButton("Stop")
         self.stop_btn.setIcon(SVGIconFactory.stop_icon(20, icon_color))
         self.stop_btn.setIconSize(QSize(20, 20))
-        self.stop_btn.setMinimumHeight(35)
+        self.stop_btn.setMinimumHeight(30)
         self.stop_btn.setToolTip("Stop emulation")
         if self.main_window:
             self.stop_btn.clicked.connect(self.main_window._on_stop_emulation)
@@ -821,16 +827,24 @@ class EmulatorDisplayWidget(QWidget): #vers 4
             self.main_window.status_label.setText("No emulation running")
 
 
-class EmuLauncherGUI(QWidget): #vers 1
+class EmuLauncherGUI(QWidget): #vers 20
     """Main GUI window - Multi-Emulator Launcher"""
 
     window_closed = pyqtSignal()
 
     def __init__(self, parent=None, main_window=None, core_downloader=None,
-                 core_launcher=None, gamepad_config=None, game_config=None): #vers 13
-        """Initialize GUI with AppSettings integration and core systems"""
-        if DEBUG_STANDALONE:
-            print(f"{App_name} Initializing...")
+                core_launcher=None, gamepad_config=None, game_config=None): #vers 14
+        """Initialize Multi-Emulator Launcher GUI
+
+        Args:
+            parent: Parent widget (optional)
+            main_window: Main window reference (optional)
+            core_downloader: CoreDownloader instance (optional)
+            core_launcher: CoreLauncher instance (optional)
+            gamepad_config: GamepadConfig instance (optional)
+            game_config: GameConfig instance (optional)
+        """
+        print(App_name, "Initializing ...")
 
         super().__init__(parent)
 
@@ -840,11 +854,12 @@ class EmuLauncherGUI(QWidget): #vers 1
         self.gamepad_config = gamepad_config if gamepad_config else getattr(self, 'gamepad_config', None)
 
         self.main_window = main_window
+
         self.button_display_mode = 'both'
         self.last_save_directory = None
         self.standalone_mode = (main_window is None)
-        self.game_config = GameConfig("config")
-        self.game_config = game_config
+        self.game_config = game_config if game_config else GameConfig("config")
+        self.setWindowIcon(generate_icon(64))
 
         # Set default fonts
         from PyQt6.QtGui import QFont
@@ -854,7 +869,6 @@ class EmuLauncherGUI(QWidget): #vers 1
         self.panel_font = QFont("Arial", 10)
         self.button_font = QFont("Arial", 10)
         self.infobar_font = QFont("Courier New", 9)
-        self.setWindowIcon(generate_icon(64))
 
         # Initialize MEL Settings Manager FIRST
         self.mel_settings = MELSettingsManager()
@@ -863,24 +877,18 @@ class EmuLauncherGUI(QWidget): #vers 1
         roms_dir = self.mel_settings.get_rom_path()
         self.platform_scanner = PlatformScanner(roms_dir)
 
-
-        # Initialize core systems
-        if not core_downloader:
+        # Initialize core systems (if not provided)
+        if not self.core_downloader:
             self.core_downloader = CoreDownloader(Path.cwd())
-        else:
-            self.core_downloader = core_downloader
 
-        if not core_launcher:
+        if not self.core_launcher:
             self.core_launcher = CoreLauncher(
                 Path.cwd(),
                 self.core_downloader.CORE_DATABASE
             )
-        else:
-            self.core_launcher = core_launcher
 
         # Load saved configuration
         if 'hidden_platforms' in self.mel_settings.settings:
-            # Will be applied when platform_list is created
             self._saved_hidden_platforms = self.mel_settings.settings['hidden_platforms']
 
         if 'window_geometry' in self.mel_settings.settings:
@@ -889,21 +897,22 @@ class EmuLauncherGUI(QWidget): #vers 1
             if 'x' in geom and 'y' in geom:
                 self.move(geom['x'], geom['y'])
 
-        self.gamepad_config = gamepad_config
-
         # Keyboard shortcut for display mode toggle
-        # TODO - Create mel_shortcuts.py and add a tab section in settings to config the shortcuts
         from PyQt6.QtGui import QShortcut, QKeySequence
         self.display_toggle_shortcut = QShortcut(QKeySequence("Ctrl+D"), self)
         self.display_toggle_shortcut.activated.connect(self._toggle_icon_display_mode)
 
+        # Window settings
         self.use_system_titlebar = False
         self.window_always_on_top = False
+        self.setWindowTitle(f"{App_name}: Ready")
+        self.resize(1400, 800)
 
-        # Window flags
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
-
-        self._initialize_features()
+        # FIXED: Window flags - MUST include Window flag for KDE Plasma drag support
+        self.setWindowFlags(
+            Qt.WindowType.Window |  # CRITICAL - enables window manager integration
+            Qt.WindowType.FramelessWindowHint  # Removes system decorations
+        )
 
         # Corner resize variables
         self.dragging = False
@@ -920,18 +929,24 @@ class EmuLauncherGUI(QWidget): #vers 1
 
         # Initialize icon factory and display mode
         self.platform_icons = PlatformIcons()
-        self.icon_display_mode = "icons_and_text"  # Default mode
-        
+        self.icon_display_mode = "icons_and_text"
+
         # Initialize artwork loader
         artwork_dir = Path.cwd() / "artwork"
         self.artwork_loader = ArtworkLoader(artwork_dir)
 
         # Initialize AppSettings
         if APPSETTINGS_AVAILABLE:
-            self.app_settings = AppSettings()
-            self._load_fonts_from_settings()
-            # Connect theme change signal - SettingsDialog emits themeChanged
-            # Note: We'll connect when SettingsDialog is created
+            try:
+                self.app_settings = AppSettings()
+                self._load_fonts_from_settings()
+            except Exception as e:
+                print(f"Warning: Could not load AppSettings: {e}")
+                self.app_settings = None
+                self.default_font = QFont("Segoe UI", 9)
+                self.title_font = QFont("Adwaita Sans", 10)
+                self.panel_font = QFont("Adwaita Sans", 9)
+                self.button_font = QFont("Adwaita Sans", 9)
         else:
             self.app_settings = None
             self.default_font = QFont("Segoe UI", 9)
@@ -939,18 +954,8 @@ class EmuLauncherGUI(QWidget): #vers 1
             self.panel_font = QFont("Adwaita Sans", 9)
             self.button_font = QFont("Adwaita Sans", 9)
 
-        # Window settings
-        self.setWindowTitle(f"{App_name}: Ready")
-        self.resize(1400, 800)
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
-
-        # Corner resize variables
-        self.dragging = False
-        self.drag_position = None
-        self.resizing = False
-        self.resize_corner = None
-        self.corner_size = 20
-        self.hover_corner = None
+        # Initialize features BEFORE setup_ui
+        self._initialize_features()
 
         # Setup UI
         self.setup_ui()
@@ -958,15 +963,13 @@ class EmuLauncherGUI(QWidget): #vers 1
         # Apply theme
         self._apply_theme()
 
-        # Setup hotkeys
-        #self._setup_hotkeys()
-
         # Enable mouse tracking
         self.setMouseTracking(True)
 
         if DEBUG_STANDALONE:
             print(f"{App_name} initialized")
 
+        init_logger(self.app_settings)
 
     def setup_ui(self): #vers 2
         """Setup main UI layout"""
@@ -1012,29 +1015,6 @@ class EmuLauncherGUI(QWidget): #vers 1
 
         main_layout.addWidget(content_widget)
 
-    def eventFilter(self, obj, event): #vers 1
-        """Filter events to enable dragging from titlebar"""
-        if obj == self.titlebar:
-            if event.type() == event.Type.MouseButtonPress:
-                if event.button() == Qt.MouseButton.LeftButton:
-                    # Check if on draggable area
-                    if self._is_on_draggable_area(event.pos()):
-                        self.dragging = True
-                        self.drag_position = event.globalPosition().toPoint() - self.pos()
-                        return True  # Event handled
-
-            elif event.type() == event.Type.MouseMove:
-                if self.dragging and event.buttons() == Qt.MouseButton.LeftButton:
-                    new_pos = event.globalPosition().toPoint() - self.drag_position
-                    self.move(new_pos)
-                    return True  # Event handled
-
-            elif event.type() == event.Type.MouseButtonRelease:
-                if event.button() == Qt.MouseButton.LeftButton:
-                    self.dragging = False
-                    return True  # Event handled
-
-        return super().eventFilter(obj, event)
 
     def _load_fonts_from_settings(self): #vers 1
         """Load font settings from AppSettings"""
@@ -1107,15 +1087,6 @@ class EmuLauncherGUI(QWidget): #vers 1
 
         self.layout.addStretch()
 
-        # BIOS Manager button
-        self.scan_bios_btn = QPushButton()
-        self.scan_bios_btn.setIcon(SVGIconFactory.chip_icon(20, icon_color))
-        self.scan_bios_btn.setText("Scan BIOS")
-        self.scan_bios_btn.setIconSize(QSize(30, 30))
-        self.scan_bios_btn.setToolTip("Scan and manage system BIOS files")
-        self.scan_bios_btn.clicked.connect(self._show_bios_manager)
-        self.layout.addWidget(self.scan_bios_btn)
-
         # Scan ROMs button
         self.scan_roms_btn = QPushButton()
         self.scan_roms_btn.setFont(self.button_font)
@@ -1127,6 +1098,15 @@ class EmuLauncherGUI(QWidget): #vers 1
         self.scan_roms_btn.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.scan_roms_btn.customContextMenuRequested.connect(self._show_scan_roms_context_menu)
         self.layout.addWidget(self.scan_roms_btn)
+
+        # BIOS Manager button
+        self.scan_bios_btn = QPushButton()
+        self.scan_bios_btn.setIcon(SVGIconFactory.chip_icon(20, icon_color))
+        self.scan_bios_btn.setText("Scan BIOS")
+        self.scan_bios_btn.setIconSize(QSize(30, 30))
+        self.scan_bios_btn.setToolTip("Scan and manage system BIOS files")
+        self.scan_bios_btn.clicked.connect(self._show_bios_manager)
+        self.layout.addWidget(self.scan_bios_btn)
 
         # Save config button
         self.save_btn = QPushButton()
@@ -2278,38 +2258,26 @@ class EmuLauncherGUI(QWidget): #vers 1
 
         return True
 
-    def _get_theme_colors(self, theme_name: str): #vers 7
-        """
-        Returns a dictionary of theme colors from AppSettings current theme
-        """
+    def _get_theme_colors(self, theme_name: str): #vers 8
+        """Returns a dictionary of theme colors from AppSettings current theme"""
 
         theme_data = {}
-        
-        # Get the CURRENT active theme from AppSettings (not the theme_name parameter)
+        theme_obj = {}  # Initialize here
+
+        # Get the CURRENT active theme from AppSettings
         if APPSETTINGS_AVAILABLE and self.app_settings:
-            # Get current theme name from settings
             if hasattr(self.app_settings, 'current_settings'):
                 current_theme_name = self.app_settings.current_settings.get("theme", "")
-                print(f"\n=== Theme Loading Debug ===")
-                print(f"Current active theme: {current_theme_name}")
-                
+                debug(f"Current active theme: {current_theme_name}", "THEME")
+
                 # Try to load that theme's colors
                 if hasattr(self.app_settings, 'themes') and current_theme_name:
                     theme_obj = self.app_settings.themes.get(current_theme_name, {})
-                    print(f"Theme object keys: {list(theme_obj.keys())}")
-                    
-                    # Colors might be nested under 'colors' key
-                    if 'colors' in theme_obj:
-                        theme_data = theme_obj['colors'].copy()
-                        print(f"✓ Loaded colors from theme.colors: {list(theme_data.keys())}")
-                    else:
-                        # Or they might be at the root level
-                        theme_data = theme_obj.copy()
-                        print(f"✓ Loaded colors from theme root: {list(theme_data.keys())}")
+                    debug(f"Theme object keys: {list(theme_obj.keys())}", "THEME")
 
         # Determine if this theme is dark or light
         is_dark = self._is_dark_theme()
-        print(f"Theme is dark: {is_dark}")
+        debug(f"Theme is dark: {is_dark}", "THEME")
         
         # Only set defaults for MISSING keys (setdefault won't override existing)
         if is_dark:
@@ -4221,7 +4189,7 @@ class EmuLauncherGUI(QWidget): #vers 1
         dialog.exec()
 
 
-    def _apply_window_flags(self): #vers 1
+    def _apply_window_flags(self): #vers 2
         """Apply window flags based on settings"""
         # Save current geometry
         current_geometry = self.geometry()
@@ -4236,8 +4204,11 @@ class EmuLauncherGUI(QWidget): #vers 1
                 Qt.WindowType.WindowCloseButtonHint
             )
         else:
-            # Use custom frameless window
-            self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+            # FIXED: Custom frameless window - must include Window flag
+            self.setWindowFlags(
+                Qt.WindowType.Window |  # Enables proper window manager integration
+                Qt.WindowType.FramelessWindowHint  # Removes decorations
+            )
 
         # Restore geometry and visibility
         self.setGeometry(current_geometry)
@@ -4456,25 +4427,38 @@ class EmuLauncherGUI(QWidget): #vers 1
             if self.main_window and hasattr(self.main_window, 'log_message'):
                 self.main_window.log_message(f"Feature init error: {str(e)}")
 
-    def _is_on_draggable_area(self, pos): #vers 6
-        """Check if position is on draggable titlebar area - not on buttons
+
+    def _is_on_draggable_area(self, pos): #vers 7
+        """Check if position is on draggable titlebar area
 
         Args:
-            pos: Position in titlebar coordinates
+            pos: Position in titlebar coordinates (from eventFilter)
 
-        Returns True if position is on titlebar and not on any interactive widget
+        Returns:
+            True if position is on titlebar but not on any button
         """
         if not hasattr(self, 'titlebar'):
+            print("[DRAG] No titlebar attribute")
             return False
 
-        # pos is already in titlebar coordinates when called from eventFilter
-        # Check if clicking on any button - if so, not draggable
-        for widget in self.titlebar.findChildren(QPushButton):
-            if widget.isVisible() and widget.geometry().contains(pos):
-                return False
+        # Verify pos is within titlebar bounds
+        if not self.titlebar.rect().contains(pos):
+            print(f"[DRAG] Position {pos} outside titlebar rect {self.titlebar.rect()}")
+            return False
 
-        # If we're on the titlebar but not on a button, it's draggable
+        # Check if clicking on any button - if so, NOT draggable
+        for widget in self.titlebar.findChildren(QPushButton):
+            if widget.isVisible():
+                # Get button geometry in titlebar coordinates
+                button_rect = widget.geometry()
+                if button_rect.contains(pos):
+                    print(f"[DRAG] Clicked on button: {widget.toolTip()}")
+                    return False
+
+        # Not on any button = draggable
+        print(f"[DRAG] On draggable area at {pos}")
         return True
+
 
     def _get_resize_corner(self, pos): #vers 1
         """Determine which corner is under mouse position"""
@@ -4618,63 +4602,90 @@ class EmuLauncherGUI(QWidget): #vers 1
 
         return None
 
-    def mousePressEvent(self, event): #vers 3
-        """Handle mouse press for dragging and resizing"""
-        if event.button() == Qt.MouseButton.LeftButton:
-            self.resize_corner = self._get_resize_corner(event.pos())
 
-            if self.resize_corner:
-                self.resizing = True
-                self.drag_position = event.globalPosition().toPoint()
-                self.initial_geometry = self.geometry()
-            else:
-                # Check if clicking on titlebar for dragging
-                if self._is_on_draggable_area(event.pos()):
-                    self.dragging = True
-                    # FIXED: Store the offset from window top-left to click position
-                    self.drag_position = event.globalPosition().toPoint() - self.pos()
-                    print(f"DEBUG: Drag started - window pos: {self.pos()}, click global: {event.globalPosition().toPoint()}, offset: {self.drag_position}")
+    # KEEP ONLY mousePressEvent with this logic:
+    def mousePressEvent(self, event): #vers 7
+        """Handle ALL mouse press - dragging and resizing"""
+        if event.button() != Qt.MouseButton.LeftButton:
+            super().mousePressEvent(event)
+            return
 
+        pos = event.pos()
+
+        # Check corner resize FIRST
+        self.resize_corner = self._get_resize_corner(pos)
+        if self.resize_corner:
+            self.resizing = True
+            self.drag_position = event.globalPosition().toPoint()
+            self.initial_geometry = self.geometry()
             event.accept()
+            return
 
+        # Check if on titlebar
+        if hasattr(self, 'titlebar') and self.titlebar.geometry().contains(pos):
+            titlebar_pos = self.titlebar.mapFromParent(pos)
+            if self._is_on_draggable_area(titlebar_pos):
+                self.windowHandle().startSystemMove()
+                event.accept()
+                return
 
-    def mouseMoveEvent(self, event): #vers 3
-        """Handle mouse move for dragging, resizing, and hover effects"""
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event): #vers 4
+        """Handle mouse move for resizing and hover effects
+
+        Window dragging is handled by eventFilter to avoid conflicts
+        """
         if event.buttons() == Qt.MouseButton.LeftButton:
             if self.resizing and self.resize_corner:
                 self._handle_corner_resize(event.globalPosition().toPoint())
-            elif self.dragging:
-                # FIXED: Calculate new position using stored offset
-                new_pos = event.globalPosition().toPoint() - self.drag_position
-                print(f"DEBUG: Moving window to: {new_pos}")
-                self.move(new_pos)
-            event.accept()
+                event.accept()
+                return
         else:
+            # Update hover state and cursor
             corner = self._get_resize_corner(event.pos())
             if corner != self.hover_corner:
                 self.hover_corner = corner
                 self.update()  # Trigger repaint for hover effect
             self._update_cursor(corner)
 
+        # Let parent handle everything else
+        super().mouseMoveEvent(event)
 
-    def mouseReleaseEvent(self, event): #vers 3
-        """Handle mouse release"""
+
+    def mouseReleaseEvent(self, event): #vers 4
+        """Handle mouse release for resizing only
+
+        Window dragging is handled by eventFilter to avoid conflicts
+        """
         if event.button() == Qt.MouseButton.LeftButton:
-            if self.dragging:
-                print(f"DEBUG: Drag ended at position: {self.pos()}")
-            self.dragging = False
+            if self.resizing:
+                print(f"[RESIZE] Ended at: {self.geometry()}")
             self.resizing = False
             self.resize_corner = None
+            self.setCursor(Qt.CursorShape.ArrowCursor)
             event.accept()
+            return
 
-    def mouseDoubleClickEvent(self, event): #vers 1
-        """Handle double-click on toolbar to maximize/restore"""
+        # Let parent handle everything else
+        super().mouseReleaseEvent(event)
+
+
+    def mouseDoubleClickEvent(self, event): #vers 2
+        """Handle double-click - maximize/restore
+
+        Handled here instead of eventFilter for better control
+        """
         if event.button() == Qt.MouseButton.LeftButton:
-            if self._is_on_draggable_area(event.pos()):
-                self._toggle_maximize()
-                event.accept()
-            else:
-                super().mouseDoubleClickEvent(event)
+            # Convert to titlebar coordinates if needed
+            if hasattr(self, 'titlebar'):
+                titlebar_pos = self.titlebar.mapFromParent(event.pos())
+                if self._is_on_draggable_area(titlebar_pos):
+                    self._toggle_maximize()
+                    event.accept()
+                    return
+
+        super().mouseDoubleClickEvent(event)
 
 
     def resizeEvent(self, event): #vers 1

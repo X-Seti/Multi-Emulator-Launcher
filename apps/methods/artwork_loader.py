@@ -13,6 +13,9 @@ from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtSvg import QSvgRenderer
 from PyQt6.QtGui import QPainter
 
+# Around line 30, add after self.generic_icon = ...
+from apps.methods.retroarch_artwork import RetroArchArtwork
+
 ##Methods list -
 # __init__
 # get_game_icon
@@ -37,10 +40,35 @@ class ArtworkLoader: #vers 1
         # Cache for loaded pixmaps
         self.icon_cache = {}
         self.title_cache = {}
-        
+
         # Generic icon (SVG-based)
         self.generic_icon = self._create_generic_icon()
-    
+        self.retroarch = RetroArchArtwork()
+        if self.retroarch.thumbnails_dir:
+            from apps.utils.debug_logger import info
+            info(f"RetroArch artwork enabled: {self.retroarch.thumbnails_dir}", "ARTWORK")
+
+    def _find_artwork_file(self, game_name, platform, subdir): #vers 2
+        """Find artwork file - checks RetroArch first, then local"""
+
+        # Try RetroArch artwork first
+        if self.retroarch and self.retroarch.thumbnails_dir:
+            artwork_type = 'Named_Boxarts' if subdir == 'thumbnails' else 'Named_Titles'
+            retroarch_artwork = self.retroarch.get_game_artwork(platform, game_name, artwork_type)
+            if retroarch_artwork:
+                return retroarch_artwork
+
+        # Fall back to local artwork
+        clean_name = game_name.replace(" ", "_").replace(":", "").replace("/", "_")
+        platform_dir = self.artwork_dir / platform / subdir
+
+        for ext in ['.png', '.jpg', '.jpeg', '.bmp', '.gif']:
+            artwork_file = platform_dir / f"{clean_name}{ext}"
+            if artwork_file.exists():
+                return artwork_file
+
+        return None
+
     def _create_generic_icon(self, size=64): #vers 1
         """Create generic game controller icon for missing artwork
         
