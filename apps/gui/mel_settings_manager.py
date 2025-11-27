@@ -1,9 +1,12 @@
 # X-Seti - November27 2025 - Multi-Emulator Launcher - Settings Path Manager
-# This file goes in /apps/gui/mel_settings_manager.py - Version: 2
+# This file goes in /apps/utils/mel_settings_manager.py - Version: 3
 """
-MEL Settings Manager Extension - Handles MEL-specific path settings
-Extends app_settings_system for emulator launcher configuration.
-Now includes emulator preferences and debug settings.
+MEL Settings Manager - Handles MEL-specific settings
+- Directory paths (ROMs, BIOS, cores, saves, cache)
+- Icon display mode (icons_only, text_only, icons_and_text)
+- Emulator preferences per platform
+- Debug settings (enabled, level)
+- Themed titlebar toggle
 """
 
 from pathlib import Path
@@ -18,8 +21,10 @@ import subprocess
 # get_debug_enabled
 # get_debug_level
 # get_emulator_for_platform
+# get_icon_display_mode
 # get_rom_path
 # get_save_path
+# get_themed_titlebar
 # save_mel_settings
 # scan_installed_emulators
 # set_bios_path
@@ -28,17 +33,20 @@ import subprocess
 # set_debug_enabled
 # set_debug_level
 # set_emulator_for_platform
+# set_icon_display_mode
 # set_rom_path
 # set_save_path
+# set_themed_titlebar
+# _load_settings
 
-class MELSettingsManager: #vers 2
-    """Manages MEL-specific directory paths and emulator preferences"""
+class MELSettingsManager: #vers 3
+    """Manages all MEL-specific settings"""
     
-    def __init__(self, settings_file="mel_settings.json"): #vers 2
+    def __init__(self, settings_file="mel_settings.json"): #vers 3
         self.settings_file = Path(settings_file)
         self.settings = self._load_settings()
         
-        # Emulator -> platforms mapping (from your installed emulators)
+        # Emulator -> platforms mapping (from installed emulators)
         self.emulator_map = {
             # Amiga
             'amiberry': ['Amiga'],
@@ -87,15 +95,11 @@ class MELSettingsManager: #vers 2
             # Other
             'vice': ['Commodore 64', 'C64'],
             'fuse': ['ZX Spectrum'],
-            
-            # PC emulation
             '86box': ['IBM PC', 'DOS'],
-            
-            # Arcade
             'mame': ['Arcade', 'MAME'],
         }
     
-    def _load_settings(self): #vers 2
+    def _load_settings(self): #vers 3
         """Load MEL settings from file"""
         defaults = {
             'rom_path': 'roms',
@@ -103,6 +107,8 @@ class MELSettingsManager: #vers 2
             'core_path': 'cores',
             'save_path': 'saves',
             'cache_path': 'cache',
+            'icon_display_mode': 'icons_and_text',
+            'use_themed_titlebar': True,
             'debug_enabled': False,
             'debug_level': 'INFO',
             'emulator_preferences': {}  # platform -> emulator_name mapping
@@ -118,6 +124,7 @@ class MELSettingsManager: #vers 2
         
         return defaults
     
+    # Path getters
     def get_bios_path(self): #vers 1
         """Get BIOS directory path"""
         return Path(self.settings.get('bios_path', 'bios'))
@@ -138,6 +145,16 @@ class MELSettingsManager: #vers 2
         """Get saves directory path"""
         return Path(self.settings.get('save_path', 'saves'))
     
+    # Display settings
+    def get_icon_display_mode(self): #vers 1
+        """Get icon display mode (icons_only, text_only, icons_and_text)"""
+        return self.settings.get('icon_display_mode', 'icons_and_text')
+    
+    def get_themed_titlebar(self): #vers 1
+        """Get themed titlebar preference"""
+        return self.settings.get('use_themed_titlebar', True)
+    
+    # Debug settings
     def get_debug_enabled(self): #vers 1
         """Get debug mode enabled status"""
         return self.settings.get('debug_enabled', False)
@@ -146,6 +163,7 @@ class MELSettingsManager: #vers 2
         """Get debug level (ERROR, WARNING, INFO, DEBUG, VERBOSE)"""
         return self.settings.get('debug_level', 'INFO')
     
+    # Emulator preferences
     def get_emulator_for_platform(self, platform): #vers 1
         """Get preferred emulator for platform
         
@@ -187,6 +205,7 @@ class MELSettingsManager: #vers 2
         
         return installed
     
+    # Save method
     def save_mel_settings(self): #vers 1
         """Save MEL settings to file"""
         try:
@@ -198,6 +217,7 @@ class MELSettingsManager: #vers 2
             print(f"Error saving MEL settings: {e}")
             return False
     
+    # Path setters
     def set_bios_path(self, path): #vers 1
         """Set BIOS directory path"""
         self.settings['bios_path'] = str(path)
@@ -223,6 +243,24 @@ class MELSettingsManager: #vers 2
         self.settings['save_path'] = str(path)
         self.save_mel_settings()
     
+    # Display setters
+    def set_icon_display_mode(self, mode): #vers 1
+        """Set icon display mode
+        
+        Args:
+            mode: "icons_only", "text_only", or "icons_and_text"
+        """
+        valid_modes = ['icons_only', 'text_only', 'icons_and_text']
+        if mode in valid_modes:
+            self.settings['icon_display_mode'] = mode
+            self.save_mel_settings()
+    
+    def set_themed_titlebar(self, enabled): #vers 1
+        """Set themed titlebar enabled"""
+        self.settings['use_themed_titlebar'] = bool(enabled)
+        self.save_mel_settings()
+    
+    # Debug setters
     def set_debug_enabled(self, enabled): #vers 1
         """Set debug mode enabled"""
         self.settings['debug_enabled'] = bool(enabled)
@@ -235,6 +273,7 @@ class MELSettingsManager: #vers 2
             self.settings['debug_level'] = level
             self.save_mel_settings()
     
+    # Emulator setters
     def set_emulator_for_platform(self, platform, emulator): #vers 1
         """Set preferred emulator for platform
         

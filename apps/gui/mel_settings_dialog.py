@@ -1,43 +1,24 @@
 #!/usr/bin/env python3
-#this belongs in apps/gui/mel_settings_dialog.py - Version: 6
+#this belongs in apps/gui/mel_settings_dialog.py - Version: 7
 # X-Seti - November27 2025 - Multi-Emulator Launcher - Settings Dialog
 
 """
 MEL Settings Dialog - Complete settings with tabs
-- Paths: ROM, BIOS, cores, saves, cache
-- Emulators: Per-platform emulator selection
-- Debug: Enable debug mode and set level
-- Display: Icon mode and themed titlebar
+NOW SUPPORTS MULTIPLE ROM PATHS
 """
 
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
                              QPushButton, QFileDialog, QGroupBox, QLineEdit,
                              QRadioButton, QButtonGroup, QCheckBox, QTabWidget,
-                             QWidget, QComboBox, QScrollArea, QFormLayout, QMessageBox)
+                             QWidget, QComboBox, QScrollArea, QFormLayout, 
+                             QMessageBox, QListWidget, QListWidgetItem)
 from PyQt6.QtCore import Qt
 from pathlib import Path
 
-##Methods list -
-# __init__
-# _create_debug_tab
-# _create_display_tab
-# _create_emulators_tab
-# _create_path_selector
-# _create_paths_tab
-# _get_settings
-# _rescan_emulators
-# _save_settings
-# _select_bios_path
-# _select_cache_path
-# _select_core_path
-# _select_rom_path
-# _select_save_path
-# _setup_ui
-
-class MELSettingsDialog(QDialog): #vers 6
-    """Settings dialog with multiple tabs for all MEL settings"""
+class MELSettingsDialog(QDialog):
+    """Settings dialog with multiple ROM paths support"""
     
-    def __init__(self, settings_manager, parent=None): #vers 6
+    def __init__(self, settings_manager, parent=None):
         super().__init__(parent)
         self.settings_manager = settings_manager
         self.setWindowTitle("Multi-Emulator Launcher - Settings")
@@ -45,7 +26,7 @@ class MELSettingsDialog(QDialog): #vers 6
         self.setModal(True)
         
         # Path inputs
-        self.rom_path_input = None
+        self.rom_paths_list = None
         self.bios_path_input = None
         self.core_path_input = None
         self.save_path_input = None
@@ -63,16 +44,14 @@ class MELSettingsDialog(QDialog): #vers 6
         self.debug_level_combo = None
         
         # Emulator options
-        self.emulator_combos = {}  # platform -> QComboBox
+        self.emulator_combos = {}
         
         self._setup_ui()
         self._get_settings()
     
-    def _setup_ui(self): #vers 6
-        """Setup dialog UI with tabs"""
+    def _setup_ui(self):
         layout = QVBoxLayout()
         
-        # Create tab widget
         tabs = QTabWidget()
         tabs.addTab(self._create_paths_tab(), "Paths")
         tabs.addTab(self._create_emulators_tab(), "Emulators")
@@ -98,58 +77,105 @@ class MELSettingsDialog(QDialog): #vers 6
         layout.addLayout(button_layout)
         self.setLayout(layout)
     
-    def _create_paths_tab(self): #vers 1
-        """Create paths configuration tab"""
+    def _create_paths_tab(self):
+        """Create paths tab with MULTIPLE ROM PATHS"""
         tab = QWidget()
         layout = QVBoxLayout()
         
-        info_label = QLabel("Configure directory paths for ROMs, BIOS files, cores, and saves.")
+        info_label = QLabel("Configure directory paths. You can add multiple ROM directories (e.g., external drives).")
         info_label.setWordWrap(True)
         layout.addWidget(info_label)
         
-        # Paths group
-        paths_group = QGroupBox("Directory Paths")
-        paths_layout = QVBoxLayout()
+        # ROM Paths group - MULTIPLE PATHS
+        rom_group = QGroupBox("ROM Directories (Multiple Allowed)")
+        rom_layout = QVBoxLayout()
         
-        # ROM path
-        rom_row, self.rom_path_input = self._create_path_selector(
-            "ROMs:", "roms", self._select_rom_path
-        )
-        paths_layout.addLayout(rom_row)
+        # List widget for ROM paths
+        self.rom_paths_list = QListWidget()
+        self.rom_paths_list.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
+        rom_layout.addWidget(self.rom_paths_list)
+        
+        # Buttons for ROM paths
+        rom_btn_layout = QHBoxLayout()
+        add_rom_btn = QPushButton("➕ Add ROM Directory")
+        add_rom_btn.clicked.connect(self._add_rom_path)
+        remove_rom_btn = QPushButton("➖ Remove Selected")
+        remove_rom_btn.clicked.connect(self._remove_rom_path)
+        
+        rom_btn_layout.addWidget(add_rom_btn)
+        rom_btn_layout.addWidget(remove_rom_btn)
+        rom_btn_layout.addStretch()
+        rom_layout.addLayout(rom_btn_layout)
+        
+        rom_group.setLayout(rom_layout)
+        layout.addWidget(rom_group)
+        
+        # Other paths group
+        other_group = QGroupBox("Other Directories")
+        other_layout = QVBoxLayout()
         
         # BIOS path
         bios_row, self.bios_path_input = self._create_path_selector(
             "BIOS:", "bios", self._select_bios_path
         )
-        paths_layout.addLayout(bios_row)
+        other_layout.addLayout(bios_row)
         
         # Core path
         core_row, self.core_path_input = self._create_path_selector(
             "Cores:", "cores", self._select_core_path
         )
-        paths_layout.addLayout(core_row)
+        other_layout.addLayout(core_row)
         
         # Save path
         save_row, self.save_path_input = self._create_path_selector(
             "Saves:", "saves", self._select_save_path
         )
-        paths_layout.addLayout(save_row)
+        other_layout.addLayout(save_row)
         
         # Cache path
         cache_row, self.cache_path_input = self._create_path_selector(
             "Cache:", "cache", self._select_cache_path
         )
-        paths_layout.addLayout(cache_row)
+        other_layout.addLayout(cache_row)
         
-        paths_group.setLayout(paths_layout)
-        layout.addWidget(paths_group)
+        other_group.setLayout(other_layout)
+        layout.addWidget(other_group)
+        
         layout.addStretch()
-        
         tab.setLayout(layout)
         return tab
     
-    def _create_emulators_tab(self): #vers 1
-        """Create emulators configuration tab"""
+    def _add_rom_path(self):
+        """Add a new ROM directory"""
+        path = QFileDialog.getExistingDirectory(
+            self,
+            "Select ROM Directory",
+            str(Path.home()),
+            QFileDialog.Option.ShowDirsOnly
+        )
+        if path:
+            # Check if already exists
+            for i in range(self.rom_paths_list.count()):
+                if self.rom_paths_list.item(i).text() == path:
+                    QMessageBox.warning(self, "Duplicate", "This path is already in the list.")
+                    return
+            
+            self.rom_paths_list.addItem(path)
+    
+    def _remove_rom_path(self):
+        """Remove selected ROM directory"""
+        current_item = self.rom_paths_list.currentItem()
+        if current_item:
+            if self.rom_paths_list.count() <= 1:
+                QMessageBox.warning(self, "Cannot Remove", 
+                    "You must have at least one ROM directory.")
+                return
+            
+            row = self.rom_paths_list.row(current_item)
+            self.rom_paths_list.takeItem(row)
+    
+    def _create_emulators_tab(self):
+        """Create emulators tab"""
         tab = QWidget()
         layout = QVBoxLayout()
         
@@ -160,12 +186,10 @@ class MELSettingsDialog(QDialog): #vers 6
         info_label.setWordWrap(True)
         layout.addWidget(info_label)
         
-        # Rescan button
         rescan_btn = QPushButton("🔄 Re-scan for Emulators")
         rescan_btn.clicked.connect(self._rescan_emulators)
         layout.addWidget(rescan_btn)
         
-        # Scroll area for platforms
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -173,10 +197,8 @@ class MELSettingsDialog(QDialog): #vers 6
         scroll_widget = QWidget()
         scroll_layout = QFormLayout()
         
-        # Get installed emulators
         installed = self.settings_manager.scan_installed_emulators()
         
-        # Get all platforms (from emulator_map keys)
         all_platforms = set()
         for platforms_list in self.settings_manager.emulator_map.values():
             all_platforms.update(platforms_list)
@@ -185,7 +207,6 @@ class MELSettingsDialog(QDialog): #vers 6
             combo = QComboBox()
             combo.addItem("Auto-detect (Recommended)")
             
-            # Add installed emulators for this platform
             if platform in installed:
                 for emu in installed[platform]:
                     combo.addItem(emu)
@@ -200,8 +221,8 @@ class MELSettingsDialog(QDialog): #vers 6
         tab.setLayout(layout)
         return tab
     
-    def _create_debug_tab(self): #vers 1
-        """Create debug settings tab"""
+    def _create_debug_tab(self):
+        """Create debug tab"""
         tab = QWidget()
         layout = QVBoxLayout()
         
@@ -212,15 +233,12 @@ class MELSettingsDialog(QDialog): #vers 6
         info_label.setWordWrap(True)
         layout.addWidget(info_label)
         
-        # Debug group
         debug_group = QGroupBox("Debug Settings")
         debug_layout = QVBoxLayout()
         
-        # Enable checkbox
         self.debug_enabled_check = QCheckBox("Enable debug mode")
         debug_layout.addWidget(self.debug_enabled_check)
         
-        # Level selector
         level_layout = QHBoxLayout()
         level_layout.addWidget(QLabel("Debug Level:"))
         
@@ -237,7 +255,6 @@ class MELSettingsDialog(QDialog): #vers 6
         
         debug_layout.addLayout(level_layout)
         
-        # Info text
         info_text = QLabel(
             "Debug output will appear in the terminal/console where you launched the application."
         )
@@ -252,8 +269,8 @@ class MELSettingsDialog(QDialog): #vers 6
         tab.setLayout(layout)
         return tab
     
-    def _create_display_tab(self): #vers 1
-        """Create display options tab"""
+    def _create_display_tab(self):
+        """Create display tab"""
         tab = QWidget()
         layout = QVBoxLayout()
         
@@ -261,7 +278,6 @@ class MELSettingsDialog(QDialog): #vers 6
         info_label.setWordWrap(True)
         layout.addWidget(info_label)
         
-        # Icon display group
         icon_group = QGroupBox("Platform Icons")
         icon_layout = QVBoxLayout()
         
@@ -282,15 +298,10 @@ class MELSettingsDialog(QDialog): #vers 6
         icon_group.setLayout(icon_layout)
         layout.addWidget(icon_group)
         
-        # Titlebar group
         titlebar_group = QGroupBox("Titlebar Options")
         titlebar_layout = QVBoxLayout()
         
         self.themed_titlebar_check = QCheckBox("Use themed titlebar colors")
-        self.themed_titlebar_check.setToolTip(
-            "When checked: titlebar uses theme colors\n"
-            "When unchecked: titlebar uses high-contrast colors"
-        )
         titlebar_layout.addWidget(self.themed_titlebar_check)
         
         hint_label = QLabel("💡 Disable if titlebar buttons are hard to see in light themes")
@@ -305,8 +316,7 @@ class MELSettingsDialog(QDialog): #vers 6
         tab.setLayout(layout)
         return tab
     
-    def _create_path_selector(self, label_text, default_path, select_method): #vers 1
-        """Create a path selector row"""
+    def _create_path_selector(self, label_text, default_path, select_method):
         container = QHBoxLayout()
         
         label = QLabel(label_text)
@@ -325,16 +335,20 @@ class MELSettingsDialog(QDialog): #vers 6
         
         return container, path_input
     
-    def _get_settings(self): #vers 6
-        """Load current settings into UI"""
-        # Paths
-        self.rom_path_input.setText(str(self.settings_manager.get_rom_path()))
+    def _get_settings(self):
+        """Load current settings"""
+        # ROM paths - MULTIPLE
+        rom_paths = self.settings_manager.get_rom_paths()
+        for path in rom_paths:
+            self.rom_paths_list.addItem(str(path))
+        
+        # Other paths
         self.bios_path_input.setText(str(self.settings_manager.get_bios_path()))
         self.core_path_input.setText(str(self.settings_manager.get_core_path()))
         self.save_path_input.setText(str(self.settings_manager.get_save_path()))
         self.cache_path_input.setText(str(self.settings_manager.get_cache_path()))
         
-        # Icon display mode
+        # Icon display
         mode = self.settings_manager.get_icon_display_mode()
         if mode == 'icons_and_text':
             self.icons_text_radio.setChecked(True)
@@ -348,39 +362,41 @@ class MELSettingsDialog(QDialog): #vers 6
             self.settings_manager.get_themed_titlebar()
         )
         
-        # Debug settings
+        # Debug
         self.debug_enabled_check.setChecked(
             self.settings_manager.get_debug_enabled()
         )
         
         level = self.settings_manager.get_debug_level()
-        level_map = {
-            'ERROR': 0, 'WARNING': 1, 'INFO': 2, 'DEBUG': 3, 'VERBOSE': 4
-        }
+        level_map = {'ERROR': 0, 'WARNING': 1, 'INFO': 2, 'DEBUG': 3, 'VERBOSE': 4}
         self.debug_level_combo.setCurrentIndex(level_map.get(level, 2))
         
-        # Emulator preferences
+        # Emulators
         for platform, combo in self.emulator_combos.items():
             pref = self.settings_manager.get_emulator_for_platform(platform)
             if pref == 'auto':
                 combo.setCurrentIndex(0)
             else:
-                # Try to find matching emulator in combo
                 for i in range(1, combo.count()):
                     if combo.itemText(i) == pref:
                         combo.setCurrentIndex(i)
                         break
     
-    def _save_settings(self): #vers 6
+    def _save_settings(self):
         """Save all settings"""
-        # Save paths
-        self.settings_manager.set_rom_path(self.rom_path_input.text())
+        # Save ROM paths - MULTIPLE
+        rom_paths = []
+        for i in range(self.rom_paths_list.count()):
+            rom_paths.append(self.rom_paths_list.item(i).text())
+        self.settings_manager.set_rom_paths(rom_paths)
+        
+        # Save other paths
         self.settings_manager.set_bios_path(self.bios_path_input.text())
         self.settings_manager.set_core_path(self.core_path_input.text())
         self.settings_manager.set_save_path(self.save_path_input.text())
         self.settings_manager.set_cache_path(self.cache_path_input.text())
         
-        # Save icon display mode
+        # Save icon display
         if self.icons_text_radio.isChecked():
             self.settings_manager.set_icon_display_mode('icons_and_text')
         elif self.icons_only_radio.isChecked():
@@ -393,7 +409,7 @@ class MELSettingsDialog(QDialog): #vers 6
             self.themed_titlebar_check.isChecked()
         )
         
-        # Save debug settings
+        # Save debug
         self.settings_manager.set_debug_enabled(
             self.debug_enabled_check.isChecked()
         )
@@ -403,7 +419,7 @@ class MELSettingsDialog(QDialog): #vers 6
             level_map[self.debug_level_combo.currentIndex()]
         )
         
-        # Save emulator preferences
+        # Save emulators
         for platform, combo in self.emulator_combos.items():
             if combo.currentIndex() == 0:
                 self.settings_manager.set_emulator_for_platform(platform, 'auto')
@@ -414,15 +430,14 @@ class MELSettingsDialog(QDialog): #vers 6
         QMessageBox.information(
             self,
             "Settings Saved",
-            "All settings have been saved successfully."
+            "All settings have been saved successfully.\n\n"
+            "Restart the application to scan new ROM directories."
         )
         
         self.accept()
     
-    def _rescan_emulators(self): #vers 1
-        """Re-scan for installed emulators"""
+    def _rescan_emulators(self):
         installed = self.settings_manager.scan_installed_emulators()
-        
         QMessageBox.information(
             self,
             "Scan Complete",
@@ -430,19 +445,8 @@ class MELSettingsDialog(QDialog): #vers 6
             f"Close and reopen this dialog to see updated options."
         )
     
-    # Path selector methods
-    def _select_rom_path(self): #vers 1
-        """Select ROM directory"""
-        path = QFileDialog.getExistingDirectory(
-            self, "Select ROM Directory",
-            self.rom_path_input.text(),
-            QFileDialog.Option.ShowDirsOnly
-        )
-        if path:
-            self.rom_path_input.setText(path)
-    
-    def _select_bios_path(self): #vers 1
-        """Select BIOS directory"""
+    # Path selectors
+    def _select_bios_path(self):
         path = QFileDialog.getExistingDirectory(
             self, "Select BIOS Directory",
             self.bios_path_input.text(),
@@ -451,8 +455,7 @@ class MELSettingsDialog(QDialog): #vers 6
         if path:
             self.bios_path_input.setText(path)
     
-    def _select_core_path(self): #vers 1
-        """Select cores directory"""
+    def _select_core_path(self):
         path = QFileDialog.getExistingDirectory(
             self, "Select Cores Directory",
             self.core_path_input.text(),
@@ -461,8 +464,7 @@ class MELSettingsDialog(QDialog): #vers 6
         if path:
             self.core_path_input.setText(path)
     
-    def _select_save_path(self): #vers 1
-        """Select saves directory"""
+    def _select_save_path(self):
         path = QFileDialog.getExistingDirectory(
             self, "Select Saves Directory",
             self.save_path_input.text(),
@@ -471,8 +473,7 @@ class MELSettingsDialog(QDialog): #vers 6
         if path:
             self.save_path_input.setText(path)
     
-    def _select_cache_path(self): #vers 1
-        """Select cache directory"""
+    def _select_cache_path(self):
         path = QFileDialog.getExistingDirectory(
             self, "Select Cache Directory",
             self.cache_path_input.text(),
