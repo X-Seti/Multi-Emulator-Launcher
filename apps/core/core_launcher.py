@@ -232,7 +232,16 @@ class CoreLauncher: #vers 2
         if not platform_info:
             return None
             
+        # Handle both new format (cores array) and old format (single core)
         cores = platform_info.get("cores", [])
+        
+        # If no cores array, check for single core field (backward compatibility)
+        if not cores:
+            single_core = platform_info.get("core")
+            if single_core:
+                # Extract core name without extension if it has one
+                core_name = single_core.replace('_libretro.so', '').replace('_libretro.dll', '').replace('_libretro.dylib', '')
+                cores = [core_name]
         
         # Find first available core
         for core_name in cores:
@@ -252,6 +261,15 @@ class CoreLauncher: #vers 2
     def _verify_bios(self, platform: str, platform_info: Dict) -> bool: #vers 1
         """Verify required BIOS files exist"""
         bios_files = platform_info.get("bios_files", [])
+        
+        # Handle both array format and dictionary format
+        if isinstance(bios_files, dict):
+            # Old format: dictionary with descriptions
+            bios_files = list(bios_files.keys())
+        elif not isinstance(bios_files, list):
+            # If not a list or dict, no BIOS required
+            return True
+            
         if not bios_files:
             return True  # No BIOS required
             
