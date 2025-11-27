@@ -1,6 +1,6 @@
 # Multi-Emulator Launcher - Project Summary
 
-## 📋 What We Built
+## 📋 What We Built - Outdated!!
 
 A complete, production-ready multi-emulator frontend with:
 
