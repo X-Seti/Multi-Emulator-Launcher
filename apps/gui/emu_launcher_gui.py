@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-#this belongs in apps/gui/emu_launcher_gui.py - Version: 17
+#this belongs in apps/gui/emu_launcher_gui.py - Version: 20
 # X-Seti - November24 2025 - Multi-Emulator Launcher - Main GUI
 
 """
@@ -9,6 +9,7 @@ Main window with 3-panel layout for emulator management
 
 #TODO - Artwork comes with RetroArch - if retroarch is installed, borrow the artwork from that, to replace the thumbnails and display window cover art.
 #TODO - Move window functionality is broken.
+#TODO - Controller layout models, Playstation 4, 5, X-Box, Generic Layouts.
 
 #Changelog
 
