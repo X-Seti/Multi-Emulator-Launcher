@@ -1,7 +1,7 @@
 # X-Seti - October15 2025 - Multi-Emulator Launcher - Game Scanner
-# This belongs in methods/game_scanner.py - Version: 1
+# This belongs in methods/game_scanner.py - Version: 2
 """
-Game Scanner - Scans ROM directories, handles ZIP files, multi-disk games, and folder structures.
+Game Scanner - Scans ROM directories, handles ZIP/7Z/RAR files, multi-disk games, and folder structures.
 """
 
 ##Methods list -
@@ -10,7 +10,9 @@ Game Scanner - Scans ROM directories, handles ZIP files, multi-disk games, and f
 # _detect_multidisk
 # _group_multidisk_games
 # _is_valid_rom
+# _scan_7z
 # _scan_folder
+# _scan_rar
 # _scan_zip
 # discover_platforms
 # scan_platform
@@ -21,9 +23,23 @@ import re
 from pathlib import Path
 from collections import defaultdict
 
+try:
+    import py7zr
+    SEVENZ_AVAILABLE = True
+except ImportError:
+    SEVENZ_AVAILABLE = False
+    print("Warning: py7zr not installed. .7z support disabled.")
 
-class GameScanner: #vers 1
-    def __init__(self, config, platforms): #vers 1
+try:
+    import rarfile
+    RAR_AVAILABLE = True
+except ImportError:
+    RAR_AVAILABLE = False
+    print("Warning: rarfile not installed. .rar support disabled.")
+
+
+class GameScanner: #vers 2
+    def __init__(self, config, platforms): #vers 2
         self.config = config
         self.platforms = platforms
         self.rom_path = Path(config['rom_path'])
@@ -151,6 +167,39 @@ class GameScanner: #vers 1
         
         return ext in extensions
     
+    def _scan_7z(self, archive_path, platform_name, extensions): #vers 1
+        """Peek inside 7Z to get game information"""
+        if not SEVENZ_AVAILABLE:
+            return None
+        
+        try:
+            with py7zr.SevenZipFile(archive_path, 'r') as archive:
+                contents = archive.getnames()
+                
+                rom_files = [f for f in contents if self._is_valid_rom(f, extensions)]
+                
+                if not rom_files:
+                    return None
+                
+                disk_files = self._detect_multidisk(rom_files)
+                
+                game_name = archive_path.stem
+                
+                return {
+                    'name': game_name,
+                    'display_name': self._clean_name(game_name),
+                    'type': '7z',
+                    'path': str(archive_path),
+                    'platform': platform_name,
+                    'file_count': len(rom_files),
+                    'disk_count': len(disk_files) if disk_files else 0,
+                    'disks': disk_files if disk_files else [str(archive_path)],
+                    'rom_files': rom_files
+                }
+        except Exception as e:
+            print(f"Error scanning 7Z {archive_path}: {e}")
+            return None
+    
     def _scan_folder(self, folder_path, platform_name, extensions): #vers 1
         """Scan folder-based game"""
         rom_files = []
@@ -179,6 +228,39 @@ class GameScanner: #vers 1
             'disk_folders': disk_folders,
             'rom_files': rom_files
         }
+    
+    def _scan_rar(self, archive_path, platform_name, extensions): #vers 1
+        """Peek inside RAR to get game information"""
+        if not RAR_AVAILABLE:
+            return None
+        
+        try:
+            with rarfile.RarFile(archive_path, 'r') as archive:
+                contents = archive.namelist()
+                
+                rom_files = [f for f in contents if self._is_valid_rom(f, extensions)]
+                
+                if not rom_files:
+                    return None
+                
+                disk_files = self._detect_multidisk(rom_files)
+                
+                game_name = archive_path.stem
+                
+                return {
+                    'name': game_name,
+                    'display_name': self._clean_name(game_name),
+                    'type': 'rar',
+                    'path': str(archive_path),
+                    'platform': platform_name,
+                    'file_count': len(rom_files),
+                    'disk_count': len(disk_files) if disk_files else 0,
+                    'disks': disk_files if disk_files else [str(archive_path)],
+                    'rom_files': rom_files
+                }
+        except Exception as e:
+            print(f"Error scanning RAR {archive_path}: {e}")
+            return None
     
     def _scan_zip(self, zip_path, platform_name, extensions): #vers 1
         """Peek inside ZIP to get game information"""
@@ -222,7 +304,7 @@ class GameScanner: #vers 1
         
         return sorted(platforms)
     
-    def scan_platform(self, platform_name): #vers 1
+    def scan_platform(self, platform_name): #vers 2
         """Scan all games for a specific platform"""
         platform_path = self.rom_path / platform_name
         
@@ -242,6 +324,16 @@ class GameScanner: #vers 1
             
             if item.suffix.lower() == '.zip':
                 game_info = self._scan_zip(item, platform_name, extensions)
+                if game_info:
+                    games.append(game_info)
+            
+            elif item.suffix.lower() == '.7z':
+                game_info = self._scan_7z(item, platform_name, extensions)
+                if game_info:
+                    games.append(game_info)
+            
+            elif item.suffix.lower() == '.rar':
+                game_info = self._scan_rar(item, platform_name, extensions)
                 if game_info:
                     games.append(game_info)
             

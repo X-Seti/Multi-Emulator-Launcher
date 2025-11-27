@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-#this belongs in apps/methods/platform_scanner.py - Version: 2
+#this belongs in apps/methods/platform_scanner.py - Version: 3
 # X-Seti - November22 2025 - Multi-Emulator Launcher - Platform Scanner
 
 """
 Dynamic Platform Scanner
 Discovers emulator platforms by scanning ROM directories
-Handles spaces in names, ignores system files
+Handles spaces in names, ignores system files, supports compressed formats (ZIP/7Z/RAR)
 """
 
 import os
@@ -22,7 +22,7 @@ from typing import Dict, List, Optional, Set
 # _guess_platform_type
 # _is_system_file
 
-class PlatformScanner: #vers 2
+class PlatformScanner: #vers 3
     """Dynamically discovers platforms from ROM directory structure"""
     
     # Files/folders to ignore
@@ -176,8 +176,8 @@ class PlatformScanner: #vers 2
         """Get info for specific platform"""
         return self.platforms.get(platform_name)
     
-    def _count_roms_in_directory(self, directory: Path) -> int: #vers 2
-        """Count ROM files in directory - ignore system files"""
+    def _count_roms_in_directory(self, directory: Path) -> int: #vers 3
+        """Count ROM files in directory - ignore system files, include archives"""
         count = 0
         rom_extensions = {
             '.adf', '.ipf', '.dms',  # Amiga
@@ -192,6 +192,7 @@ class PlatformScanner: #vers 2
             '.nes', '.sfc', '.smc', '.gba',  # Nintendo
             '.gen', '.md', '.smd',  # Sega
             '.cue', '.bin', '.iso',  # Disc formats
+            '.zip', '.7z', '.rar',  # Compressed archives
         }
         
         for file_path in directory.rglob("*"):

@@ -1,5 +1,5 @@
 # X-Seti - November27 2025 - Multi-Emulator Launcher - Settings Path Manager
-# This file goes in /apps/utils/mel_settings_manager.py - Version: 3
+# This file goes in /apps/gui/mel_settings_manager.py - Version: 4
 """
 MEL Settings Manager - Handles MEL-specific settings
 - Directory paths (ROMs, BIOS, cores, saves, cache)
@@ -15,6 +15,7 @@ import subprocess
 
 ##Methods list -
 # __init__
+# add_rom_path
 # get_bios_path
 # get_cache_path
 # get_core_path
@@ -23,8 +24,10 @@ import subprocess
 # get_emulator_for_platform
 # get_icon_display_mode
 # get_rom_path
+# get_rom_paths
 # get_save_path
 # get_themed_titlebar
+# remove_rom_path
 # save_mel_settings
 # scan_installed_emulators
 # set_bios_path
@@ -35,14 +38,15 @@ import subprocess
 # set_emulator_for_platform
 # set_icon_display_mode
 # set_rom_path
+# set_rom_paths
 # set_save_path
 # set_themed_titlebar
 # _load_settings
 
-class MELSettingsManager: #vers 3
+class MELSettingsManager: #vers 4
     """Manages all MEL-specific settings"""
     
-    def __init__(self, settings_file="mel_settings.json"): #vers 3
+    def __init__(self, settings_file="mel_settings.json"): #vers 4
         self.settings_file = Path(settings_file)
         self.settings = self._load_settings()
         
@@ -99,10 +103,10 @@ class MELSettingsManager: #vers 3
             'mame': ['Arcade', 'MAME'],
         }
     
-    def _load_settings(self): #vers 3
+    def _load_settings(self): #vers 4
         """Load MEL settings from file"""
         defaults = {
-            'rom_path': 'roms',
+            'rom_paths': ['roms'],
             'bios_path': 'bios',
             'core_path': 'cores',
             'save_path': 'saves',
@@ -118,11 +122,86 @@ class MELSettingsManager: #vers 3
             try:
                 with open(self.settings_file, 'r', encoding='utf-8') as f:
                     loaded = json.load(f)
+                    
+                    # Backward compatibility: convert single rom_path to rom_paths list
+                    if 'rom_path' in loaded and 'rom_paths' not in loaded:
+                        loaded['rom_paths'] = [loaded['rom_path']]
+                        del loaded['rom_path']
+                    
                     defaults.update(loaded)
             except Exception as e:
                 print(f"Error loading MEL settings: {e}")
         
         return defaults
+    
+    # ROM path methods
+    def add_rom_path(self, path): #vers 1
+        """Add a ROM directory path
+        
+        Args:
+            path: Path to add (string or Path object)
+        """
+        path_str = str(path)
+        if 'rom_paths' not in self.settings:
+            self.settings['rom_paths'] = []
+        
+        if path_str not in self.settings['rom_paths']:
+            self.settings['rom_paths'].append(path_str)
+            self.save_mel_settings()
+    
+    def get_rom_path(self): #vers 2
+        """Get first ROM directory path (for backward compatibility)
+        
+        Returns:
+            Path object of first ROM path
+        """
+        paths = self.settings.get('rom_paths', ['roms'])
+        return Path(paths[0]) if paths else Path('roms')
+    
+    def get_rom_paths(self): #vers 1
+        """Get all ROM directory paths
+        
+        Returns:
+            List of Path objects
+        """
+        paths = self.settings.get('rom_paths', ['roms'])
+        return [Path(p) for p in paths]
+    
+    def remove_rom_path(self, path): #vers 1
+        """Remove a ROM directory path
+        
+        Args:
+            path: Path to remove (string or Path object)
+        """
+        path_str = str(path)
+        if 'rom_paths' in self.settings and path_str in self.settings['rom_paths']:
+            self.settings['rom_paths'].remove(path_str)
+            self.save_mel_settings()
+    
+    def set_rom_path(self, path): #vers 2
+        """Set ROM directory path (sets first path for backward compatibility)
+        
+        Args:
+            path: Path to set (string or Path object)
+        """
+        if 'rom_paths' not in self.settings:
+            self.settings['rom_paths'] = []
+        
+        if self.settings['rom_paths']:
+            self.settings['rom_paths'][0] = str(path)
+        else:
+            self.settings['rom_paths'] = [str(path)]
+        
+        self.save_mel_settings()
+    
+    def set_rom_paths(self, paths): #vers 1
+        """Set all ROM directory paths
+        
+        Args:
+            paths: List of paths (strings or Path objects)
+        """
+        self.settings['rom_paths'] = [str(p) for p in paths]
+        self.save_mel_settings()
     
     # Path getters
     def get_bios_path(self): #vers 1
@@ -136,10 +215,6 @@ class MELSettingsManager: #vers 3
     def get_core_path(self): #vers 1
         """Get cores directory path"""
         return Path(self.settings.get('core_path', 'cores'))
-    
-    def get_rom_path(self): #vers 1
-        """Get ROM directory path"""
-        return Path(self.settings.get('rom_path', 'roms'))
     
     def get_save_path(self): #vers 1
         """Get saves directory path"""
@@ -231,11 +306,6 @@ class MELSettingsManager: #vers 3
     def set_core_path(self, path): #vers 1
         """Set cores directory path"""
         self.settings['core_path'] = str(path)
-        self.save_mel_settings()
-    
-    def set_rom_path(self, path): #vers 1
-        """Set ROM directory path"""
-        self.settings['rom_path'] = str(path)
         self.save_mel_settings()
     
     def set_save_path(self, path): #vers 1

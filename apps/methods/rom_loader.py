@@ -1,10 +1,12 @@
 # X-Seti - October15 2025 - Multi-Emulator Launcher - ROM Loader
-# This belongs in methods/rom_loader.py - Version: 1
+# This belongs in methods/rom_loader.py - Version: 2
 """
-ROM Loader - Handles loading ROMs including ZIP extraction and caching.
+ROM Loader - Handles loading ROMs including ZIP/7Z/RAR extraction and caching.
 """
 
 ##Methods list -
+# _extract_7z
+# _extract_rar
 # _extract_zip
 # _find_folder_main_rom
 # _find_main_rom_file
@@ -21,14 +23,106 @@ import zipfile
 import shutil
 from pathlib import Path
 
+try:
+    import py7zr
+    SEVENZ_AVAILABLE = True
+except ImportError:
+    SEVENZ_AVAILABLE = False
 
-class RomLoader: #vers 1
-    def __init__(self, config, platforms): #vers 1
+try:
+    import rarfile
+    RAR_AVAILABLE = True
+except ImportError:
+    RAR_AVAILABLE = False
+
+
+class RomLoader: #vers 2
+    def __init__(self, config, platforms): #vers 2
         self.config = config
         self.platforms = platforms
         self.cache_dir = Path(config['cache_path']) / 'extracted'
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.temp_extractions = []
+    
+    def _extract_7z(self, game_entry, platform_config): #vers 1
+        """Extract 7Z file and return path to main ROM"""
+        if not SEVENZ_AVAILABLE:
+            raise Exception("py7zr not installed. Cannot extract .7z files.")
+        
+        archive_path = Path(game_entry['path'])
+        
+        if platform_config.get('cache_extracted'):
+            cached_path = self._get_cached_extraction(archive_path)
+            if cached_path:
+                return cached_path
+        
+        if platform_config.get('cache_extracted'):
+            extract_dir = self._get_cache_path(archive_path)
+        else:
+            extract_dir = self.cache_dir / 'temp' / archive_path.stem
+            self.temp_extractions.append(extract_dir)
+        
+        extract_dir.mkdir(parents=True, exist_ok=True)
+        
+        try:
+            with py7zr.SevenZipFile(archive_path, 'r') as archive:
+                archive.extractall(path=extract_dir)
+            
+            rom_files = game_entry.get('rom_files', [])
+            if not rom_files:
+                rom_files = self._find_rom_files(extract_dir, platform_config['extensions'])
+            
+            if not rom_files:
+                raise Exception(f"No ROM files found in 7Z: {archive_path}")
+            
+            main_rom = self._find_main_rom_file(rom_files, extract_dir)
+            
+            return str(main_rom)
+        
+        except Exception as e:
+            if extract_dir.exists():
+                shutil.rmtree(extract_dir, ignore_errors=True)
+            raise Exception(f"Failed to extract 7Z {archive_path}: {e}")
+    
+    def _extract_rar(self, game_entry, platform_config): #vers 1
+        """Extract RAR file and return path to main ROM"""
+        if not RAR_AVAILABLE:
+            raise Exception("rarfile not installed. Cannot extract .rar files.")
+        
+        archive_path = Path(game_entry['path'])
+        
+        if platform_config.get('cache_extracted'):
+            cached_path = self._get_cached_extraction(archive_path)
+            if cached_path:
+                return cached_path
+        
+        if platform_config.get('cache_extracted'):
+            extract_dir = self._get_cache_path(archive_path)
+        else:
+            extract_dir = self.cache_dir / 'temp' / archive_path.stem
+            self.temp_extractions.append(extract_dir)
+        
+        extract_dir.mkdir(parents=True, exist_ok=True)
+        
+        try:
+            with rarfile.RarFile(archive_path, 'r') as archive:
+                archive.extractall(path=extract_dir)
+            
+            rom_files = game_entry.get('rom_files', [])
+            if not rom_files:
+                rom_files = self._find_rom_files(extract_dir, platform_config['extensions'])
+            
+            if not rom_files:
+                raise Exception(f"No ROM files found in RAR: {archive_path}")
+            
+            main_rom = self._find_main_rom_file(rom_files, extract_dir)
+            
+            return str(main_rom)
+        
+        except Exception as e:
+            if extract_dir.exists():
+                shutil.rmtree(extract_dir, ignore_errors=True)
+            raise Exception(f"Failed to extract RAR {archive_path}: {e}")
     
     def _extract_zip(self, game_entry, platform_config): #vers 1
         """Extract ZIP file and return path to main ROM"""
@@ -120,17 +214,17 @@ class RomLoader: #vers 1
         
         return rom_files
     
-    def _get_cache_path(self, zip_path): #vers 1
-        """Get cache directory path for a ZIP file"""
-        zip_path = Path(zip_path)
-        mtime = int(zip_path.stat().st_mtime)
-        cache_key = f"{zip_path.stem}_{mtime}"
+    def _get_cache_path(self, archive_path): #vers 1
+        """Get cache directory path for an archive file"""
+        archive_path = Path(archive_path)
+        mtime = int(archive_path.stat().st_mtime)
+        cache_key = f"{archive_path.stem}_{mtime}"
         
         return self.cache_dir / cache_key
     
-    def _get_cached_extraction(self, zip_path): #vers 1
-        """Check if ZIP has been extracted to cache"""
-        cache_path = self._get_cache_path(zip_path)
+    def _get_cached_extraction(self, archive_path): #vers 1
+        """Check if archive has been extracted to cache"""
+        cache_path = self._get_cache_path(archive_path)
         
         if cache_path.exists():
             for item in cache_path.rglob('*'):
@@ -166,8 +260,8 @@ class RomLoader: #vers 1
         
         return total_size
     
-    def load_rom(self, game_entry): #vers 1
-        """Load a ROM file, extracting from ZIP if necessary"""
+    def load_rom(self, game_entry): #vers 2
+        """Load a ROM file, extracting from archive if necessary"""
         game_type = game_entry['type']
         platform = game_entry['platform']
         platform_config = self.platforms.get(platform)
@@ -181,11 +275,18 @@ class RomLoader: #vers 1
         elif game_type == 'zip':
             return self._extract_zip(game_entry, platform_config)
         
+        elif game_type == '7z':
+            return self._extract_7z(game_entry, platform_config)
+        
+        elif game_type == 'rar':
+            return self._extract_rar(game_entry, platform_config)
+        
         elif game_type == 'folder':
             return self._find_folder_main_rom(game_entry)
         
         elif game_type == 'multidisk':
             first_disk = game_entry['disks'][0]
+            
             if first_disk.endswith('.zip'):
                 temp_entry = {
                     'type': 'zip',
@@ -194,6 +295,25 @@ class RomLoader: #vers 1
                     'rom_files': game_entry.get('rom_files', [])
                 }
                 return self._extract_zip(temp_entry, platform_config)
+            
+            elif first_disk.endswith('.7z'):
+                temp_entry = {
+                    'type': '7z',
+                    'path': first_disk,
+                    'platform': platform,
+                    'rom_files': game_entry.get('rom_files', [])
+                }
+                return self._extract_7z(temp_entry, platform_config)
+            
+            elif first_disk.endswith('.rar'):
+                temp_entry = {
+                    'type': 'rar',
+                    'path': first_disk,
+                    'platform': platform,
+                    'rom_files': game_entry.get('rom_files', [])
+                }
+                return self._extract_rar(temp_entry, platform_config)
+            
             return first_disk
         
         raise Exception(f"Unknown game type: {game_type}")
