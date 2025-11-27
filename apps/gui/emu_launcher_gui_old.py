@@ -1,22 +1,19 @@
 #!/usr/bin/env python3
-#this belongs in apps/gui/emu_launcher_gui.py - Version: 17
+#this belongs in apps/gui/emu_launcher_gui.py - Version: 16
 # X-Seti - November24 2025 - Multi-Emulator Launcher - Main GUI
 
 """
 Multi-Emulator Launcher GUI
 Main window with 3-panel layout for emulator management
+Clean version: No hardcoded colors, uses AppSettings theme system
 """
 
 #TODO - Artwork comes with RetroArch - if retroarch is installed, borrow the artwork from that, to replace the thumbnails and display window cover art.
-#TODO - Move window functionality is broken.
+#TODO - Fix the icons in the svg section, so we can uncomment the SVG icons in the right panel.
+#TODO - #ccd2cc hex appears in the buttom right button background.
+#TODO - All SVG icons should be theme aware, Dark on light themes, Light on dark themes.
 
 #Changelog
-
-#November26 v17 - Button Visibility and Font Support
-#- Fixed the icons in the svg section, now in their own file..
-#- #ccd2cc hex and other hardcoded version removed
-#- All SVG icons should be theme aware, Dark on light themes, Light on dark themes.
-
 
 #November24 v16 - Button Visibility and Font Support
 #- Fixed button colors for light themes - calculate from bg_primary with 0.85 brightness
@@ -671,12 +668,9 @@ class EmulatorDisplayWidget(QWidget): #vers 4
         button_layout.setContentsMargins(5, 5, 5, 5)
         button_layout.setSpacing(5)
 
-        # Get icon color from main window
-        icon_color = self.main_window._get_icon_color() if hasattr(self.main_window, '_get_icon_color') else '#ffffff'
-        
         # Launch button
         self.launch_btn = QPushButton("Launch Game")
-        self.launch_btn.setIcon(SVGIconFactory.launch_icon(20, icon_color))
+        self.launch_btn.setIcon(self.main_window._create_launch_icon())
         self.launch_btn.setIconSize(QSize(20, 20))
         self.launch_btn.setMinimumHeight(35)
         self.launch_btn.setToolTip("Launch Emulator")
@@ -687,7 +681,7 @@ class EmulatorDisplayWidget(QWidget): #vers 4
 
         # Load Core button
         self.load_core_btn = QPushButton("Load Core")
-        self.load_core_btn.setIcon(SVGIconFactory.folder_icon(20, icon_color))
+        self.load_core_btn.setIcon(self.main_window._create_folder_icon())
         self.load_core_btn.setIconSize(QSize(20, 20))
         self.load_core_btn.setMinimumHeight(35)
         self.load_core_btn.setToolTip("Browse and load emulator cores")
@@ -697,7 +691,7 @@ class EmulatorDisplayWidget(QWidget): #vers 4
 
         # Art Manager button
         self.gameart_btn = QPushButton("Art Manager")
-        self.gameart_btn.setIcon(SVGIconFactory.paint_icon(20, icon_color))
+        self.gameart_btn.setIcon(self.main_window._create_paint_icon())
         self.gameart_btn.setIconSize(QSize(20, 20))
         self.gameart_btn.setMinimumHeight(35)
         self.gameart_btn.setToolTip("Download and manage game artwork")
@@ -709,7 +703,7 @@ class EmulatorDisplayWidget(QWidget): #vers 4
 
         # Game Manager button
         self.manage_btn = QPushButton("Game Manager")
-        self.manage_btn.setIcon(SVGIconFactory.manage_icon(20, icon_color))
+        self.manage_btn.setIcon(self.main_window._create_manage_icon())
         self.manage_btn.setIconSize(QSize(20, 20))
         self.manage_btn.setMinimumHeight(35)
         self.manage_btn.setToolTip("Configure game settings")
@@ -719,7 +713,7 @@ class EmulatorDisplayWidget(QWidget): #vers 4
 
         # Game Ports button
         self.ports_btn = QPushButton("Game Ports")
-        self.ports_btn.setIcon(SVGIconFactory.package_icon(20, icon_color))
+        self.ports_btn.setIcon(self.main_window._create_package_icon())
         self.ports_btn.setIconSize(QSize(20, 20))
         self.ports_btn.setMinimumHeight(35)
         self.ports_btn.setToolTip("View game ports across systems")
@@ -729,7 +723,7 @@ class EmulatorDisplayWidget(QWidget): #vers 4
 
         # Stop button
         self.stop_btn = QPushButton("Stop")
-        self.stop_btn.setIcon(SVGIconFactory.stop_icon(20, icon_color))
+        self.stop_btn.setIcon(self.main_window._create_stop_icon())
         self.stop_btn.setIconSize(QSize(20, 20))
         self.stop_btn.setMinimumHeight(35)
         self.stop_btn.setToolTip("Stop emulation")
@@ -1110,7 +1104,7 @@ class EmuLauncherGUI(QWidget): #vers 1
         self.scan_bios_btn = QPushButton()
         self.scan_bios_btn.setIcon(SVGIconFactory.chip_icon(20, icon_color))
         self.scan_bios_btn.setText("Scan BIOS")
-        self.scan_bios_btn.setIconSize(QSize(30, 30))
+        self.scan_bios_btn.setIconSize(QSize(20, 20))
         self.scan_bios_btn.setToolTip("Scan and manage system BIOS files")
         self.scan_bios_btn.clicked.connect(self._show_bios_manager)
         self.layout.addWidget(self.scan_bios_btn)
@@ -1251,7 +1245,6 @@ class EmuLauncherGUI(QWidget): #vers 1
         """Create Panel 1: Emulator platforms list with icons"""
         panel = QFrame()
         panel.setFrameStyle(QFrame.Shape.StyledPanel)
-        panel.setMinimumWidth(250)
 
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(5, 5, 5, 5)
@@ -1305,7 +1298,6 @@ class EmuLauncherGUI(QWidget): #vers 1
         """Create Panel 2: Game list for selected platform"""
         panel = QFrame()
         panel.setFrameStyle(QFrame.Shape.StyledPanel)
-        panel.setMinimumWidth(250)
 
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(5, 5, 5, 5)
@@ -1328,7 +1320,7 @@ class EmuLauncherGUI(QWidget): #vers 1
         """Create Panel 3: Emulator display with vertical icon controls on right"""
         panel = QFrame()
         panel.setFrameStyle(QFrame.Shape.StyledPanel)
-        panel.setMinimumWidth(300)
+        panel.setMinimumWidth(400)
 
         # Main horizontal layout (display + icons)
         main_layout = QHBoxLayout(panel)
@@ -1425,9 +1417,6 @@ class EmuLauncherGUI(QWidget): #vers 1
 
         layout = QVBoxLayout(dialog)
 
-        # Get icon color from main window
-        icon_color = self.main_window._get_icon_color() if hasattr(self.main_window, '_get_icon_color') else '#ffffff'
-
         # BIOS path configuration
         path_layout = QHBoxLayout()
         path_layout.addWidget(QLabel("BIOS Path:"))
@@ -1455,7 +1444,7 @@ class EmuLauncherGUI(QWidget): #vers 1
         button_layout = QHBoxLayout()
 
         scan_btn = QPushButton("Scan BIOS Files")
-        scan_btn.setIcon(SVGIconFactory.chip_icon(20, icon_color))
+        scan_btn.setIcon(self._create_chip_icon())
         scan_btn.clicked.connect(self._scan_bios_files)
         button_layout.addWidget(scan_btn)
 
@@ -3063,25 +3052,25 @@ class EmuLauncherGUI(QWidget): #vers 1
 
         # Titlebar window controls
         if hasattr(self, 'minimize_btn'):
-            self.minimize_btn.setIcon(SVGIconFactory.minimize_icon(20, icon_color))
+            self.minimize_btn.setIcon(self._create_minimize_icon())
             self.minimize_btn.repaint()  # Force visual update
         if hasattr(self, 'maximize_btn'):
-            self.maximize_btn.setIcon(SVGIconFactory.maximize_icon(20, icon_color))
+            self.maximize_btn.setIcon(self._create_maximize_icon())
             self.maximize_btn.repaint()
         if hasattr(self, 'close_btn'):
-            self.close_btn.setIcon(SVGIconFactory.close_icon(20, icon_color))
+            self.close_btn.setIcon(self._create_close_icon())
             self.close_btn.repaint()
         if hasattr(self, 'properties_btn'):
-            self.properties_btn.setIcon(SVGIconFactory.properties_icon(24, icon_color))
+            self.properties_btn.setIcon(self._create_properties_icon())
             self.properties_btn.repaint()
         if hasattr(self, 'info_btn'):
-            self.info_btn.setIcon(SVGIconFactory.info_icon(24, icon_color))
+            self.info_btn.setIcon(self._create_info_icon())
             self.info_btn.repaint()
 
 
         # Titlebar main buttons
         if hasattr(self, 'scan_bios_btn'):
-            self.scan_bios_btn.setIcon(SVGIconFactory.chip_icon(20, icon_color))
+            self.scan_bios_btn.setIcon(self._create_chip_icon())
             self.scan_bios_btn.repaint()
 
         if hasattr(self, 'scan_roms_btn'):
@@ -3096,42 +3085,41 @@ class EmuLauncherGUI(QWidget): #vers 1
 
         # Sidebar control buttons - FORCE REFRESH
         if hasattr(self, 'vol_up_btn'):
-            self.vol_up_btn.setIcon(SVGIconFactory.volume_up_icon(20, icon_color))
+            self.vol_up_btn.setIcon(self._create_volume_up_icon(20))
             self.vol_up_btn.update()  # Force Qt to redraw
             self.vol_up_btn.repaint()
         if hasattr(self, 'vol_down_btn'):
-            self.vol_down_btn.setIcon(SVGIconFactory.volume_down_icon(20, icon_color))
+            self.vol_down_btn.setIcon(self._create_volume_down_icon(20))
             self.vol_down_btn.update()
             self.vol_down_btn.repaint()
         if hasattr(self, 'screenshot_btn'):
-            self.screenshot_btn.setIcon(SVGIconFactory.screenshot_icon(20, icon_color))
+            self.screenshot_btn.setIcon(self._create_screenshot_icon(20))
             self.screenshot_btn.update()
             self.screenshot_btn.repaint()
         if hasattr(self, 'record_btn'):
-            self.record_btn.setIcon(SVGIconFactory.record_icon(20))
+            self.record_btn.setIcon(self._create_record_icon(20))
             self.record_btn.update()
             self.record_btn.repaint()
 
         # Bottom panel buttons
         if hasattr(self, 'display_widget'):
-            icon_color = self._get_icon_color()
             if hasattr(self.display_widget, 'launch_btn'):
-                self.display_widget.launch_btn.setIcon(SVGIconFactory.launch_icon(20, icon_color))
+                self.display_widget.launch_btn.setIcon(self._create_launch_icon())
                 self.display_widget.launch_btn.repaint()
             if hasattr(self.display_widget, 'load_core_btn'):
-                self.display_widget.load_core_btn.setIcon(SVGIconFactory.folder_icon(20, icon_color))
+                self.display_widget.load_core_btn.setIcon(self._create_folder_icon())
                 self.display_widget.load_core_btn.repaint()
             if hasattr(self.display_widget, 'gameart_btn'):
-                self.display_widget.gameart_btn.setIcon(SVGIconFactory.paint_icon(20, icon_color))
+                self.display_widget.gameart_btn.setIcon(self._create_paint_icon())
                 self.display_widget.gameart_btn.repaint()
             if hasattr(self.display_widget, 'manage_btn'):
-                self.display_widget.manage_btn.setIcon(SVGIconFactory.manage_icon(20, icon_color))
+                self.display_widget.manage_btn.setIcon(self._create_manage_icon())
                 self.display_widget.manage_btn.repaint()
             if hasattr(self.display_widget, 'ports_btn'):
-                self.display_widget.ports_btn.setIcon(SVGIconFactory.package_icon(20, icon_color))
+                self.display_widget.ports_btn.setIcon(self._create_package_icon())
                 self.display_widget.ports_btn.repaint()
             if hasattr(self.display_widget, 'stop_btn'):
-                self.display_widget.stop_btn.setIcon(SVGIconFactory.stop_icon(20, icon_color))
+                self.display_widget.stop_btn.setIcon(self._create_stop_icon())
                 self.display_widget.stop_btn.repaint()
 
     def _open_mel_settings(self): #vers 2
