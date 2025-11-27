@@ -80,10 +80,11 @@ class EmulatorLauncher: #vers 2
             
         self.core_downloader = CoreDownloader(self.base_dir)
         
-        # Initialize CoreLauncher with database from CoreDownloader
+        # Initialize CoreLauncher with dynamic database built from available cores with aliases
+        dynamic_database = self.core_downloader.get_dynamic_core_database_with_aliases()
         self.core_launcher = CoreLauncher(
             self.base_dir, 
-            self.core_downloader.CORE_DATABASE,
+            dynamic_database,  # Use dynamic database built from available cores with aliases
             self.core_downloader
         )
         

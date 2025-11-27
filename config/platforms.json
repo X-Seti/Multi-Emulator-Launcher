@@ -1,6 +1,6 @@
 {
   "Acorn Electron": {
-    "core": "mame_libretro.so",
+    "cores": ["mame"],
     "extensions": [
       ".adf",
       ".uef"
@@ -8,10 +8,10 @@
     "zip_support": "extract",
     "cache_extracted": true,
     "bios_required": false,
-    "bios_files": {}
+    "bios_files": []
   },
   "Amiga": {
-    "core": "puae_libretro.so",
+    "cores": ["puae"],
     "extensions": [
       ".adf",
       ".ipf",
@@ -23,13 +23,10 @@
     "zip_support": "extract",
     "cache_extracted": true,
     "bios_required": true,
-    "bios_files": {
-      "kick34005.A500": "Kickstart 3.1 ROM",
-      "kick40068.A1200": "Kickstart 3.1 ROM (A1200)"
-    }
+    "bios_files": ["kick34005.A500", "kick40068.A1200"]
   },
   "Amstrad CPC": {
-    "core": "cap32_libretro.so",
+    "cores": ["cap32", "crocods"],
     "extensions": [
       ".dsk",
       ".sna",
@@ -39,10 +36,10 @@
     "zip_support": "extract",
     "cache_extracted": true,
     "bios_required": false,
-    "bios_files": {}
+    "bios_files": []
   },
   "Atari 2600": {
-    "core": "stella_libretro.so",
+    "cores": ["stella"],
     "extensions": [
       ".bin",
       ".a26",
@@ -51,10 +48,22 @@
     "zip_support": "native",
     "cache_extracted": false,
     "bios_required": false,
-    "bios_files": {}
+    "bios_files": []
+  },
+  "Atari 5200": {
+    "cores": ["atari800"],
+    "extensions": [".a52", ".atr", ".xex"],
+    "bios_required": true,
+    "bios_files": ["5200.rom"]
+  },
+  "Atari 7800": {
+    "cores": ["prosystem"],
+    "extensions": [".a78", ".bin"],
+    "bios_required": true,
+    "bios_files": ["7800 BIOS (U).rom"]
   },
   "Atari 800": {
-    "core": "atari800_libretro.so",
+    "cores": ["atari800"],
     "extensions": [
       ".atr",
       ".xex",
@@ -65,13 +74,10 @@
     "zip_support": "extract",
     "cache_extracted": true,
     "bios_required": true,
-    "bios_files": {
-      "ATARIXL.ROM": "Atari XL/XE OS",
-      "ATARIBAS.ROM": "Atari BASIC"
-    }
+    "bios_files": ["ATARIXL.ROM", "ATARIBAS.ROM"]
   },
   "Atari-8-bit": {
-    "core": "atari800_libretro.so",
+    "cores": ["atari800"],
     "extensions": [
       ".atr",
       ".xex",
@@ -82,13 +88,10 @@
     "zip_support": "extract",
     "cache_extracted": true,
     "bios_required": true,
-    "bios_files": {
-      "ATARIXL.ROM": "Atari XL/XE OS",
-      "ATARIBAS.ROM": "Atari BASIC"
-    }
+    "bios_files": ["ATARIXL.ROM", "ATARIBAS.ROM"]
   },
   "Atari ST": {
-    "core": "hatari_libretro.so",
+    "cores": ["hatari"],
     "extensions": [
       ".st",
       ".stx",
@@ -99,12 +102,10 @@
     "zip_support": "extract",
     "cache_extracted": true,
     "bios_required": true,
-    "bios_files": {
-      "tos.img": "TOS System ROM"
-    }
+    "bios_files": ["tos.img"]
   },
   "BBC Micro": {
-    "core": "mame_libretro.so",
+    "cores": ["mame"],
     "extensions": [
       ".ssd",
       ".dsd",
@@ -114,10 +115,10 @@
     "zip_support": "extract",
     "cache_extracted": true,
     "bios_required": false,
-    "bios_files": {}
+    "bios_files": []
   },
   "Commodore 64": {
-    "core": "vice_x64_libretro.so",
+    "cores": ["vice_x64"],
     "extensions": [
       ".d64",
       ".t64",
@@ -128,21 +129,40 @@
     "zip_support": "extract",
     "cache_extracted": true,
     "bios_required": false,
-    "bios_files": {}
+    "bios_files": []
   },
-  "MS-DOS": {
-    "core": "dosbox_pure_libretro.so",
-    "extensions": [
-      ".zip",
-      ".dosz"
-    ],
-    "zip_support": "native",
-    "cache_extracted": false,
+  "C64": {
+    "cores": ["vice_x64"],
+    "extensions": [".d64", ".t64", ".crt", ".prg", ".tap"],
     "bios_required": false,
-    "bios_files": {}
+    "bios_files": []
+  },
+  "MSX": {
+    "cores": ["fmsx", "bluemsx"],
+    "extensions": [".rom", ".mx1", ".mx2", ".dsk"],
+    "bios_required": true,
+    "bios_files": ["MSX.ROM", "MSX2.ROM"]
+  },
+  "MSX2": {
+    "cores": ["fmsx", "bluemsx"],
+    "extensions": [".rom", ".mx1", ".mx2", ".dsk"],
+    "bios_required": true,
+    "bios_files": ["MSX2.ROM", "MSX2EXT.ROM"]
+  },
+  "Plus4": {
+    "cores": ["vice_xplus4"],
+    "extensions": [".p41", ".prg", ".d64"],
+    "bios_required": false,
+    "bios_files": []
+  },
+  "Sam Coupe": {
+    "cores": ["mame"],
+    "extensions": [".mgt", ".sad", ".dsk"],
+    "bios_required": false,
+    "bios_files": []
   },
   "ZX Spectrum": {
-    "core": "fuse_libretro.so",
+    "cores": ["fuse"],
     "extensions": [
       ".tzx",
       ".tap",
@@ -154,6 +174,53 @@
     "zip_support": "extract",
     "cache_extracted": true,
     "bios_required": false,
-    "bios_files": {}
+    "bios_files": []
+  },
+  "ZX Spectrum 128": {
+    "cores": ["fuse"],
+    "extensions": [".tap", ".tzx", ".z80", ".sna", ".dsk"],
+    "bios_required": false,
+    "bios_files": []
+  },
+  "Z81-Spec256": {
+    "cores": ["fuse"],
+    "extensions": [".tap", ".tzx", ".z80", ".sna"],
+    "bios_required": false,
+    "bios_files": []
+  },
+  "Dragon 32-64": {
+    "cores": ["xroar"],
+    "extensions": [".cas", ".wav", ".k7", ".dsk", ".vdk"],
+    "bios_required": false,
+    "bios_files": []
+  },
+  "Fujitsu FM-7": {
+    "cores": ["mame"],
+    "extensions": [".d77", ".t77"],
+    "bios_required": false,
+    "bios_files": []
+  },
+  "Oric Atmos": {
+    "cores": ["mame"],
+    "extensions": [".tap", ".dsk"],
+    "bios_required": false,
+    "bios_files": []
+  },
+  "TRS-80": {
+    "cores": ["mame"],
+    "extensions": [".cas", ".cmd", ".dsk"],
+    "bios_required": false,
+    "bios_files": []
+  },
+  "MS-DOS": {
+    "cores": ["dosbox_pure"],
+    "extensions": [
+      ".zip",
+      ".dosz"
+    ],
+    "zip_support": "native",
+    "cache_extracted": false,
+    "bios_required": false,
+    "bios_files": []
   }
 }
