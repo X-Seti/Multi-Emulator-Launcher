@@ -832,8 +832,8 @@ class EmuLauncherGUI(QWidget): #vers 20
 
     window_closed = pyqtSignal()
 
-    def __init__(self, parent=None, main_window=None, core_downloader=None,
-                core_launcher=None, gamepad_config=None, game_config=None): #vers 14
+    def __init__(self, parent=None, main_window=None, core_downloader=None, platform_scanner=None,
+                rom_loader=None, bios_manager=None, game_scanner=None, core_launcher=None, gamepad_config=None, game_config=None, system_core_scanner=None): #vers 14
         """Initialize Multi-Emulator Launcher GUI
 
         Args:
