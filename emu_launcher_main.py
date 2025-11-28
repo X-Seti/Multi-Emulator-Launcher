@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-#this belongs in root /emu_launcher_main.py - Version: 2
-# X-Seti - November19 2025 - Multi-Emulator Launcher - Main Entry Point
+#this belongs in root /emu_launcher_main.py - Version: 3
+# X-Seti - November28 2025 - Multi-Emulator Launcher - Main Entry Point
 
 """
 Multi-Emulator Launcher
 Main entry point for the emulator launcher application
+Updated to use dynamic core detection and BIOS management
 """
 
 import sys
@@ -20,7 +21,12 @@ from PyQt6.QtCore import Qt
 
 # Import application components
 from apps.gui.emu_launcher_gui import EmuLauncherGUI
-from apps.core.core_downloader import CoreDownloader, create_directory_structure
+from apps.methods.core_downloader import CoreDownloader
+from apps.methods.system_core_scanner import SystemCoreScanner
+from apps.methods.bios_manager import BiosManager
+from apps.methods.platform_scanner import PlatformScanner
+from apps.methods.game_scanner import GameScanner
+from apps.methods.rom_loader import RomLoader
 from apps.core.core_launcher import CoreLauncher
 from apps.core.gamepad_config import GamepadConfig
 
@@ -41,21 +47,26 @@ except ImportError:
 # __init__
 # run
 
-class EmulatorLauncher: #vers 2
-    """Main launcher class"""
+class EmulatorLauncher: #vers 3
+    """Main launcher class with dynamic core detection"""
     
-    def __init__(self): #vers 2
-        """Initialize launcher"""
+    def __init__(self): #vers 3
+        """Initialize launcher with dynamic detection systems"""
         self.base_dir = Path.cwd()
         self.app_settings = None
         self.core_downloader = None
         self.core_launcher = None
         self.gamepad_config = None
+        self.platform_scanner = None
+        self.game_scanner = None
+        self.rom_loader = None
+        self.bios_manager = None
+        self.system_core_scanner = None
         
-    def run(self): #vers 2
-        """Run the launcher"""
+    def run(self): #vers 3
+        """Run the launcher with dynamic core detection"""
         print("=" * 60)
-        print("Multi-Emulator Launcher v1.0")
+        print("Multi-Emulator Launcher v2.0 - Dynamic Detection System")
         print("=" * 60)
         
         # Check dependencies
@@ -78,13 +89,33 @@ class EmulatorLauncher: #vers 2
             print("  ⚠️  AppSettings not available - using defaults")
             self.app_settings = None
             
-        self.core_downloader = CoreDownloader(self.base_dir)
+        # Initialize dynamic detection systems
+        self.system_core_scanner = SystemCoreScanner(self.base_dir / "cores")
+        self.bios_manager = BiosManager(self.base_dir / "bios")
+        self.core_downloader = CoreDownloader(self.base_dir / "cores")
         
-        # Initialize CoreLauncher with dynamic database built from available cores with aliases
-        dynamic_database = self.core_downloader.get_dynamic_core_database_with_aliases()
+        # Initialize scanners with dynamic detection
+        self.platform_scanner = PlatformScanner(
+            self.base_dir / "roms", 
+            self.base_dir / "cores"
+        )
+        
+        # Get dynamically detected platforms
+        dynamic_platforms = self.platform_scanner.scan_platforms()
+        
+        # Initialize game scanner and ROM loader with dynamic platforms
+        config = {
+            'rom_path': str(self.base_dir / "roms"),
+            'cache_path': str(self.base_dir / "cache")
+        }
+        
+        self.game_scanner = GameScanner(config, dynamic_platforms)
+        self.rom_loader = RomLoader(config, dynamic_platforms)
+        
+        # Initialize CoreLauncher with dynamic database
         self.core_launcher = CoreLauncher(
             self.base_dir, 
-            dynamic_database,  # Use dynamic database built from available cores with aliases
+            dynamic_platforms,  # Use dynamic platform database
             self.core_downloader
         )
         
@@ -93,15 +124,15 @@ class EmulatorLauncher: #vers 2
         self.gamepad_config = GamepadConfig(self.base_dir)
         
         # Check for installed cores
-        installed_cores = self.core_downloader.get_installed_cores()
-        print(f"  ✓ Found {len(installed_cores)} installed cores")
+        installed_cores = self.system_core_scanner.get_installed_cores()
+        print(f"  ✓ Found {len(installed_cores)} installed cores: {list(installed_cores.keys())}")
         
         # Check for controllers
         controllers = self.gamepad_config.detect_controllers()
         print(f"  ✓ Detected {len(controllers)} controller(s)")
         
         # Launch GUI
-        print("\nLaunching GUI...")
+        print("\nLaunching GUI with dynamic detection...")
         app = QApplication(sys.argv)
         
         # Apply theme if available
@@ -114,11 +145,16 @@ class EmulatorLauncher: #vers 2
             core_downloader=self.core_downloader,
             core_launcher=self.core_launcher,
             gamepad_config=self.gamepad_config,
-            game_config=self.game_config
+            game_config=self.game_config,
+            platform_scanner=self.platform_scanner,
+            game_scanner=self.game_scanner,
+            rom_loader=self.rom_loader,
+            bios_manager=self.bios_manager,
+            system_core_scanner=self.system_core_scanner
         )
         window.show()
         
-        print("✓ Multi-Emulator Launcher started\n")
+        print("✓ Multi-Emulator Launcher started with dynamic detection\n")
         
         return app.exec()
 
@@ -147,7 +183,7 @@ def check_dependencies() -> bool: #vers 1
     return True
 
 
-def initialize_directories(base_dir: Path) -> bool: #vers 1
+def initialize_directories(base_dir: Path) -> bool: #vers 2
     """Initialize directory structure if needed"""
     required_dirs = [
         'apps',
@@ -158,7 +194,8 @@ def initialize_directories(base_dir: Path) -> bool: #vers 1
         'config',
         'screenshots',
         'playlists',
-        'system'
+        'system',
+        'cache'  # Added for ROM extraction cache
     ]
     
     # Check if main directories exist
@@ -170,7 +207,8 @@ def initialize_directories(base_dir: Path) -> bool: #vers 1
         
         if response in ['', 'y', 'yes']:
             try:
-                create_directory_structure(base_dir)
+                for d in required_dirs:
+                    (base_dir / d).mkdir(exist_ok=True)
                 print("✓ Directory structure created")
                 return True
             except Exception as e:
