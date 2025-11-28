@@ -1,7 +1,8 @@
-# X-Seti - October15 2025 - Multi-Emulator Launcher - Game Scanner
-# This belongs in methods/game_scanner.py - Version: 2
+# X-Seti - November28 2025 - Multi-Emulator Launcher - Game Scanner
+# This belongs in methods/game_scanner.py - Version: 3
 """
 Game Scanner - Scans ROM directories, handles ZIP/7Z/RAR files, multi-disk games, and folder structures.
+Enhanced to work with dynamic core detection and BIOS management.
 """
 
 ##Methods list -
@@ -16,12 +17,14 @@ Game Scanner - Scans ROM directories, handles ZIP/7Z/RAR files, multi-disk games
 # _scan_zip
 # discover_platforms
 # scan_platform
+# scan_platform_with_bios_info
 
 import os
 import zipfile
 import re
 from pathlib import Path
 from collections import defaultdict
+from .bios_manager import BiosManager
 
 try:
     import py7zr
@@ -38,11 +41,12 @@ except ImportError:
     print("Warning: rarfile not installed. .rar support disabled.")
 
 
-class GameScanner: #vers 2
-    def __init__(self, config, platforms): #vers 2
+class GameScanner: #vers 3
+    def __init__(self, config, platforms): #vers 3
         self.config = config
         self.platforms = platforms
         self.rom_path = Path(config['rom_path'])
+        self.bios_manager = BiosManager()
         
         self.skip_extensions = [
             '.txt', '.nfo', '.jpg', '.png', '.gif', '.pdf', 
@@ -304,7 +308,7 @@ class GameScanner: #vers 2
         
         return sorted(platforms)
     
-    def scan_platform(self, platform_name): #vers 2
+    def scan_platform(self, platform_name): #vers 3
         """Scan all games for a specific platform"""
         platform_path = self.rom_path / platform_name
         
@@ -348,3 +352,21 @@ class GameScanner: #vers 2
         grouped_games = self._group_multidisk_games(games)
         
         return sorted(grouped_games, key=lambda g: g['display_name'].lower())
+    
+    def scan_platform_with_bios_info(self, platform_name): #vers 1
+        """Scan platform and return both games and BIOS information
+        
+        Args:
+            platform_name: Name of the platform to scan
+            
+        Returns:
+            Dict with 'games' and 'bios_info' keys
+        """
+        games = self.scan_platform(platform_name)
+        bios_info = self.bios_manager.get_platform_bios_info(platform_name)
+        
+        return {
+            'games': games,
+            'bios_info': bios_info,
+            'platform_config': self.platforms.get(platform_name, {})
+        }

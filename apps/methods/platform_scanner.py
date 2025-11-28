@@ -1,29 +1,33 @@
 #!/usr/bin/env python3
-#this belongs in apps/methods/platform_scanner.py - Version: 3
-# X-Seti - November22 2025 - Multi-Emulator Launcher - Platform Scanner
+#this belongs in apps/methods/platform_scanner.py - Version: 4
+# X-Seti - November28 2025 - Multi-Emulator Launcher - Platform Scanner
 
 """
 Dynamic Platform Scanner
 Discovers emulator platforms by scanning ROM directories
 Handles spaces in names, ignores system files, supports compressed formats (ZIP/7Z/RAR)
+Integrates with dynamic core detection and BIOS management
 """
 
 import os
 from pathlib import Path
 from typing import Dict, List, Optional, Set
+from .system_core_scanner import SystemCoreScanner
+from .bios_manager import BiosManager
 
 ##Methods list -
 # __init__
 # get_platform_info
 # get_platforms
 # scan_platforms
+# update_platform_config_with_cores
 # _count_roms_in_directory
 # _detect_file_extensions
 # _guess_platform_type
 # _is_system_file
 
-class PlatformScanner: #vers 3
-    """Dynamically discovers platforms from ROM directory structure"""
+class PlatformScanner: #vers 4
+    """Dynamically discovers platforms from ROM directory structure with core detection"""
     
     # Files/folders to ignore
     IGNORE_PATTERNS = {
@@ -82,10 +86,56 @@ class PlatformScanner: #vers 3
         ".smd": ["Genesis"],
     }
     
-    def __init__(self, roms_dir: Path): #vers 2
-        """Initialize platform scanner"""
+    # Platform to core mapping for dynamic detection
+    PLATFORM_CORE_MAPPING = {
+        "Amiga": ["puae", "uae"],
+        "Atari 2600": ["stella", "stella2014"],
+        "Atari 5200": ["atari800", "atari800_libretro"],
+        "Atari 7800": ["prosystem"],
+        "Atari 800": ["atari800", "atari800_libretro"],
+        "Atari ST": ["hatari"],
+        "Amstrad CPC": ["cap32", "crocods"],
+        "BBC Micro": ["mame", "mess"],
+        "C64": ["vice_x64", "vice_x64_libretro"],
+        "Commodore 64": ["vice_x64", "vice_x64_libretro"],
+        "MSX": ["fmsx", "bluemsx", "mesen-s"],
+        "MSX2": ["fmsx", "bluemsx"],
+        "ZX Spectrum": ["fuse", "scummvm"],
+        "ZX Spectrum 128": ["fuse"],
+        "Z81-Spec256": ["fuse"],
+        "MS-DOS": ["dosbox_pure", "dosbox"],
+        "Dragon 32-64": ["xroar"],
+        "Sam Coupe": ["mame"],
+        "Oric Atmos": ["mame"],
+        "TRS-80": ["mame"],
+        "Fujitsu FM-7": ["mame"],
+        "Plus4": ["vice_xplus4"],
+    }
+    
+    # Core name aliases for backward compatibility
+    CORE_ALIASES = {
+        "uae": "puae",
+        "stella2014": "stella",
+        "atari800_libretro": "atari800",
+        "vice_x64_libretro": "vice_x64",
+        "mess": "mame",
+    }
+    
+    def __init__(self, roms_dir: Path, cores_dir: Path = None): #vers 3
+        """Initialize platform scanner with core detection
+        
+        Args:
+            roms_dir: Directory containing ROMs
+            cores_dir: Directory containing cores (optional, defaults to ./cores)
+        """
         self.roms_dir = Path(roms_dir)
         self.platforms = {}
+        self.core_scanner = SystemCoreScanner(cores_dir or Path("./cores"))
+        self.bios_manager = BiosManager()
+        
+        # Get available cores
+        self.available_cores = self.core_scanner.get_installed_cores()
+        print(f"Available cores: {list(self.available_cores.keys())}")
         
     def _is_system_file(self, name: str) -> bool: #vers 1
         """Check if file/folder should be ignored
@@ -117,8 +167,59 @@ class PlatformScanner: #vers 3
             
         return False
     
-    def scan_platforms(self) -> Dict[str, Dict]: #vers 2
-        """Scan ROM directory and discover platforms - handles spaces"""
+    def update_platform_config_with_cores(self, platform_config: Dict) -> Dict:
+        """Update platform configuration with available cores
+        
+        Args:
+            platform_config: Original platform configuration
+            
+        Returns:
+            Updated platform configuration with available cores
+        """
+        # Make a copy of the original config
+        updated_config = platform_config.copy()
+        
+        # Get the platform name for core mapping
+        platform_name = updated_config.get("name", "")
+        
+        # Find available cores for this platform
+        available_platform_cores = []
+        
+        # Check platform-specific core mappings
+        if platform_name in self.PLATFORM_CORE_MAPPING:
+            for core_candidate in self.PLATFORM_CORE_MAPPING[platform_name]:
+                # Check if core exists (try both original and alias)
+                actual_core = self.CORE_ALIASES.get(core_candidate, core_candidate)
+                if actual_core in self.available_cores:
+                    available_platform_cores.append(actual_core)
+                elif core_candidate in self.available_cores:
+                    available_platform_cores.append(core_candidate)
+        
+        # If no specific mapping found, try to determine from existing cores
+        if not available_platform_cores and "cores" in updated_config:
+            for core_candidate in updated_config["cores"]:
+                actual_core = self.CORE_ALIASES.get(core_candidate, core_candidate)
+                if actual_core in self.available_cores:
+                    available_platform_cores.append(actual_core)
+                elif core_candidate in self.available_cores:
+                    available_platform_cores.append(core_candidate)
+        
+        # Update the cores list with only available ones
+        updated_config["cores"] = available_platform_cores
+        updated_config["core_available"] = len(available_platform_cores) > 0
+        
+        # Add BIOS information
+        bios_info = self.bios_manager.get_platform_bios_info(platform_name)
+        updated_config["bios_complete"] = bios_info["bios_complete"]
+        updated_config["missing_bios"] = bios_info["missing_files"]
+        updated_config["bios_required"] = len(bios_info["required_files"]) > 0
+        
+        return updated_config
+    
+    def scan_platforms(self) -> Dict[str, Dict]: #vers 3
+        """Scan ROM directory and discover platforms - handles spaces
+        Integrates with dynamic core detection and BIOS management
+        """
         if not self.roms_dir.exists():
             print(f"ROM directory not found: {self.roms_dir}")
             return {}
@@ -154,17 +255,33 @@ class PlatformScanner: #vers 3
             # Guess platform type
             platform_type = self._guess_platform_type(platform_name, extensions)
             
-            # Store platform info (spaces preserved!)
-            platforms[platform_name] = {
+            # Create basic platform config
+            basic_config = {
                 "name": platform_name,
                 "path": str(item),
                 "rom_count": rom_count,
                 "extensions": list(extensions),
                 "type": platform_type,
+                # Default values that will be updated with dynamic detection
+                "cores": [],
+                "core_available": False,
+                "bios_required": False,
+                "bios_complete": False,
+                "missing_bios": [],
             }
             
-            print(f"Loaded {len(platforms)} platform(s): {', '.join(platforms.keys())}")
+            # Update with dynamic core detection and BIOS info
+            platform_config = self.update_platform_config_with_cores(basic_config)
             
+            # Only add platform if it has available cores (to avoid "No core available" messages)
+            if platform_config["core_available"]:
+                platforms[platform_name] = platform_config
+                print(f"✓ {platform_name}: {rom_count} ROMs, cores: {platform_config['cores']}, BIOS: {'✓' if platform_config['bios_complete'] else '✗' if platform_config['bios_required'] else 'N/A'}")
+            else:
+                print(f"✗ {platform_name}: No available core found for this platform")
+                
+        print(f"\nLoaded {len(platforms)} platform(s): {', '.join(platforms.keys())}")
+        
         self.platforms = platforms
         return platforms
     

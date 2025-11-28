@@ -1,7 +1,8 @@
-# X-Seti - October15 2025 - Multi-Emulator Launcher - ROM Loader
-# This belongs in methods/rom_loader.py - Version: 2
+# X-Seti - November28 2025 - Multi-Emulator Launcher - ROM Loader
+# This belongs in methods/rom_loader.py - Version: 3
 """
 ROM Loader - Handles loading ROMs including ZIP/7Z/RAR extraction and caching.
+Enhanced to work with dynamic core detection and BIOS management.
 """
 
 ##Methods list -
@@ -13,15 +14,18 @@ ROM Loader - Handles loading ROMs including ZIP/7Z/RAR extraction and caching.
 # _find_rom_files
 # _get_cache_path
 # _get_cached_extraction
+# _get_bios_path
 # cleanup
 # clear_cache
 # get_cache_size
 # load_rom
+# load_rom_with_bios
 
 import os
 import zipfile
 import shutil
 from pathlib import Path
+from .bios_manager import BiosManager
 
 try:
     import py7zr
@@ -36,13 +40,14 @@ except ImportError:
     RAR_AVAILABLE = False
 
 
-class RomLoader: #vers 2
-    def __init__(self, config, platforms): #vers 2
+class RomLoader: #vers 3
+    def __init__(self, config, platforms): #vers 3
         self.config = config
         self.platforms = platforms
         self.cache_dir = Path(config['cache_path']) / 'extracted'
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.temp_extractions = []
+        self.bios_manager = BiosManager()
     
     def _extract_7z(self, game_entry, platform_config): #vers 1
         """Extract 7Z file and return path to main ROM"""
@@ -233,6 +238,17 @@ class RomLoader: #vers 2
         
         return None
     
+    def _get_bios_path(self, platform_name): #vers 1
+        """Get the path to BIOS files for a platform
+        
+        Args:
+            platform_name: Name of the platform
+            
+        Returns:
+            Dict of required BIOS files to their paths, or None if not available
+        """
+        return self.bios_manager.get_bios_paths(platform_name)
+    
     def cleanup(self): #vers 1
         """Clean up temporary extractions"""
         for temp_dir in self.temp_extractions:
@@ -317,3 +333,25 @@ class RomLoader: #vers 2
             return first_disk
         
         raise Exception(f"Unknown game type: {game_type}")
+
+    def load_rom_with_bios(self, game_entry): #vers 1
+        """Load a ROM file with BIOS information for the platform
+        
+        Args:
+            game_entry: Game entry dictionary
+            
+        Returns:
+            Dict with 'rom_path' and 'bios_paths' keys
+        """
+        rom_path = self.load_rom(game_entry)
+        platform = game_entry['platform']
+        
+        # Get BIOS paths for the platform
+        bios_paths = self._get_bios_path(platform)
+        
+        return {
+            'rom_path': rom_path,
+            'bios_paths': bios_paths,
+            'platform': platform,
+            'game_entry': game_entry
+        }
