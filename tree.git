@@ -28,13 +28,16 @@
 │   │   ├── mel_settings_dialog.py
 │   │   ├── mel_settings_manager.py
 │   │   ├── ports_manager_dialog.py
+│   │   ├── preview_window.py
 │   │   └── retro_conversion_methods.py
 │   ├── locale
 │   │   └── placeholder
 │   ├── methods
 │   │   ├── artwork_loader.py
+│   │   ├── bios_manager.py
 │   │   ├── controller_buttons.py
 │   │   ├── controller_layouts.py
+│   │   ├── core_downloader.py
 │   │   ├── game_scanner.py
 │   │   ├── igdb_downloader.py
 │   │   ├── mel_app_icon.py
@@ -91,17 +94,6 @@
 │   └── game boy
 │       └── gameboy_thumb.jpg
 ├── bios
-│   ├── Arcade
-│   ├── Game Boy Advance
-│   ├── Nintendo 64
-│   ├── Nintendo Entertainment System
-│   ├── Nintendo Switch
-│   ├── PlayStation 1
-│   ├── PlayStation 2
-│   ├── PSP
-│   ├── Sega Genesis
-│   └── Super Nintendo
-├── cache
 ├── cc.py
 ├── config
 │   ├── game_configs
@@ -114,215 +106,28 @@
 │   ├── platforms.json
 │   └── settings.json
 ├── cores
-│   ├── 2048_libretro.so
-│   ├── 3dengine_libretro.so
-│   ├── 81_libretro.so
-│   ├── a5200_libretro.so
-│   ├── anarch_libretro.so
-│   ├── arduous_libretro.so
 │   ├── atari800_libretro.so
-│   ├── b2_libretro.so
-│   ├── bk_libretro.so
-│   ├── blastem_libretro.so
-│   ├── bluemsx_libretro.so
-│   ├── boom3_libretro.so
-│   ├── boom3_xp_libretro.so
-│   ├── bsnes2014_accuracy_libretro.so
-│   ├── bsnes2014_balanced_libretro.so
-│   ├── bsnes2014_performance_libretro.so
-│   ├── bsnes_cplusplus98_libretro.so
-│   ├── bsnes_hd_beta_libretro.so
-│   ├── bsnes_libretro.so
-│   ├── bsnes_mercury_accuracy_libretro.so
-│   ├── bsnes_mercury_balanced_libretro.so
-│   ├── bsnes_mercury_performance_libretro.so
-│   ├── cannonball_libretro.so
 │   ├── cap32_libretro.so
-│   ├── cdi2015_libretro.so
-│   ├── chailove_libretro.so
-│   ├── citra2018_libretro.so
-│   ├── citra_libretro.so
-│   ├── craft_libretro.so
-│   ├── crocods_libretro.so
-│   ├── desmume2015_libretro.so
-│   ├── desmume_libretro.so
-│   ├── dice_libretro.so
-│   ├── dinothawr_libretro.so
-│   ├── dolphin_libretro.so
-│   ├── dosbox_core_libretro.so
-│   ├── dosbox_pure_libretro.so
-│   ├── dosbox_svn_libretro.so
-│   ├── duckstation_libretro.so
-│   ├── easyrpg_libretro.so
-│   ├── ecwolf_libretro.so
-│   ├── ep128emu_core_libretro.so
-│   ├── fbalpha2012_cps1_libretro.so
-│   ├── fbalpha2012_cps2_libretro.so
-│   ├── fbalpha2012_cps3_libretro.so
-│   ├── fbalpha2012_libretro.so
-│   ├── fbalpha2012_neogeo_libretro.so
-│   ├── fbalpha_libretro.so
-│   ├── fbneo_libretro.so
-│   ├── fceumm_libretro.so
-│   ├── fixgb_libretro.so
-│   ├── fixnes_libretro.so
-│   ├── flycast_libretro.so
 │   ├── fmsx_libretro.so
-│   ├── freechaf_libretro.so
-│   ├── freeintv_libretro.so
-│   ├── frodo_libretro.so
 │   ├── fuse_libretro.so
-│   ├── gam4980_libretro.so
-│   ├── gambatte_libretro.so
-│   ├── gearboy_libretro.so
-│   ├── gearcoleco_libretro.so
-│   ├── geargrafx_libretro.so
-│   ├── gearsystem_libretro.so
-│   ├── genesis_plus_gx_libretro.so
-│   ├── genesis_plus_gx_wide_libretro.so
-│   ├── geolith_libretro.so
-│   ├── gme_libretro.so
-│   ├── gong_libretro.so
-│   ├── gpsp_libretro.so
-│   ├── gw_libretro.so
-│   ├── handy_libretro.so
 │   ├── hatari_libretro.so
-│   ├── holani_libretro.so
-│   ├── jaxe_libretro.so
-│   ├── jumpnbump_libretro.so
-│   ├── kronos_libretro.so
-│   ├── lowresnx_libretro.so
-│   ├── lutro_libretro.so
-│   ├── m2000_libretro.so
-│   ├── mame2000_libretro.so
-│   ├── mame2003_libretro.so
-│   ├── mame2003_midway_libretro.so
-│   ├── mame2003_plus_libretro.so
-│   ├── mame2010_libretro.so
 │   ├── mame_libretro.so
-│   ├── mcsoftserve_libretro.so
-│   ├── mednafen_gba_libretro.so
-│   ├── mednafen_lynx_libretro.so
-│   ├── mednafen_ngp_libretro.so
-│   ├── mednafen_pce_fast_libretro.so
-│   ├── mednafen_pce_libretro.so
-│   ├── mednafen_pcfx_libretro.so
-│   ├── mednafen_psx_hw_libretro.so
-│   ├── mednafen_psx_libretro.so
-│   ├── mednafen_saturn_libretro.so
-│   ├── mednafen_snes_libretro.so
-│   ├── mednafen_supafaust_libretro.so
-│   ├── mednafen_supergrafx_libretro.so
-│   ├── mednafen_vb_libretro.so
-│   ├── mednafen_wswan_libretro.so
-│   ├── melonds_libretro.so
-│   ├── mesen_libretro.so
-│   ├── mesen-s_libretro.so
-│   ├── meteor_libretro.so
-│   ├── mgba_libretro.so
-│   ├── minivmac_libretro.so
-│   ├── mrboom_libretro.so
-│   ├── mu_libretro.so
-│   ├── mupen64plus_next_libretro.so
-│   ├── nekop2_libretro.so
-│   ├── neocd_libretro.so
-│   ├── nestopia_libretro.so
-│   ├── np2kai_libretro.so
-│   ├── numero_libretro.so
-│   ├── nxengine_libretro.so
-│   ├── o2em_libretro.so
-│   ├── oberon_libretro.so
-│   ├── openlara_libretro.so
-│   ├── opera_libretro.so
-│   ├── panda3ds_libretro.so
-│   ├── parallel_n64_libretro.so
-│   ├── pcsx2_libretro.so
-│   ├── pcsx_rearmed_libretro.so
-│   ├── picodrive_libretro.so
-│   ├── play_libretro.so
-│   ├── pocketcdg_libretro.so
-│   ├── pokemini_libretro.so
-│   ├── potator_libretro.so
-│   ├── ppsspp_libretro.so
-│   ├── prboom_libretro.so
 │   ├── prosystem_libretro.so
 │   ├── puae_libretro.so
-│   ├── px68k_libretro.so
-│   ├── qemu_libretro.so
-│   ├── quasi88_libretro.so
-│   ├── quicknes_libretro.so
-│   ├── race_libretro.so
-│   ├── reminiscence_libretro.so
-│   ├── retro8_libretro.so
-│   ├── sameboy_libretro.so
-│   ├── same_cdi_libretro.so
-│   ├── sameduck_libretro.so
-│   ├── scummvm_libretro.so
-│   ├── skyemu_libretro.so
-│   ├── smsplus_libretro.so
-│   ├── snes9x2002_libretro.so
-│   ├── snes9x2005_libretro.so
-│   ├── snes9x2005_plus_libretro.so
-│   ├── snes9x2010_libretro.so
-│   ├── snes9x_libretro.so
-│   ├── squirreljme_libretro.so
-│   ├── stella2014_libretro.so
 │   ├── stella_libretro.so
-│   ├── superbroswar_libretro.so
-│   ├── swanstation_libretro.so
-│   ├── tgbdual_libretro.so
-│   ├── theodore_libretro.so
-│   ├── thepowdertoy_libretro.so
-│   ├── tic80_libretro.so
-│   ├── tyrquake_libretro.so
-│   ├── uzem_libretro.so
-│   ├── vaporspec_libretro.so
-│   ├── vbam_libretro.so
-│   ├── vba_next_libretro.so
-│   ├── vecx_libretro.so
-│   ├── vemulator_libretro.so
-│   ├── vice_x128_libretro.so
-│   ├── vice_x64_libretro.so
-│   ├── vice_x64sc_libretro.so
-│   ├── vice_xcbm2_libretro.so
-│   ├── vice_xcbm5x0_libretro.so
-│   ├── vice_xpet_libretro.so
-│   ├── vice_xplus4_libretro.so
-│   ├── vice_xscpu64_libretro.so
-│   ├── vice_xvic_libretro.so
-│   ├── vircon32_libretro.so
-│   ├── virtualjaguar_libretro.so
-│   ├── virtualxt_libretro.so
-│   ├── vitaquake2_libretro.so
-│   ├── vitaquake2-rogue_libretro.so
-│   ├── vitaquake2-xatrix_libretro.so
-│   ├── vitaquake2-zaero_libretro.so
-│   ├── vitaquake3_libretro.so
-│   ├── wasm4_libretro.so
-│   ├── x1_libretro.so
-│   ├── xrick_libretro.so
-│   ├── yabasanshiro_libretro.so
-│   └── yabause_libretro.so
+│   └── vice_x64_libretro.so
 ├── docs
 │   ├── changelog.md
 │   ├── LICENSE
 │   ├── quickstart.md
 │   ├── README.md
 │   └── requirements.md
+├── download_sample_cores.py
 ├── emu_launcher_main.py
 ├── mel_settings.json
 ├── playlists
+├── qwen_output.txt
 ├── roms
-│   ├── Arcade
-│   ├── Game Boy Advance
-│   ├── Nintendo 64
-│   ├── Nintendo Entertainment System
-│   ├── Nintendo Switch
-│   ├── PlayStation 1
-│   ├── PlayStation 2
-│   ├── PSP
-│   ├── Sega Genesis
-│   └── Super Nintendo
 ├── saves
 ├── screenshots
 ├── settings_example.json
@@ -331,7 +136,10 @@
 │   ├── fix_core_names.py
 │   └── install_cores.sh
 ├── system
+├── test_core_detection.py
+├── test_dynamic_database.py
+├── test_fix.py
 ├── tree.git
 └── V14_CHANGELOG.md
 
-47 directories, 288 files
+26 directories, 117 files
