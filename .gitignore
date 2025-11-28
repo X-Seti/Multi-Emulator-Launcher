@@ -1,56 +1,38 @@
 ```
-# Compiled binary files
-*.so
-
-# Dependencies and build artifacts
-cores/
-*.so
-*.dll
-*.exe
-*.out
-
-# Python specific
-__pycache__/
+# Compiled and build artifacts
 *.pyc
-*.pyo
-*.pyd
-.Python
-env/
-venv/
+__pycache__/
+*.o
+*.obj
+
+# Dependencies
 .venv/
-pip-log.txt
-pip-delete-this-directory.txt
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
+venv/
+
+# Logs and temp files
 *.log
 *.tmp
+*.swp
 
-# Editor/IDE files
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
-.DS_Store
-Thumbs.db
+
+# Coverage
+.coverage
+coverage/
+htmlcov/
 
 # Distribution / packaging
-.Python
-env/
-venv/
-.venv/
-pip-log.txt
-pip-delete-this-directory.txt
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
+dist/
+build/
+*.egg
+*.egg-info/
+*.whl
+MANIFEST
 ```
