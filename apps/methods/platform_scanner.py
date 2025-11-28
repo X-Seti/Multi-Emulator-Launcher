@@ -99,10 +99,11 @@ class PlatformScanner: #vers 4
         "C64": ["vice_x64", "vice_x64_libretro"],
         "Commodore 64": ["vice_x64", "vice_x64_libretro"],
         "MSX": ["fmsx", "bluemsx", "mesen-s"],
+        "MSX1": ["fmsx", "bluemsx"],
         "MSX2": ["fmsx", "bluemsx"],
         "ZX Spectrum": ["fuse", "scummvm"],
         "ZX Spectrum 128": ["fuse"],
-        "Z81-Spec256": ["fuse"],
+        "Z81-Spec256": ["fuse", "vaporspec"],
         "MS-DOS": ["dosbox_pure", "dosbox"],
         "Dragon 32-64": ["xroar"],
         "Sam Coupe": ["mame"],
@@ -110,6 +111,206 @@ class PlatformScanner: #vers 4
         "TRS-80": ["mame"],
         "Fujitsu FM-7": ["mame"],
         "Plus4": ["vice_xplus4"],
+    }
+    
+    # Platform aliases for fuzzy matching
+    PLATFORM_ALIASES = {
+        # Sinclair variants
+        "zxspectrum": ["zx spectrum", "zx-spectrum", "zxspectrum", "spectrum", "zxspeccy", "spec256", "z81-spec256", "z81 spec256", "z81spec256"],
+        "zx81": ["zx 81", "zx-81", "zx81", "sinclair zx81"],
+        
+        # MSX variants
+        "msx": ["msx", "msx1", "msx2", "msx2+", "msx turbo", "msx-turbo"],
+        "msx1": ["msx1", "msx 1"],
+        "msx2": ["msx2", "msx 2"],
+        
+        # SAM Coupe variants
+        "samcoupe": ["sam coupe", "samcoupe", "sam-coupe", "sam_couple"],
+        
+        # Amstrad variants
+        "amstradcpc": ["amstrad cpc", "amstradcpc", "cpc", "amstrad6128", "amstrad464", "amstrad 6128", "amstrad 464"],
+        
+        # Atari variants
+        "atarist": ["atari st", "atari-st", "atari_st", "atarist"],
+        "atari800": ["atari 800", "atari800", "atari800xl", "atari 800xl", "atari-xl", "atari-xe"],
+        "atari5200": ["atari 5200", "atari-5200", "atari_5200", "a5200", "atari5200"],
+        "atari2600": ["atari 2600", "atari-2600", "atari_2600", "a2600"],
+        "atari7800": ["atari 7800", "atari-7800", "atari_7800", "a7800", "atari7800"],
+        "atarilynx": ["atari lynx", "atari-lynx", "atari_lynx", "lynx", "atarilynx"],
+        "atarijaguar": ["atari jaguar", "atari-jaguar", "atari_jaguar", "jaguar", "atarijaguar"],
+        
+        # Commodore variants
+        "amiga": ["commodore amiga", "amiga", "amiga500", "amiga1200", "amiga4000", "amiga1000", "amiga600", "amiga1200", "amiga4000"],
+        "c64": ["commodore 64", "commodore64", "c64", "cbm64", "commodore-64"],
+        "c128": ["commodore 128", "c128", "commodore128"],
+        "vic20": ["commodore vic-20", "vic20", "vic-20"],
+        "pet": ["commodore pet", "pet", "commodorepet"],
+        
+        # Nintendo variants
+        "nes": ["nintendo", "nintendo entertainment system", "famicom", "nes"],
+        "snes": ["super nintendo", "super nintendo entertainment system", "snes", "sfc", "nintendo super system"],
+        "n64": ["nintendo 64", "n64", "nintendo64"],
+        "gamecube": ["game cube", "game-cube", "game_cube", "gc", "gamecube"],
+        "wii": ["nintendo wii", "wii"],
+        "ds": ["nintendo ds", "nintendo-ds", "nds", "ds"],
+        "switch": ["nintendo switch", "switch"],
+        "3ds": ["nintendo 3ds", "3ds"],
+        "gb": ["gameboy", "game boy", "game-boy", "gb", "gameboj"],
+        "gba": ["gameboy advance", "game boy advance", "gba", "gba"],
+        "gbc": ["gameboy color", "game boy color", "gbc", "gbcolor"],
+        
+        # Sega variants
+        "mastersystem": ["master system", "master-system", "master_system", "sms", "segamastersystem"],
+        "genesis": ["sega genesis", "genesis", "megadrive", "mega drive", "mega-drive", "md", "segagenesis"],
+        "gamegear": ["game gear", "game-gear", "game_gear", "gg", "segagamegear"],
+        "saturn": ["sega saturn", "saturn", "segasaturn"],
+        "dreamcast": ["sega dreamcast", "dreamcast", "segadreamcast"],
+        
+        # Sony PlayStation variants
+        "psx": ["playstation", "ps1", "psone", "psx", "playstation1", "sony playstation"],
+        "ps2": ["playstation 2", "playstation2", "ps2", "playstation-2", "playstation_2"],
+        "ps3": ["playstation 3", "playstation3", "ps3", "playstation-3", "playstation_3"],
+        "psp": ["playstation portable", "psp"],
+        
+        # Microsoft variants
+        "xbox": ["xbox360", "xbox 360", "xbox-360", "xbox360"],
+        "xboxone": ["xbox one", "xbox-one", "xbox_one", "xbox1", "xboxone"],
+        "xboxseries": ["xbox series", "xboxseries"],
+        
+        # NEC variants
+        "pcengine": ["pc engine", "pc-engine", "pc_engine", "pce", "turbografx16", "turbografx-16", "tg16"],
+        "supergrafx": ["super grafx", "super-grafx", "super_grafx", "sgfx"],
+        "pc88": ["pc-88", "pc88", "pc-8801", "pc8801"],
+        "pc98": ["pc-98", "pc98", "pc-9801", "pc9801"],
+        "pcfx": ["pc fx", "pc-fx", "pcfx"],
+        
+        # SNK variants
+        "neogeo": ["neo geo", "neo-geo", "neogeo", "neogeo"],
+        "neogeocd": ["neo geo cd", "neogeocd", "neogeocd"],
+        
+        # Other home computers
+        "apple2": ["apple ][", "apple2", "apple ii", "apple-2", "apple2e", "apple //e"],
+        "adam": ["adam", "coleco adam"],
+        "aquarius": ["aquarius", "mattel aquarius"],
+        "channelf": ["channel f", "channelf", "fairchild channel f", "fairchild"],
+        "colecovision": ["coleco", "colecovision", "coleco vision"],
+        "creativision": ["creativision", "apf", "apf m1000"],
+        "dragon32": ["dragon32", "dragon 32", "dragon32/64", "dragon"],
+        "fmtowns": ["fm towns", "fmtowns", "fm-towns"],
+        "intellivision": ["intellivision", "intv"],
+        "vectrex": ["vectrex", "vector"],
+        "x68000": ["x68000", "x6800", "x68k"],
+        
+        # Handhelds
+        "ngp": ["neo geo pocket", "ngp"],
+        "ngpc": ["neo geo pocket color", "ngpc"],
+        "wswan": ["wonderswan", "wonder swan", "wonderswan", "wswan"],
+        "wswanc": ["wonderswan color", "wonderswan color", "wswanc"],
+        "pokemini": ["pokemini", "pokemon mini"],
+        "virtualboy": ["virtual boy", "virtualboy", "vb"],
+        
+        # Arcade
+        "mame": ["mame", "mame-libretro"],
+        "fbneo": ["fbneo", "final burn neo", "fighting"],
+        
+        # 3DO and other CD-based
+        "3do": ["3do", "3do interactive multiplayer"],
+        "cdi": ["cdi", "philips cdi"],
+        "segacd": ["sega cd", "segacd", "mega-cd"],
+        
+        # Other platforms
+        "arduboy": ["arduboy"],
+        "gw": ["game and watch", "game&watch", "gw"],
+        "lutro": ["lutro", "love"],
+        "prboom": ["prboom", "doom"],
+        "vecx": ["vecx", "vectrex"],
+        "scummvm": ["scummvm", "scumm"],
+        "stella": ["stella", "atari2600"],
+        "prosystem": ["prosystem", "atari5200"],
+        "snes9x": ["snes9x", "snes"],
+        "fceumm": ["fceumm", "nes"],
+        "gambatte": ["gambatte", "gb"],
+        "mgba": ["mgba", "gba"],
+        "quicknes": ["quicknes", "nes"],
+        "beetle_psx": ["beetle_psx", "psx"],
+        "parallel_n64": ["parallel_n64", "n64"],
+        "pcsx_rearmed": ["pcsx_rearmed", "psx"],
+        "mednafen_snes": ["mednafen_snes", "snes"],
+        "mednafen_pce": ["mednafen_pce", "pcengine"],
+        "mednafen_pcfx": ["mednafen_pcfx", "pcfx"],
+        "mednafen_saturn": ["mednafen_saturn", "saturn"],
+        "kronos": ["kronos", "saturn"],
+        "mednafen_psx": ["mednafen_psx", "psx"],
+        "fbalpha2012_cps1": ["fbalpha2012_cps1", "neogeo"],
+        "fbalpha2012_cps2": ["fbalpha2012_cps2", "neogeo"],
+        "fbalpha2012_cps3": ["fbalpha2012_cps3", "neogeo"],
+        "mame2003_plus": ["mame2003_plus", "mame"],
+        "mame2010": ["mame2010", "mame"],
+        "mame2016": ["mame2016", "mame"],
+        "desmume": ["desmume", "ds"],
+        "melonds": ["melonds", "ds"],
+        "citra": ["citra", "3ds"],
+        "ppsspp": ["ppsspp", "psp"],
+        "duckstation": ["duckstation", "psx"],
+        "pcsx2": ["pcsx2", "ps2"],
+        "rpcs3": ["rpcs3", "ps3"],
+        "xemu": ["xemu", "xbox"],
+        "xenia": ["xenia", "xbox"],
+        "cemu": ["cemu", "wiiu"],
+        "dolphin": ["dolphin", "gamecube", "wii"],
+        "yuzu": ["yuzu", "switch"],
+        "ryujinx": ["ryujinx", "switch"],
+        "suyu": ["suyu", "switch"],
+        "lime3ds": ["lime3ds", "3ds"],
+        "panda3ds": ["panda3ds", "3ds"],
+        "ares": ["ares", "multi"],
+        "mu": ["mu", "multi"],
+        "play": ["play", "ps2"],
+        "bizhawk": ["bizhawk", "multi"],
+        "raine": ["raine", "mame"],
+        "mame4all": ["mame4all", "mame"],
+        "xmame": ["xmame", "mame"],
+        "advancecash": ["advancecash", "multi"],
+        "devilutionx": ["devilutionx", "diablo"],
+        "eduke32": ["eduke32", "duke3d"],
+        "gemrb": ["gemrb", "baldursgate"],
+        "gme": ["gme", "game-music-emu"],
+        "gpsp": ["gpsp", "gba"],
+        "handy": ["handy", "lynx"],
+        "hatari": ["hatari", "atarist"],
+        "hatarib": ["hatarib", "atarist"],
+        "imageviewer": ["imageviewer", "image"],
+        "mupen64plus": ["mupen64plus", "n64"],
+        "nekop2": ["nekop2", "neogeocd"],
+        "nestopia": ["nestopia", "nes"],
+        "np2kai": ["np2kai", "pc98"],
+        "nxengine": ["nxengine", "cavestory"],
+        "o2em": ["o2em", "intellivision"],
+        "opera": ["opera", "3do"],
+        "pcsx1": ["pcsx1", "psx"],
+        "pocketcpc": ["pocketcpc", "cpc"],
+        "potator": ["potator", "gamecom"],
+        "quasi88": ["quasi88", "pc88"],
+        "race": ["race", "enhanced"],
+        "redbook": ["redbook", "cd", "audio"],
+        "reicast": ["reicast", "dreamcast"],
+        "retro8": ["retro8", "basic8"],
+        "sameduck": ["sameduck", "n64"],
+        "same_cdi": ["same_cdi", "cdi"],
+        "simcp": ["simcp", "cp"],
+        "smsplus": ["smsplus", "mastersystem"],
+        "stonesoup": ["stonesoup", "brogue"],
+        "swanstation": ["swanstation", "psx"],
+        "tempgba": ["tempgba", "gba"],
+        "tyrquake": ["tyrquake", "quake"],
+        "uae": ["uae", "amiga"],
+        "vaporspec": ["vaporspec", "spec256", "z81-spec256", "z81 spec256", "z81spec256"],
+        "vecx": ["vecx", "vectrex"],
+        "virtualjaguar": ["virtualjaguar", "jaguar"],
+        "vitaquake2": ["vitaquake2", "quake2"],
+        "x1": ["x1", "xone"],
+        "yabasanshiro": ["yabasanshiro", "saturn"],
+        "yabause": ["yabause", "saturn"]
     }
     
     # Core name aliases for backward compatibility
@@ -121,6 +322,65 @@ class PlatformScanner: #vers 4
         "mess": "mame",
     }
     
+    def normalize_platform_name(self, platform_name: str) -> str:
+        """Normalize platform name using fuzzy matching with aliases
+        
+        Args:
+            platform_name: The platform name to normalize
+            
+        Returns:
+            The normalized platform name or the original if no match found
+        """
+        platform_lower = platform_name.lower().strip()
+        
+        # Check if the platform name matches any of our standard platform keys directly (case-insensitive)
+        for key in self.PLATFORM_CORE_MAPPING.keys():
+            if key.lower() == platform_lower:
+                return key  # Return the original case key
+                
+        # Check if the platform name matches any of the PLATFORM_ALIASES keys directly
+        for key in self.PLATFORM_ALIASES.keys():
+            if key.lower() == platform_lower:
+                # If this alias key matches a PLATFORM_CORE_MAPPING key, return that
+                for core_key in self.PLATFORM_CORE_MAPPING.keys():
+                    if core_key.lower() == key.lower():
+                        return core_key
+                # If the alias key itself appears in any PLATFORM_CORE_MAPPING key's aliases, return that PLATFORM_CORE_MAPPING key
+                for standard_name, aliases in self.PLATFORM_ALIASES.items():
+                    if key.lower() == standard_name.lower():
+                        for core_key in self.PLATFORM_CORE_MAPPING.keys():
+                            if core_key.lower() in [a.lower() for a in aliases]:
+                                return core_key
+                return key  # Return the original case key
+        
+        # Check aliases to find a match
+        for standard_name, aliases in self.PLATFORM_ALIASES.items():
+            if platform_lower == standard_name.lower():
+                # If the standard name matches a PLATFORM_CORE_MAPPING key, return that
+                for key in self.PLATFORM_CORE_MAPPING.keys():
+                    if key.lower() == standard_name.lower():
+                        return key
+                # If the standard name itself appears in any PLATFORM_CORE_MAPPING key's aliases, return that PLATFORM_CORE_MAPPING key
+                for key in self.PLATFORM_CORE_MAPPING.keys():
+                    if key.lower() in [a.lower() for a in aliases]:
+                        return key
+                return standard_name  # Return the standard name from aliases
+            for alias in aliases:
+                if platform_lower == alias.lower():
+                    # If the standard name from aliases matches a PLATFORM_CORE_MAPPING key, return that
+                    for key in self.PLATFORM_CORE_MAPPING.keys():
+                        if key.lower() == standard_name.lower():
+                            return key
+                    # If the standard name itself appears in any PLATFORM_CORE_MAPPING key's aliases, return that PLATFORM_CORE_MAPPING key
+                    for key in self.PLATFORM_CORE_MAPPING.keys():
+                        if key.lower() in [a.lower() for a in aliases]:
+                            return key
+                    # Otherwise return the standard name from aliases
+                    return standard_name
+        
+        # If no exact match found, return the original name
+        return platform_name
+
     def __init__(self, roms_dir: Path, cores_dir: Path = None): #vers 3
         """Initialize platform scanner with core detection
         
@@ -182,11 +442,23 @@ class PlatformScanner: #vers 4
         # Get the platform name for core mapping
         platform_name = updated_config.get("name", "")
         
+        # Normalize the platform name using fuzzy matching
+        normalized_platform_name = self.normalize_platform_name(platform_name)
+        
         # Find available cores for this platform
         available_platform_cores = []
         
-        # Check platform-specific core mappings
-        if platform_name in self.PLATFORM_CORE_MAPPING:
+        # Check platform-specific core mappings using normalized name
+        if normalized_platform_name in self.PLATFORM_CORE_MAPPING:
+            for core_candidate in self.PLATFORM_CORE_MAPPING[normalized_platform_name]:
+                # Check if core exists (try both original and alias)
+                actual_core = self.CORE_ALIASES.get(core_candidate, core_candidate)
+                if actual_core in self.available_cores:
+                    available_platform_cores.append(actual_core)
+                elif core_candidate in self.available_cores:
+                    available_platform_cores.append(core_candidate)
+        # Also check the original name in case normalization didn't work
+        elif platform_name in self.PLATFORM_CORE_MAPPING:
             for core_candidate in self.PLATFORM_CORE_MAPPING[platform_name]:
                 # Check if core exists (try both original and alias)
                 actual_core = self.CORE_ALIASES.get(core_candidate, core_candidate)
@@ -360,5 +632,10 @@ class PlatformScanner: #vers 4
             if best_match.lower() in platform_name.lower() or \
                platform_name.lower() in best_match.lower():
                 return best_match
+                
+        # Normalize the platform name using fuzzy matching
+        normalized_name = self.normalize_platform_name(platform_name)
+        if normalized_name != platform_name:
+            return normalized_name
                 
         return platform_name
