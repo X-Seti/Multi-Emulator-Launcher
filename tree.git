@@ -94,6 +94,8 @@
 │   └── game boy
 │       └── gameboy_thumb.jpg
 ├── bios
+├── cache
+│   └── extracted
 ├── cc.py
 ├── config
 │   ├── game_configs
@@ -126,7 +128,6 @@
 ├── emu_launcher_main.py
 ├── mel_settings.json
 ├── playlists
-├── qwen_output.txt
 ├── roms
 ├── saves
 ├── screenshots
@@ -142,4 +143,4 @@
 ├── tree.git
 └── V14_CHANGELOG.md
 
-26 directories, 117 files
+28 directories, 116 files
