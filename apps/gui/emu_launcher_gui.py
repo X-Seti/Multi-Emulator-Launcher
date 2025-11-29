@@ -560,11 +560,13 @@ class GameListWidget(QListWidget): #vers 2
 class EmulatorDisplayWidget(QWidget): #vers 4
     """Panel 3: Emulator display with framed controls and title artwork"""
     
-    def __init__(self, parent=None, main_window=None): #vers 4
+    def __init__(self, parent=None, main_window=None): #vers 5
         super().__init__(parent)
         self.main_window = main_window
         self.title_artwork_label = None
         self.display_frame = None
+        self.fullscreen_window = None  # For fullscreen display
+        self.current_pixmap = None  # Store current pixmap for fullscreen
         self.setup_ui()
         
 
@@ -601,13 +603,16 @@ class EmulatorDisplayWidget(QWidget): #vers 4
         bottom_bar = self._create_bottom_right()
         main_layout.addWidget(bottom_bar)
 
-    def show_title_artwork(self, pixmap): #vers 2
+    def show_title_artwork(self, pixmap): #vers 3
         """Display title artwork
         
         Args:
             pixmap: QPixmap with title artwork or None to clear
         """
         if pixmap and not pixmap.isNull():
+            # Store pixmap for fullscreen
+            self.current_pixmap = pixmap
+            
             # Clear welcome message if showing
             self.title_artwork_label.setTextFormat(Qt.TextFormat.PlainText)
             
@@ -620,8 +625,14 @@ class EmulatorDisplayWidget(QWidget): #vers 4
             self.title_artwork_label.setPixmap(scaled_pixmap)
             self.title_artwork_label.setText("")
             self.title_artwork_label.setStyleSheet("")
+            
+            # Enable double-click for fullscreen
+            self.title_artwork_label.mouseDoubleClickEvent = self._on_artwork_double_clicked
+            self.title_artwork_label.setMouseTracking(True)
+            self.title_artwork_label.setStyleSheet("QLabel { background-color: white; }")  # Make it clickable
         else:
             # Clear artwork and show text
+            self.current_pixmap = None
             self.title_artwork_label.clear()
             self.title_artwork_label.setText("No title artwork")
             self.title_artwork_label.setStyleSheet("font-size: 14pt; padding: 50px;")
@@ -832,7 +843,8 @@ class EmuLauncherGUI(QWidget): #vers 20
 
     window_closed = pyqtSignal()
 
-    def __init__(self, parent=None, main_window=None, core_downloader=None, core_launcher=None, gamepad_config=None, game_config=None, platform_scanner=None, game_scanner=None, rom_loader=None, bios_manager=None, system_core_scanner=None): #vers 14
+    def __init__(self, parent=None, main_window=None, core_downloader=None, platform_scanner=None,
+                rom_loader=None, bios_manager=None, game_scanner=None, core_launcher=None, gamepad_config=None, game_config=None, system_core_scanner=None): #vers 14
         """Initialize Multi-Emulator Launcher GUI
 
         Args:
@@ -851,6 +863,11 @@ class EmuLauncherGUI(QWidget): #vers 20
         self.core_downloader = core_downloader if core_downloader else getattr(self, 'core_downloader', None)
         self.core_launcher = core_launcher if core_launcher else getattr(self, 'core_launcher', None)
         self.gamepad_config = gamepad_config if gamepad_config else getattr(self, 'gamepad_config', None)
+        self.platform_scanner = platform_scanner if platform_scanner else getattr(self, 'platform_scanner', None)
+        self.rom_loader = rom_loader if rom_loader else getattr(self, 'rom_loader', None)
+        self.bios_manager = bios_manager if bios_manager else getattr(self, 'bios_manager', None)
+        self.game_scanner = game_scanner if game_scanner else getattr(self, 'game_scanner', None)
+        self.system_core_scanner = system_core_scanner if system_core_scanner else getattr(self, 'system_core_scanner', None)
 
         self.main_window = main_window
 
@@ -872,9 +889,10 @@ class EmuLauncherGUI(QWidget): #vers 20
         # Initialize MEL Settings Manager FIRST
         self.mel_settings = MELSettingsManager()
 
-        # Initialize PlatformScanner with MEL settings path
-        roms_dir = self.mel_settings.get_rom_path()
-        self.platform_scanner = PlatformScanner(roms_dir)
+        # Initialize PlatformScanner with MEL settings path (if not provided)
+        if not self.platform_scanner:
+            roms_dir = self.mel_settings.get_rom_path()
+            self.platform_scanner = PlatformScanner(roms_dir)
 
         # Initialize core systems (if not provided)
         if not self.core_downloader:
@@ -885,6 +903,29 @@ class EmuLauncherGUI(QWidget): #vers 20
                 Path.cwd(),
                 self.core_downloader.CORE_DATABASE
             )
+
+        # Initialize other systems (if not provided)
+        if not self.rom_loader:
+            config = {
+                'rom_path': str(Path.cwd() / "roms"),
+                'cache_path': str(Path.cwd() / "cache")
+            }
+            dynamic_platforms = getattr(self.platform_scanner, 'scan_platforms', lambda: {})()
+            self.rom_loader = RomLoader(config, dynamic_platforms)
+
+        if not self.game_scanner:
+            config = {
+                'rom_path': str(Path.cwd() / "roms"),
+                'cache_path': str(Path.cwd() / "cache")
+            }
+            dynamic_platforms = getattr(self.platform_scanner, 'scan_platforms', lambda: {})()
+            self.game_scanner = GameScanner(config, dynamic_platforms)
+
+        if not self.bios_manager:
+            self.bios_manager = BiosManager(Path.cwd() / "bios")
+
+        if not self.system_core_scanner:
+            self.system_core_scanner = SystemCoreScanner(Path.cwd() / "cores")
 
         # Load saved configuration
         if 'hidden_platforms' in self.mel_settings.settings:
@@ -1819,37 +1860,6 @@ class EmuLauncherGUI(QWidget): #vers 20
         if hasattr(self, 'artwork_loader') and hasattr(self, 'display_widget'):
             title_artwork = self.artwork_loader.get_title_artwork(game, self.current_platform)
             self.display_widget.show_title_artwork(title_artwork)
-
-
-    def _on_launch_game(self): #vers 1
-        """Launch selected game with CoreLauncher"""
-        if not self.current_platform or not self.current_rom_path:
-            if hasattr(self, 'status_label'):
-                self.status_label.setText("No game selected")
-            return
-
-        if not self.core_launcher:
-            if hasattr(self, 'status_label'):
-                self.status_label.setText("CoreLauncher not initialized")
-            return
-
-        # Update status
-        game_name = self.current_rom_path.stem
-        if hasattr(self, 'status_label'):
-            self.status_label.setText(f"Launching {game_name}...")
-
-        # Launch game
-        success = self.core_launcher.launch_game(
-            self.current_platform,
-            self.current_rom_path
-        )
-
-        # Update status
-        if hasattr(self, 'status_label'):
-            if success:
-                self.status_label.setText(f"Running: {game_name}")
-            else:
-                self.status_label.setText(f"Launch failed: {game_name}")
 
 
     def _on_stop_emulation(self): #vers 1
@@ -3444,15 +3454,12 @@ class EmuLauncherGUI(QWidget): #vers 20
 
         # Show manager dialog
         dialog = GameManagerDialog(
+            self.current_platform,
+            game_names,
             self.core_downloader,
             self.core_launcher,
-            self.gamepad_config,
             self.game_config,
-            self.platform_scanner,
-            self.game_scanner,
-            self.rom_loader,
-            self.bios_manager,
-            self.system_core_scanner
+            self
         )
 
         # Connect signal
