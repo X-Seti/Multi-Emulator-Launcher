@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-#this belongs in apps/gui/emu_launcher_gui.py - Version: 21
+#this belongs in apps/gui/emu_launcher_gui.py - Version: 22
 # X-Seti - November24 2025 - Multi-Emulator Launcher - Main GUI
 
 """
