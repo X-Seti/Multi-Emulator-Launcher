@@ -832,8 +832,7 @@ class EmuLauncherGUI(QWidget): #vers 20
 
     window_closed = pyqtSignal()
 
-    def __init__(self, parent=None, main_window=None, core_downloader=None,
-                core_launcher=None, gamepad_config=None, game_config=None): #vers 14
+    def __init__(self, parent=None, main_window=None, core_downloader=None, core_launcher=None, gamepad_config=None, game_config=None, platform_scanner=None, game_scanner=None, rom_loader=None, bios_manager=None, system_core_scanner=None): #vers 14
         """Initialize Multi-Emulator Launcher GUI
 
         Args:
@@ -3445,12 +3444,15 @@ class EmuLauncherGUI(QWidget): #vers 20
 
         # Show manager dialog
         dialog = GameManagerDialog(
-            self.current_platform,
-            game_names,
             self.core_downloader,
             self.core_launcher,
+            self.gamepad_config,
             self.game_config,
-            self
+            self.platform_scanner,
+            self.game_scanner,
+            self.rom_loader,
+            self.bios_manager,
+            self.system_core_scanner
         )
 
         # Connect signal
