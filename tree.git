@@ -21,6 +21,7 @@
 │   ├── gui
 │   │   ├── controller_config_dialog.py
 │   │   ├── controller_layout_viewer.py
+│   │   ├── database_manager_dialog.py
 │   │   ├── emulator_settings_dialog.py
 │   │   ├── emu_launcher_gui.py
 │   │   ├── emu_launcher_gui.py-bak
@@ -41,6 +42,7 @@
 │   │   ├── controller_buttons.py
 │   │   ├── controller_layouts.py
 │   │   ├── core_downloader.py
+│   │   ├── database_manager.py
 │   │   ├── game_scanner.py
 │   │   ├── igdb_downloader.py
 │   │   ├── mel_app_icon.py
@@ -101,6 +103,7 @@
 │   └── extracted
 ├── cc.py
 ├── config
+│   ├── database.db
 │   ├── game_configs
 │   │   ├── Amstrad 464
 │   │   │   └── Aliens (E).json
@@ -144,4 +147,4 @@
 ├── tree.git
 └── V14_CHANGELOG.md
 
-28 directories, 117 files
+28 directories, 120 files
