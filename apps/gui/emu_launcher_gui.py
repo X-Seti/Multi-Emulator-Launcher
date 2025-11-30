@@ -702,80 +702,89 @@ class EmulatorDisplayWidget(QWidget): #vers 4
         if hasattr(self, 'main_window') and self.main_window and hasattr(self.main_window, '_get_icon_color'):
             icon_color = self.main_window._get_icon_color()
         
+        # Store button references as instance attributes for later access
         # Launch button
-        launch_btn = QPushButton("Launch Game")
-        launch_btn.setIcon(SVGIconFactory.launch_icon(20, icon_color))
-        launch_btn.setIconSize(QSize(20, 20))
-        launch_btn.setMinimumHeight(30)
-        launch_btn.setToolTip("Launch Emulator")
-        launch_btn.setEnabled(False)  # Start disabled
-        # Note: We won't connect signals here since this is for display only
-        button_layout.addWidget(launch_btn)
+        self.launch_btn = QPushButton("Launch Game")
+        self.launch_btn.setIcon(SVGIconFactory.launch_icon(20, icon_color))
+        self.launch_btn.setIconSize(QSize(20, 20))
+        self.launch_btn.setMinimumHeight(30)
+        self.launch_btn.setToolTip("Launch Emulator")
+        self.launch_btn.setEnabled(False)  # Start disabled
+        if hasattr(self, 'main_window') and self.main_window:
+            self.launch_btn.clicked.connect(self.main_window._on_launch_game)
+        button_layout.addWidget(self.launch_btn)
 
         # Load Core button
-        load_core_btn = QPushButton("Load Core")
-        load_core_btn.setIcon(SVGIconFactory.folder_icon(20, icon_color))
-        load_core_btn.setIconSize(QSize(20, 20))
-        load_core_btn.setMinimumHeight(30)
-        load_core_btn.setToolTip("Browse and load emulator cores")
-        # Note: We won't connect signals here since this is for display only
-        button_layout.addWidget(load_core_btn)
+        self.load_core_btn = QPushButton("Load Core")
+        self.load_core_btn.setIcon(SVGIconFactory.folder_icon(20, icon_color))
+        self.load_core_btn.setIconSize(QSize(20, 20))
+        self.load_core_btn.setMinimumHeight(30)
+        self.load_core_btn.setToolTip("Browse and load emulator cores")
+        if hasattr(self, 'main_window') and self.main_window:
+            self.load_core_btn.clicked.connect(self.main_window._show_load_core)
+        button_layout.addWidget(self.load_core_btn)
 
         # Art Manager button
-        gameart_btn = QPushButton("Art Manager")
-        gameart_btn.setIcon(SVGIconFactory.paint_icon(20, icon_color))
-        gameart_btn.setIconSize(QSize(20, 20))
-        gameart_btn.setMinimumHeight(30)
-        gameart_btn.setToolTip("Download and manage game artwork")
-        # Note: We won't connect signals here since this is for display only
-        button_layout.addWidget(gameart_btn)
+        self.gameart_btn = QPushButton("Art Manager")
+        self.gameart_btn.setIcon(SVGIconFactory.paint_icon(20, icon_color))
+        self.gameart_btn.setIconSize(QSize(20, 20))
+        self.gameart_btn.setMinimumHeight(30)
+        self.gameart_btn.setToolTip("Download and manage game artwork")
+        if hasattr(self, 'main_window') and self.main_window:
+            self.gameart_btn.clicked.connect(self.main_window._download_game_artwork)
+        button_layout.addWidget(self.gameart_btn)
 
         # Database Manager button
-        database_btn = QPushButton("Database")
-        database_btn.setIcon(SVGIconFactory.database_icon(20, icon_color))
-        database_btn.setIconSize(QSize(20, 20))
-        database_btn.setMinimumHeight(30)
-        database_btn.setToolTip("Manage ROMs, BIOS, and paths database")
-        # Note: We won't connect signals here since this is for display only
-        button_layout.addWidget(database_btn)
+        self.database_btn = QPushButton("Database")
+        self.database_btn.setIcon(SVGIconFactory.database_icon(20, icon_color))
+        self.database_btn.setIconSize(QSize(20, 20))
+        self.database_btn.setMinimumHeight(30)
+        self.database_btn.setToolTip("Manage ROMs, BIOS, and paths database")
+        if hasattr(self, 'main_window') and self.main_window:
+            self.database_btn.clicked.connect(self.main_window._show_database_manager)
+        button_layout.addWidget(self.database_btn)
 
         button_layout.addStretch()
 
         # Edit Database button
-        edit_db_btn = QPushButton("Edit Database")
-        edit_db_btn.setIcon(SVGIconFactory.database_icon(20, icon_color))  # Using database icon
-        edit_db_btn.setIconSize(QSize(20, 20))
-        edit_db_btn.setMinimumHeight(30)
-        edit_db_btn.setToolTip("Edit database entries")
-        # Note: We won't connect signals here since this is for display only
-        button_layout.addWidget(edit_db_btn)
+        self.edit_db_btn = QPushButton("Edit Database")
+        self.edit_db_btn.setIcon(SVGIconFactory.database_icon(20, icon_color))  # Using database icon
+        self.edit_db_btn.setIconSize(QSize(20, 20))
+        self.edit_db_btn.setMinimumHeight(30)
+        self.edit_db_btn.setToolTip("Edit database entries")
+        if hasattr(self, 'main_window') and self.main_window:
+            self.edit_db_btn.clicked.connect(self.main_window._show_database_manager)
+        button_layout.addWidget(self.edit_db_btn)
 
         # Game Manager button
-        manage_btn = QPushButton("Game Manager")
-        manage_btn.setIcon(SVGIconFactory.manage_icon(20, icon_color))
-        manage_btn.setIconSize(QSize(20, 20))
-        manage_btn.setMinimumHeight(30)
-        manage_btn.setToolTip("Configure game settings")
-        # Note: We won't connect signals here since this is for display only
-        button_layout.addWidget(manage_btn)
+        self.manage_btn = QPushButton("Game Manager")
+        self.manage_btn.setIcon(SVGIconFactory.manage_icon(20, icon_color))
+        self.manage_btn.setIconSize(QSize(20, 20))
+        self.manage_btn.setMinimumHeight(30)
+        self.manage_btn.setToolTip("Configure game settings")
+        if hasattr(self, 'main_window') and self.main_window:
+            self.manage_btn.clicked.connect(self.main_window._show_game_manager)
+        button_layout.addWidget(self.manage_btn)
 
         # Game Ports button
-        ports_btn = QPushButton("Game Ports")
-        ports_btn.setIcon(SVGIconFactory.package_icon(20, icon_color))
-        ports_btn.setIconSize(QSize(20, 20))
-        ports_btn.setMinimumHeight(30)
-        ports_btn.setToolTip("View game ports across systems")
-        # Note: We won't connect signals here since this is for display only
-        button_layout.addWidget(ports_btn)
+        self.ports_btn = QPushButton("Game Ports")
+        self.ports_btn.setIcon(SVGIconFactory.package_icon(20, icon_color))
+        self.ports_btn.setIconSize(QSize(20, 20))
+        self.ports_btn.setMinimumHeight(30)
+        self.ports_btn.setToolTip("View game ports across systems")
+        if hasattr(self, 'main_window') and self.main_window:
+            self.ports_btn.clicked.connect(self.main_window._show_ports_manager)
+        button_layout.addWidget(self.ports_btn)
 
         # Stop button
-        stop_btn = QPushButton("Stop")
-        stop_btn.setIcon(SVGIconFactory.stop_icon(20, icon_color))
-        stop_btn.setIconSize(QSize(20, 20))
-        stop_btn.setMinimumHeight(30)
-        stop_btn.setToolTip("Stop emulation")
-        # Note: We won't connect signals here since this is for display only
-        button_layout.addWidget(stop_btn)
+        self.stop_btn = QPushButton("Stop")
+        self.stop_btn.setIcon(SVGIconFactory.stop_icon(20, icon_color))
+        self.stop_btn.setIconSize(QSize(20, 20))
+        self.stop_btn.setMinimumHeight(30)
+        self.stop_btn.setToolTip("Stop emulation")
+        if hasattr(self, 'main_window') and self.main_window:
+            self.stop_btn.clicked.connect(self.main_window._on_stop_emulation)
+        button_layout.addWidget(self.stop_btn)
 
         return rightbar
 
@@ -1908,8 +1917,8 @@ class EmuLauncherGUI(QWidget): #vers 20
             title_artwork = self.artwork_loader.get_title_artwork(game, self.current_platform)
             self.display_widget.show_title_artwork(title_artwork)
 
-        if hasattr(self, 'display_widget') and hasattr(self.display_widget, 'enable_launch_button'):
-            self.display_widget.enable_launch_button(True)
+        if hasattr(self, 'display_widget') and hasattr(self.display_widget, 'enable_launch_buttons'):
+            self.display_widget.enable_launch_buttons(True)
 
 
     def _on_launch_game(self): #vers 3
