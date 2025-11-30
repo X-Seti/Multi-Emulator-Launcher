@@ -15,6 +15,10 @@
 │   │   ├── gamepad_config.py
 │   │   ├── platform_config.py
 │   │   └── svg_icon_methods.py
+│   ├── database
+│   │   ├── database_manager.py
+│   │   ├── mel_database.db
+│   │   └── web_db_browser.py
 │   ├── debug
 │   │   └── placeholder
 │   ├── download_sample_cores.py
@@ -111,6 +115,7 @@
 │   │   │   └── Feud - The Graphic Adventure (1987)(Bulldog Software)(GB)[a2].json
 │   │   └── Atari ST
 │   │       └── Arkanoid III (1987)(Imagine)[cr Mario].json
+│   ├── mel_database.db
 │   ├── platforms.json
 │   └── settings.json
 ├── cores
@@ -144,7 +149,12 @@
 │   ├── test_core_detection.py
 │   └── test_dynamic_database.py
 ├── system
+├── test_corelauncher_db.py
+├── test_database.py
+├── test_db_fix.py
+├── test_fix.py
 ├── tree.git
+├── updated_platform_scanner.py
 └── V14_CHANGELOG.md
 
-28 directories, 120 files
+29 directories, 129 files
