@@ -1,52 +1,11 @@
 ```
-# Compiled and build artifacts
-*.pyc
-__pycache__/
-*.o
-*.obj
+# Backup files
+*.bak
 
-# Dependencies
-.venv/
-venv/
-node_modules/
+# Database files
+*.db
 
-# Logs and temp files
-*.log
-*.tmp
-*.swp
-
-# Environment
-.env
-.env.local
-*.env.*
-
-# Editors
-.vscode/
-.idea/
-
-# Coverage
-.coverage
-coverage/
-htmlcov/
-
-# Distribution / packaging
-dist/
-build/
-*.egg-info/
-
-# Python
-.Python
-*.so
-*.pyd
-*.pyo
-
-# System
-.DS_Store
-Thumbs.db
-
-# MyPy
-.mypy_cache/
-
-# Pytest
-.pytest_cache/
+# Test ROMs
+test_roms/
+test_roms2/
 ```
