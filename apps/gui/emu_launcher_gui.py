@@ -195,12 +195,15 @@ from apps.components.emulator_embed_widget import EmulatorEmbedWidget
 from apps.methods.platform_scanner import PlatformScanner
 from apps.methods.platform_icons import PlatformIcons
 from apps.methods.artwork_loader import ArtworkLoader
+from apps.methods.system_core_scanner import SystemCoreScanner
 from apps.gui.mel_settings_dialog import MELSettingsDialog
 from apps.gui.mel_settings_manager import MELSettingsManager
 from apps.utils.debug_logger import debug, info, warning, error, verbose, init_logger
 from apps.gui.game_manager_dialog import GameManagerDialog, GameConfig
 from apps.gui.ports_manager_dialog import PortsManagerDialog
 from apps.gui.load_core_dialog import LoadCoreDialog
+from apps.gui.database_manager_dialog import DatabaseManagerDialog
+from apps.methods.database_manager import DatabaseManager
 from apps.methods.mel_app_icon import generate_icon, save_icon_to_file, get_mel_svg
 from apps.methods.system_core_scanner import SystemCoreScanner
 
@@ -262,6 +265,7 @@ except ImportError:
 # _scan_roms
 # _setup_controller
 # _show_about_dialog
+# _show_database_manager
 # _show_game_manager
 # _show_load_core
 # _show_ports_manager
@@ -727,6 +731,16 @@ class EmulatorDisplayWidget(QWidget): #vers 4
             self.gameart_btn.clicked.connect(self.main_window._download_game_artwork)
         button_layout.addWidget(self.gameart_btn)
 
+        # Database Manager button
+        self.database_btn = QPushButton("Database")
+        self.database_btn.setIcon(SVGIconFactory.database_icon(20, icon_color))
+        self.database_btn.setIconSize(QSize(20, 20))
+        self.database_btn.setMinimumHeight(30)
+        self.database_btn.setToolTip("Manage ROMs, BIOS, and paths database")
+        if self.main_window:
+            self.database_btn.clicked.connect(self.main_window._show_database_manager)
+        button_layout.addWidget(self.database_btn)
+
         button_layout.addStretch()
 
         # Game Manager button
@@ -879,6 +893,10 @@ class EmuLauncherGUI(QWidget): #vers 20
         self.last_save_directory = None
         self.standalone_mode = (main_window is None)
         self.game_config = game_config if game_config else GameConfig("config")
+        
+        # Initialize database manager
+        self.database_manager = DatabaseManager()
+        
         self.setWindowIcon(generate_icon(64))
 
         # Set default fonts
@@ -5058,6 +5076,21 @@ class EmuLauncherGUI(QWidget): #vers 20
         except Exception as e:
             print(f"Error creating theme-aware icon: {e}")
             return QIcon()
+
+
+    def _show_database_manager(self): #vers 1
+        """Show database manager dialog for managing ROMs, BIOS, and paths"""
+        try:
+            from PyQt6.QtWidgets import QMessageBox
+            
+            dialog = DatabaseManagerDialog(self.database_manager, self)
+            dialog.exec()
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Database Manager Error",
+                f"Failed to open database manager:\n{str(e)}"
+            )
 
 
 # Standalone execution
