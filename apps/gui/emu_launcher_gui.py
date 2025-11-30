@@ -365,11 +365,11 @@ class EmulatorListWidget(QListWidget): #vers 2
             self.populate_platforms(platforms, getattr(self, 'icon_factory', None))
 
 
-    def _show_context_menu(self, position): #vers 3
+    def _show_context_menu(self, position): #vers 4
         """Show right-click context menu"""
         item = self.itemAt(position)
 
-        from PyQt6.QtWidgets import QMenu
+        from PyQt6.QtWidgets import QMenu, QFileDialog
         menu = QMenu(self)
 
         # If clicked on an item, show platform options
@@ -381,6 +381,12 @@ class EmulatorListWidget(QListWidget): #vers 2
             # Configure controller for this platform
             config_action = menu.addAction(f"Configure Controller for {platform}")
             config_action.triggered.connect(lambda: self._configure_platform_controller(platform))
+
+            menu.addSeparator()
+
+            # Add "Open As" option to select emulator binary
+            open_as_action = menu.addAction(f"Open As (Select Emulator Binary)")
+            open_as_action.triggered.connect(lambda: self._open_as_emulator(platform))
 
             menu.addSeparator()
 
@@ -416,6 +422,48 @@ class EmulatorListWidget(QListWidget): #vers 2
             dialog = ControllerConfigDialog(parent_widget.gamepad_config, parent_widget)
             # TODO: Select platform tab and highlight platform
             dialog.exec()
+
+
+    def _open_as_emulator(self, platform): #vers 1
+        """Open emulator binary selection dialog to use for this platform"""
+        # Find parent EmuLauncherGUI
+        parent_widget = self.parent()
+        while parent_widget and not hasattr(parent_widget, '_on_launch_game'):
+            parent_widget = parent_widget.parent()
+
+        if parent_widget and hasattr(parent_widget, '_on_launch_game'):
+            # Get the selected game from the game list
+            game_list = getattr(parent_widget, 'game_list', None)
+            if game_list and game_list.currentItem():
+                selected_game = game_list.currentItem().text()
+                
+                # Get the ROM path for the selected game
+                rom_path = None
+                if hasattr(parent_widget, 'available_roms') and platform in parent_widget.available_roms:
+                    for rom_file in parent_widget.available_roms[platform]:
+                        if rom_file.stem == selected_game:
+                            rom_path = rom_file
+                            break
+                
+                if rom_path:
+                    # Open file dialog to select emulator binary
+                    from PyQt6.QtWidgets import QFileDialog
+                    emulator_path, _ = QFileDialog.getOpenFileName(
+                        self, 
+                        f"Select Emulator for {platform}", 
+                        "", 
+                        "Executable Files (*)"
+                    )
+                    
+                    if emulator_path:
+                        # Launch the game with the selected emulator
+                        parent_widget._launch_with_custom_emulator(platform, rom_path, emulator_path)
+                else:
+                    from PyQt6.QtWidgets import QMessageBox
+                    QMessageBox.warning(self, "No Game Selected", "Please select a game first before using 'Open As'.")
+            else:
+                from PyQt6.QtWidgets import QMessageBox
+                QMessageBox.warning(self, "No Game Selected", "Please select a game first before using 'Open As'.")
 
 
     def _show_all_platforms(self): #vers 1
@@ -1043,6 +1091,7 @@ class EmuLauncherGUI(QWidget): #vers 20
         self.current_platform = None
         self.current_rom_path = None
         self.available_roms = {}
+        self.current_process = None  # Track custom emulator processes
 
         # Initialize icon factory and display mode
         self.platform_icons = PlatformIcons()
@@ -1992,11 +2041,50 @@ class EmuLauncherGUI(QWidget): #vers 20
             else:
                 self.status_label.setText(f"Launch failed: {game_name}")
 
-    def _on_stop_emulation(self): #vers 2
+    def _launch_with_custom_emulator(self, platform: str, rom_path: Path, emulator_path: str): #vers 1
+        """Launch game with a custom emulator binary selected by user"""
+        import subprocess
+        from PyQt6.QtWidgets import QMessageBox
+        
+        # Update status
+        if hasattr(self, 'status_label'):
+            game_name = rom_path.stem
+            self.status_label.setText(f"Launching {game_name} with custom emulator...")
+        
+        try:
+            # Launch the custom emulator with the ROM
+            cmd = [emulator_path, str(rom_path)]
+            
+            # Launch in background
+            self.current_process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+            
+            # Update status
+            if hasattr(self, 'status_label'):
+                self.status_label.setText(f"Running: {game_name} (Custom Emulator)")
+            
+            print(f"✓ Launched with custom emulator: {rom_path.name}")
+            return True
+            
+        except Exception as e:
+            error_msg = f"Failed to launch with custom emulator: {str(e)}"
+            print(error_msg)
+            
+            if hasattr(self, 'status_label'):
+                self.status_label.setText(f"Launch failed: {str(e)}")
+            
+            QMessageBox.critical(self, "Launch Error", error_msg)
+            return False
+
+    def _on_stop_emulation(self): #vers 3
         """Stop current emulation and close embedded window"""
         if not self.core_launcher:
             return
 
+        # Stop the core launcher process first
         if self.core_launcher.is_running():
             success = self.core_launcher.stop_emulation()
 
@@ -2010,8 +2098,23 @@ class EmuLauncherGUI(QWidget): #vers 20
                 else:
                     self.status_label.setText("Failed to stop emulation")
         else:
-            if hasattr(self, 'status_label'):
-                self.status_label.setText("No emulation running")
+            # Check if we have a custom emulator process running
+            if self.current_process and self.current_process.poll() is None:
+                # Stop the custom emulator process
+                try:
+                    self.current_process.terminate()
+                    self.current_process.wait(timeout=5)
+                    self.current_process = None
+                    
+                    if hasattr(self, 'status_label'):
+                        self.status_label.setText("Custom emulator stopped")
+                except Exception as e:
+                    print(f"Error stopping custom emulator: {e}")
+                    if hasattr(self, 'status_label'):
+                        self.status_label.setText("Failed to stop custom emulator")
+            else:
+                if hasattr(self, 'status_label'):
+                    self.status_label.setText("No emulation running")
 
 
     def _on_platform_selected(self, platform): #vers 5
