@@ -746,15 +746,6 @@ class EmulatorDisplayWidget(QWidget): #vers 4
 
         button_layout.addStretch()
 
-        # Edit Database button
-        self.edit_db_btn = QPushButton("Edit Database")
-        self.edit_db_btn.setIcon(SVGIconFactory.database_icon(20, icon_color))  # Using database icon
-        self.edit_db_btn.setIconSize(QSize(20, 20))
-        self.edit_db_btn.setMinimumHeight(30)
-        self.edit_db_btn.setToolTip("Edit database entries")
-        if hasattr(self, 'main_window') and self.main_window:
-            self.edit_db_btn.clicked.connect(self.main_window._show_database_manager)
-        button_layout.addWidget(self.edit_db_btn)
 
         # Game Manager button
         self.manage_btn = QPushButton("Game Manager")

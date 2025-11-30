@@ -103,7 +103,7 @@ class DatabaseManagerDialog(QDialog): #vers 1
         
         # Stats label
         self.stats_label = QLabel()
-        self.stats_label.setStyleSheet("background-color: #f0f0f0; padding: 5px;")
+        #self.stats_label.setStyleSheet("background-color: #f0f0f0; padding: 5px;")
         layout.addWidget(self.stats_label)
         
         # Buttons
