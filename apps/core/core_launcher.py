@@ -15,6 +15,7 @@ import ctypes
 from pathlib import Path
 from typing import Optional, Dict, Any
 import subprocess
+from ..database.database_manager import DatabaseManager
 
 ##Methods list -
 # __init__
@@ -35,13 +36,14 @@ import subprocess
 class CoreLauncher: #vers 4
     """Direct libretro core launcher with fuzzy platform matching"""
     
-    def __init__(self, base_dir: Path, core_database: Dict, core_downloader=None): #vers 2
+    def __init__(self, base_dir: Path, core_database: Dict = None, core_downloader=None, db_manager: DatabaseManager = None): #vers 3
         """Initialize core launcher
         
         Args:
             base_dir: Base directory containing cores, roms, etc
-            core_database: Platform -> core info mapping
+            core_database: Platform -> core info mapping (deprecated, now uses database)
             core_downloader: CoreDownloader instance for normalize_platform_name (optional)
+            db_manager: Database manager instance (optional, creates new one if not provided)
         """
         self.base_dir = Path(base_dir)
         self.cores_dir = self.base_dir / "cores"
@@ -49,10 +51,57 @@ class CoreLauncher: #vers 4
         self.bios_dir = self.base_dir / "bios"
         self.saves_dir = self.base_dir / "saves"
         
-        self.core_database = core_database
         self.core_downloader = core_downloader
+        self.db_manager = db_manager or DatabaseManager()
         self.current_process = None
         self.loaded_core = None
+        
+        # If core_database is provided for backward compatibility, store it
+        if core_database:
+            self.core_database = core_database
+        else:
+            # Load from database
+            self.core_database = self._load_database_from_db()
+    
+    def _load_database_from_db(self) -> Dict:
+        """Load platform database from the database manager"""
+        platforms = self.db_manager.get_all_platforms()
+        core_database = {}
+        
+        for platform in platforms:
+            # Get core information for this platform
+            core_info = self.db_manager.get_core_info(platform['name'])
+            if core_info:
+                # Create platform info similar to the old format
+                available_cores = core_info.get('available_cores', []) or []
+                platform_info = {
+                    'name': platform['name'],
+                    'path': platform.get('rom_directory', ''),
+                    'rom_count': platform.get('total_games', 0),
+                    'cores': available_cores,
+                    'core_available': len(available_cores) > 0,
+                    'bios_required': platform.get('has_bios', 0) == 1,
+                    'bios_complete': platform.get('has_bios', 0) == 1,
+                    'missing_bios': [],
+                    'type': platform['name']  # Use the platform name as type
+                }
+            else:
+                # Create basic platform info if no core info exists
+                platform_info = {
+                    'name': platform['name'],
+                    'path': platform.get('rom_directory', ''),
+                    'rom_count': platform.get('total_games', 0),
+                    'cores': [],
+                    'core_available': False,
+                    'bios_required': platform.get('has_bios', 0) == 1,
+                    'bios_complete': platform.get('has_bios', 0) == 1,
+                    'missing_bios': [],
+                    'type': platform['name']
+                }
+            
+            core_database[platform['name']] = platform_info
+        
+        return core_database
         
     def normalize_platform_name(self, platform: str) -> str: #vers 1
         """Normalize platform name using CoreDownloader's fuzzy matching
@@ -69,8 +118,8 @@ class CoreLauncher: #vers 4
         # Fallback: return original
         return platform
     
-    def update_database(self, new_database: Dict): #vers 1
-        """Update the core database with newly scanned platforms
+    def update_database(self, new_database: Dict): #vers 2
+        """Update the core database with newly scanned platforms and sync to database
         
         Args:
             new_database: Updated platform -> core info mapping
@@ -78,7 +127,25 @@ class CoreLauncher: #vers 4
         self.core_database = new_database
         print(f"CoreLauncher database updated with {len(new_database)} platforms")
         
-    def launch_game(self, platform: str, rom_path: Path, core_name: Optional[str] = None, game_config: Optional[Dict] = None) -> bool: #vers 3
+        # Sync to database as well
+        for platform_name, platform_info in new_database.items():
+            # Add platform to database
+            self.db_manager.add_platform(
+                name=platform_name,
+                rom_directory=platform_info.get('path', ''),
+                total_games=platform_info.get('rom_count', 0),
+                has_bios=1 if platform_info.get('bios_complete', False) else 0
+            )
+            
+            # Add core info to database
+            if 'cores' in platform_info:
+                self.db_manager.add_core_info(
+                    platform_name=platform_name,
+                    available_cores=platform_info['cores'],
+                    preferred_core=platform_info['cores'][0] if platform_info['cores'] else None
+                )
+        
+    def launch_game(self, platform: str, rom_path: Path, core_name: Optional[str] = None, game_config: Optional[Dict] = None) -> bool: #vers 4
         """Launch a game using appropriate core with fuzzy platform matching
         
         Args:
@@ -93,6 +160,9 @@ class CoreLauncher: #vers 4
         if not rom_path.exists():
             print(f"ROM not found: {rom_path}")
             return False
+        
+        # Reload database from database manager in case it has been updated
+        self.core_database = self._load_database_from_db()
         
         # Normalize platform name for fuzzy matching
         normalized_platform = self.normalize_platform_name(platform)
