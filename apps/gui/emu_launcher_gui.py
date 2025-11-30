@@ -865,6 +865,43 @@ class EmulatorDisplayWidget(QWidget): #vers 4
         else:
             self.main_window.status_label.setText("No emulation running")
 
+    def _on_artwork_double_clicked(self, event): #vers 1
+        """Handle double-click on artwork for fullscreen"""
+        if self.current_pixmap and not self.current_pixmap.isNull():
+            # Create a fullscreen dialog to show the artwork
+            fullscreen_dialog = QDialog(self)
+            fullscreen_dialog.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.FramelessWindowHint)
+            
+            layout = QVBoxLayout(fullscreen_dialog)
+            
+            # Create label to show the pixmap
+            fullscreen_label = QLabel()
+            fullscreen_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            fullscreen_label.setScaledContents(True)
+            
+            # Scale pixmap to screen size while maintaining aspect ratio
+            screen_size = fullscreen_dialog.screen().size()
+            scaled_pixmap = self.current_pixmap.scaled(
+                screen_size,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation
+            )
+            fullscreen_label.setPixmap(scaled_pixmap)
+            
+            layout.addWidget(fullscreen_label)
+            fullscreen_dialog.setLayout(layout)
+            
+            # Close on escape key or click
+            def close_dialog(e):
+                fullscreen_dialog.close()
+            
+            fullscreen_label.mousePressEvent = close_dialog
+            fullscreen_dialog.keyPressEvent = lambda e: (
+                fullscreen_dialog.close() if e.key() == Qt.Key.Key_Escape else None
+            )
+            
+            fullscreen_dialog.showFullScreen()
+
 
 class EmuLauncherGUI(QWidget): #vers 20
     """Main GUI window - Multi-Emulator Launcher"""
@@ -1363,9 +1400,10 @@ class EmuLauncherGUI(QWidget): #vers 20
         header.setStyleSheet("font-weight: bold; padding: 5px;")
         display_layout.addWidget(header)
 
-        # Create display widget - use old EmulatorDisplayWidget for now
-        print("Creating EmulatorDisplayWidget...")
-        self.display_widget = EmulatorDisplayWidget(main_window=self)
+        # Create display widget - use EmulatorEmbedWidget for proper pop-out and fullscreen support
+        print("Creating EmulatorEmbedWidget...")
+        from apps.components.emulator_embed_widget import EmulatorEmbedWidget
+        self.display_widget = EmulatorEmbedWidget(main_window=self, include_controls=False)
 
 
         display_layout.addWidget(self.display_widget)
