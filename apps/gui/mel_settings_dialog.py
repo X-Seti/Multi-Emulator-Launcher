@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-#this belongs in apps/gui/mel_settings_dialog.py - Version: 7
-# X-Seti - November27 2025 - Multi-Emulator Launcher - Settings Dialog
+#this belongs in apps/gui/mel_settings_dialog.py - Version: 8
+# X-Seti - November30 2025 - Multi-Emulator Launcher - Settings Dialog
 
 """
 MEL Settings Dialog - Complete settings with tabs
-NOW SUPPORTS MULTIPLE ROM PATHS
+NOW SUPPORTS MULTIPLE ROM PATHS + BIOS FILE BROWSER
 """
 
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
@@ -97,9 +97,9 @@ class MELSettingsDialog(QDialog):
         
         # Buttons for ROM paths
         rom_btn_layout = QHBoxLayout()
-        add_rom_btn = QPushButton("➕ Add ROM Directory")
+        add_rom_btn = QPushButton("âž• Add ROM Directory")
         add_rom_btn.clicked.connect(self._add_rom_path)
-        remove_rom_btn = QPushButton("➖ Remove Selected")
+        remove_rom_btn = QPushButton("âž– Remove Selected")
         remove_rom_btn.clicked.connect(self._remove_rom_path)
         
         rom_btn_layout.addWidget(add_rom_btn)
@@ -115,9 +115,24 @@ class MELSettingsDialog(QDialog):
         other_layout = QVBoxLayout()
         
         # BIOS path
-        bios_row, self.bios_path_input = self._create_path_selector(
-            "BIOS:", "bios", self._select_bios_path
-        )
+        bios_row = QHBoxLayout()
+        bios_label = QLabel("BIOS:")
+        bios_label.setMinimumWidth(80)
+        self.bios_path_input = QLineEdit()
+        self.bios_path_input.setText("bios")
+        self.bios_path_input.setReadOnly(True)
+        
+        browse_bios_dir_btn = QPushButton("Browse Dir...")
+        browse_bios_dir_btn.clicked.connect(self._select_bios_path)
+        
+        browse_bios_file_btn = QPushButton("Browse Files...")
+        browse_bios_file_btn.clicked.connect(self._browse_bios_files)
+        browse_bios_file_btn.setToolTip("Browse and view BIOS files in directory")
+        
+        bios_row.addWidget(bios_label)
+        bios_row.addWidget(self.bios_path_input)
+        bios_row.addWidget(browse_bios_dir_btn)
+        bios_row.addWidget(browse_bios_file_btn)
         other_layout.addLayout(bios_row)
         
         # Core path
@@ -186,7 +201,7 @@ class MELSettingsDialog(QDialog):
         info_label.setWordWrap(True)
         layout.addWidget(info_label)
         
-        rescan_btn = QPushButton("🔄 Re-scan for Emulators")
+        rescan_btn = QPushButton("ðŸ”„ Re-scan for Emulators")
         rescan_btn.clicked.connect(self._rescan_emulators)
         layout.addWidget(rescan_btn)
         
@@ -304,7 +319,7 @@ class MELSettingsDialog(QDialog):
         self.themed_titlebar_check = QCheckBox("Use themed titlebar colors")
         titlebar_layout.addWidget(self.themed_titlebar_check)
         
-        hint_label = QLabel("💡 Disable if titlebar buttons are hard to see in light themes")
+        hint_label = QLabel("ðŸ’¡ Disable if titlebar buttons are hard to see in light themes")
         hint_label.setStyleSheet("color: #888888; font-size: 10px; font-style: italic;")
         hint_label.setWordWrap(True)
         titlebar_layout.addWidget(hint_label)
@@ -382,7 +397,65 @@ class MELSettingsDialog(QDialog):
                         combo.setCurrentIndex(i)
                         break
     
-    def _save_settings(self):
+    def _browse_bios_files(self): #vers 1
+        """Browse and view BIOS files in BIOS directory"""
+        bios_path = Path(self.bios_path_input.text())
+        
+        if not bios_path.exists():
+            QMessageBox.warning(
+                self,
+                "Directory Not Found",
+                f"BIOS directory does not exist:\n{bios_path}\n\n"
+                "Please select a valid directory first."
+            )
+            return
+        
+        # Scan for BIOS files
+        bios_files = []
+        extensions = ['.bin', '.rom', '.bios', '.zip', '.img']
+        
+        for ext in extensions:
+            bios_files.extend(list(bios_path.glob(f'*{ext}')))
+            bios_files.extend(list(bios_path.glob(f'**/*{ext}')))
+        
+        if not bios_files:
+            QMessageBox.information(
+                self,
+                "No BIOS Files",
+                f"No BIOS files found in:\n{bios_path}\n\n"
+                f"Looking for: {', '.join(extensions)}"
+            )
+            return
+        
+        # Create dialog to show BIOS files
+        dialog = QDialog(self)
+        dialog.setWindowTitle("BIOS Files")
+        dialog.setMinimumSize(600, 400)
+        
+        layout = QVBoxLayout()
+        
+        info_label = QLabel(f"Found {len(bios_files)} BIOS file(s) in: {bios_path}")
+        info_label.setWordWrap(True)
+        layout.addWidget(info_label)
+        
+        # List widget
+        file_list = QListWidget()
+        for bios_file in sorted(bios_files):
+            relative_path = bios_file.relative_to(bios_path)
+            size = bios_file.stat().st_size
+            size_str = f"{size:,} bytes" if size < 1024 else f"{size/1024:.1f} KB"
+            file_list.addItem(f"{relative_path} ({size_str})")
+        
+        layout.addWidget(file_list)
+        
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(dialog.accept)
+        layout.addWidget(close_btn)
+        
+        dialog.setLayout(layout)
+        dialog.exec()
+    
+    def _save_settings(self): #vers 1
         """Save all settings"""
         # Save ROM paths - MULTIPLE
         rom_paths = []

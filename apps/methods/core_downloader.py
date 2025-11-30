@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-#this belongs in apps/methods/core_downloader.py - Version: 1
-# X-Seti - November28 2025 - Multi-Emulator Launcher - Core Downloader
+#this belongs in apps/methods/core_downloader.py - Version: 2
+# X-Seti - November30 2025 - Multi-Emulator Launcher - Core Downloader
 
 """
 Core Downloader
@@ -17,13 +17,14 @@ from .system_core_scanner import SystemCoreScanner
 
 ##Methods list -
 # __init__
-# get_available_cores
 # download_core
-# get_core_info
-# update_core_database
+# get_available_cores
 # get_core_download_url
+# get_core_info
+# get_installed_cores
+# update_core_database
 
-class CoreDownloader: #vers 1
+class CoreDownloader: #vers 2
     """Manages downloading and updating RetroArch cores"""
     
     # RetroArch core download URLs
@@ -129,7 +130,7 @@ class CoreDownloader: #vers 1
         self.cores_dir.mkdir(parents=True, exist_ok=True)
         self.system_core_scanner = SystemCoreScanner(self.cores_dir)
         
-    def get_available_cores(self) -> Dict[str, str]:
+    def get_available_cores(self) -> Dict[str, str]: #vers 1
         """Get list of available cores from RetroArch
         
         Returns:
@@ -185,7 +186,15 @@ class CoreDownloader: #vers 1
         
         return available_cores
     
-    def get_core_info(self, core_name: str) -> Dict:
+    def get_installed_cores(self) -> List[str]: #vers 1
+        """Get list of installed cores
+        
+        Returns:
+            List of installed core names
+        """
+        return self.system_core_scanner.get_installed_cores()
+    
+    def get_core_info(self, core_name: str) -> Dict: #vers 1
         """Get information about a specific core
         
         Args:

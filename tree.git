@@ -4,6 +4,7 @@
 │   ├── components
 │   │   ├── 16_bit_convert.py
 │   │   ├── 8_bit_convert.py
+│   │   ├── emulator_embed_widget.py
 │   │   ├── emulator_list_widget.py
 │   │   ├── game_list_widget.py
 │   │   └── retro_convert.py
@@ -16,11 +17,13 @@
 │   │   └── svg_icon_methods.py
 │   ├── debug
 │   │   └── placeholder
+│   ├── download_sample_cores.py
 │   ├── gui
 │   │   ├── controller_config_dialog.py
 │   │   ├── controller_layout_viewer.py
 │   │   ├── emulator_settings_dialog.py
 │   │   ├── emu_launcher_gui.py
+│   │   ├── emu_launcher_gui.py-bak
 │   │   ├── example.py
 │   │   ├── game_manager_dialog.py
 │   │   ├── gui_window.py
@@ -124,7 +127,6 @@
 │   ├── quickstart.md
 │   ├── README.md
 │   └── requirements.md
-├── download_sample_cores.py
 ├── emu_launcher_main.py
 ├── mel_settings.json
 ├── playlists
@@ -135,12 +137,11 @@
 ├── support
 │   ├── check_cores.py
 │   ├── fix_core_names.py
-│   └── install_cores.sh
+│   ├── install_cores.sh
+│   ├── test_core_detection.py
+│   └── test_dynamic_database.py
 ├── system
-├── test_core_detection.py
-├── test_dynamic_database.py
-├── test_fix.py
 ├── tree.git
 └── V14_CHANGELOG.md
 
-28 directories, 116 files
+28 directories, 117 files

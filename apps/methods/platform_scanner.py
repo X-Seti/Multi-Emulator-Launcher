@@ -545,12 +545,13 @@ class PlatformScanner: #vers 4
             # Update with dynamic core detection and BIOS info
             platform_config = self.update_platform_config_with_cores(basic_config)
             
-            # Only add platform if it has available cores (to avoid "No core available" messages)
+            # Add platform regardless of core availability (user can install cores later)
+            platforms[platform_name] = platform_config
+            
             if platform_config["core_available"]:
-                platforms[platform_name] = platform_config
-                print(f"✓ {platform_name}: {rom_count} ROMs, cores: {platform_config['cores']}, BIOS: {'✓' if platform_config['bios_complete'] else '✗' if platform_config['bios_required'] else 'N/A'}")
+                print(f"âœ“ {platform_name}: {rom_count} ROMs, cores: {platform_config['cores']}, BIOS: {'âœ“' if platform_config['bios_complete'] else 'âœ—' if platform_config['bios_required'] else 'N/A'}")
             else:
-                print(f"✗ {platform_name}: No available core found for this platform")
+                print(f"⚠ {platform_name}: {rom_count} ROMs, NO CORES (install cores to launch)")
                 
         print(f"\nLoaded {len(platforms)} platform(s): {', '.join(platforms.keys())}")
         
