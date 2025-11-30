@@ -306,7 +306,7 @@ class PortsManagerDialog(QDialog): #vers 1
                 str(port.rom_path)
             ])
             tree_item.setData(0, Qt.ItemDataRole.UserRole, port)
-            self.ports_tree.addTreeItem(tree_item)
+            self.ports_tree.addTopLevelItem(tree_item)
         
         # Resize columns
         for i in range(4):

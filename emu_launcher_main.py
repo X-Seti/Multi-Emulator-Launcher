@@ -149,8 +149,8 @@ class EmulatorLauncher: #vers 3
             platform_scanner=self.platform_scanner,
             game_scanner=self.game_scanner,
             rom_loader=self.rom_loader,
-            bios_manager=self.bios_manager
-            #system_core_scanner=self.system_core_scanner
+            bios_manager=self.bios_manager,
+            system_core_scanner=self.system_core_scanner
         )
         window.show()
         
