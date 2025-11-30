@@ -1863,11 +1863,12 @@ class EmuLauncherGUI(QWidget): #vers 20
         # Apply new mode
         self._set_icon_display_mode(modes[next_index])
 
-    def _on_game_selected(self, game): #vers 3
+    def _on_game_selected(self, game): #vers 4
         """Handle game selection - find ROM path and enable launch"""
         self.game_status.setText(f"Game: {game}")
 
         if not self.current_platform:
+            self.status_label.setText("Please select a platform first")
             return
 
         # Find ROM path for this game
@@ -1880,10 +1881,27 @@ class EmuLauncherGUI(QWidget): #vers 20
                     self.current_rom_path = rom_path
                     self.status_label.setText(f"Ready to launch: {game}")
 
-                    # Enable launch button
+                    # Enable launch button in both locations
                     if hasattr(self, 'display_widget') and hasattr(self.display_widget, 'launch_btn'):
-                        self.display_widget.launch_btn.setEnabled(True)  # ADD THIS
+                        self.display_widget.launch_btn.setEnabled(True)
+                    
+                    # Also enable the main control button
+                    if hasattr(self, 'launch_btn'):
+                        self.launch_btn.setEnabled(True)
                     break
+            else:
+                # Game not found in available ROMs
+                self.status_label.setText(f"ROM file for '{game}' not found")
+                if hasattr(self, 'launch_btn'):
+                    self.launch_btn.setEnabled(False)
+                if hasattr(self, 'display_widget') and hasattr(self.display_widget, 'launch_btn'):
+                    self.display_widget.launch_btn.setEnabled(False)
+        else:
+            self.status_label.setText(f"No ROMs found for platform: {self.current_platform}")
+            if hasattr(self, 'launch_btn'):
+                self.launch_btn.setEnabled(False)
+            if hasattr(self, 'display_widget') and hasattr(self.display_widget, 'launch_btn'):
+                self.display_widget.launch_btn.setEnabled(False)
         
         # Load and display title artwork
         if hasattr(self, 'artwork_loader') and hasattr(self, 'display_widget'):
@@ -1958,11 +1976,17 @@ class EmuLauncherGUI(QWidget): #vers 20
                 self.status_label.setText("No emulation running")
 
 
-    def _on_platform_selected(self, platform): #vers 4
+    def _on_platform_selected(self, platform): #vers 5
         """Handle platform selection - scan for actual ROMs using discovered info"""
         self.current_platform = platform
         self.current_rom_path = None
         self.platform_status.setText(f"Platform: {platform}")
+
+        # Disable launch button when platform is selected (until game is selected)
+        if hasattr(self, 'launch_btn'):
+            self.launch_btn.setEnabled(False)
+        if hasattr(self, 'display_widget') and hasattr(self.display_widget, 'launch_btn'):
+            self.display_widget.launch_btn.setEnabled(False)
 
         # Get platform info from scanner
         platform_info = self.platform_scanner.get_platform_info(platform)
