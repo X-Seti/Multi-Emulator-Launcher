@@ -370,7 +370,7 @@ class GameManagerDialog(QDialog): #vers 1
             is_installed = core_name in installed_cores
             display_name = core_name
             if is_installed:
-                display_name += " ✓"
+                display_name += " âœ“"
             else:
                 display_name += " (not installed)"
             

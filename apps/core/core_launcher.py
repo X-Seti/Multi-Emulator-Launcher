@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-#this belongs in apps/core/core_launcher.py - Version: 2
-# X-Seti - November23 2025 - Multi-Emulator Launcher - Direct Core Launcher
+#this belongs in apps/core/core_launcher.py - Version: 4
+# X-Seti - November30 2025 - Multi-Emulator Launcher - Direct Core Launcher
 
 """
 Direct Libretro Core Launcher
@@ -24,6 +24,7 @@ import subprocess
 # launch_with_subprocess
 # normalize_platform_name
 # stop_emulation
+# update_database
 # _find_core_for_platform
 # _get_bios_path
 # _load_core_library
@@ -31,7 +32,7 @@ import subprocess
 
 ##class CoreLauncher -
 
-class CoreLauncher: #vers 2
+class CoreLauncher: #vers 4
     """Direct libretro core launcher with fuzzy platform matching"""
     
     def __init__(self, base_dir: Path, core_database: Dict, core_downloader=None): #vers 2
@@ -67,14 +68,24 @@ class CoreLauncher: #vers 2
         
         # Fallback: return original
         return platform
+    
+    def update_database(self, new_database: Dict): #vers 1
+        """Update the core database with newly scanned platforms
         
-    def launch_game(self, platform: str, rom_path: Path, core_name: Optional[str] = None) -> bool: #vers 2
+        Args:
+            new_database: Updated platform -> core info mapping
+        """
+        self.core_database = new_database
+        print(f"CoreLauncher database updated with {len(new_database)} platforms")
+        
+    def launch_game(self, platform: str, rom_path: Path, core_name: Optional[str] = None, game_config: Optional[Dict] = None) -> bool: #vers 3
         """Launch a game using appropriate core with fuzzy platform matching
         
         Args:
             platform: Platform name (e.g. "PlayStation 1", "Amstrad 464", "Genesis")
             rom_path: Path to ROM file
             core_name: Specific core to use (optional, will auto-select)
+            game_config: Optional game configuration dict with custom args, etc.
             
         Returns:
             True if launch successful, False otherwise
@@ -85,6 +96,15 @@ class CoreLauncher: #vers 2
         
         # Normalize platform name for fuzzy matching
         normalized_platform = self.normalize_platform_name(platform)
+        
+        # DEBUG: Show database contents
+        print(f"\n=== CoreLauncher DEBUG ===")
+        print(f"Looking for platform: '{platform}'")
+        print(f"Normalized to: '{normalized_platform}'")
+        print(f"Database has {len(self.core_database)} platforms:")
+        for db_platform in list(self.core_database.keys())[:10]:  # Show first 10
+            print(f"  - '{db_platform}'")
+        print("=== END DEBUG ===\n")
         
         # Get platform info
         platform_info = self.core_database.get(normalized_platform)
@@ -114,9 +134,9 @@ class CoreLauncher: #vers 2
                 return False
                 
         # Launch using subprocess (simpler than ctypes for now)
-        return self.launch_with_subprocess(core_path, rom_path, normalized_platform)
+        return self.launch_with_subprocess(core_path, rom_path, normalized_platform, game_config)
         
-    def launch_with_subprocess(self, core_path: Path, rom_path: Path, platform: str) -> bool: #vers 2
+    def launch_with_subprocess(self, core_path: Path, rom_path: Path, platform: str, game_config: Optional[Dict] = None) -> bool: #vers 3
         """Launch core using subprocess
         
         This uses standalone libretro players like:
@@ -169,20 +189,36 @@ class CoreLauncher: #vers 2
                     # Build command
                     cmd = [launcher, str(rom_path)]
                     
+                    # Add custom args from game_config
+                    if game_config:
+                        custom_args = game_config.get("custom_args", "")
+                        if custom_args:
+                            cmd.extend(custom_args.split())
+                        
+                        # Handle fullscreen
+                        if game_config.get("fullscreen", False):
+                            cmd.append("--fullscreen")
+                    
                     # Add BIOS path if needed
                     bios_path = self._get_bios_path(platform)
                     if bios_path:
                         # Some emulators need BIOS path argument
                         cmd.extend(["--bios", str(bios_path)])
+                    
+                    # Get working directory from game_config if specified
+                    cwd = None
+                    if game_config and game_config.get("working_dir"):
+                        cwd = game_config["working_dir"]
                         
                     # Launch in background
                     self.current_process = subprocess.Popen(
                         cmd,
                         stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL
+                        stderr=subprocess.DEVNULL,
+                        cwd=cwd
                     )
                     
-                    print(f"✓ Launched: {rom_path.name}")
+                    print(f"âœ“ Launched: {rom_path.name}")
                     return True
                     
             except Exception as e:
@@ -204,7 +240,7 @@ class CoreLauncher: #vers 2
                 self.current_process.terminate()
                 self.current_process.wait(timeout=5)
                 self.current_process = None
-                print("✓ Emulation stopped")
+                print("âœ“ Emulation stopped")
                 return True
             except Exception as e:
                 print(f"Error stopping emulation: {e}")
@@ -371,7 +407,7 @@ if __name__ == "__main__":
         if installed:
             print(f"\nFound {len(installed)} emulator(s):")
             for emu, platform in installed.items():
-                print(f"  ✓ {emu} ({platform})")
+                print(f"  âœ“ {emu} ({platform})")
         else:
             print("No emulators detected")
             
@@ -390,9 +426,9 @@ if __name__ == "__main__":
         success = launcher.launch_game(platform, rom_path)
         
         if success:
-            print("✓ Game launched")
+            print("âœ“ Game launched")
         else:
-            print("✗ Launch failed")
+            print("âœ— Launch failed")
             
     else:
         print("Direct Core Launcher")
