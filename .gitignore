@@ -3,7 +3,7 @@
 *.pyc
 __pycache__/
 
-# Database files (if they are temporary/build artifacts)
+# Database files
 *.db
 
 # Environment files
