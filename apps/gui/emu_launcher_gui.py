@@ -1365,16 +1365,8 @@ class EmuLauncherGUI(QWidget): #vers 20
 
         # Create display widget - use old EmulatorDisplayWidget for now
         print("Creating EmulatorDisplayWidget...")
-        try:
-            self.display_widget = EmulatorDisplayWidget(main_window=self)
-            print(f"✓ EmulatorDisplayWidget created: {type(self.display_widget)}")
-        except Exception as e:
-            print(f"✗ Failed to create EmulatorDisplayWidget: {e}")
-            import traceback
-            traceback.print_exc()
-            # Last resort fallback
-            self.display_widget = QLabel("Display widget creation failed")
-            print("Using QLabel fallback")
+        self.display_widget = EmulatorDisplayWidget(main_window=self)
+
 
         display_layout.addWidget(self.display_widget)
         main_layout.addWidget(display_container, stretch=1)

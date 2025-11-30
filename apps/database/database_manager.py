@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class DatabaseManager:
     """SQLite database manager for the emulator launcher"""
     
-    def __init__(self, db_path: str = "/workspace/config/mel_database.db"):
+    def __init__(self, db_path: str = "apps/database/mel_database.db"):
         self.db_path = db_path
         self.ensure_db_directory()
         self.init_database()
