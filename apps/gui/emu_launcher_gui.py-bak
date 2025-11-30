@@ -195,12 +195,15 @@ from apps.components.emulator_embed_widget import EmulatorEmbedWidget
 from apps.methods.platform_scanner import PlatformScanner
 from apps.methods.platform_icons import PlatformIcons
 from apps.methods.artwork_loader import ArtworkLoader
+from apps.methods.system_core_scanner import SystemCoreScanner
 from apps.gui.mel_settings_dialog import MELSettingsDialog
 from apps.gui.mel_settings_manager import MELSettingsManager
 from apps.utils.debug_logger import debug, info, warning, error, verbose, init_logger
 from apps.gui.game_manager_dialog import GameManagerDialog, GameConfig
 from apps.gui.ports_manager_dialog import PortsManagerDialog
 from apps.gui.load_core_dialog import LoadCoreDialog
+from apps.gui.database_manager_dialog import DatabaseManagerDialog
+from apps.methods.database_manager import DatabaseManager
 from apps.methods.mel_app_icon import generate_icon, save_icon_to_file, get_mel_svg
 from apps.methods.system_core_scanner import SystemCoreScanner
 
@@ -262,6 +265,7 @@ except ImportError:
 # _scan_roms
 # _setup_controller
 # _show_about_dialog
+# _show_database_manager
 # _show_game_manager
 # _show_load_core
 # _show_ports_manager
@@ -684,18 +688,21 @@ class EmulatorDisplayWidget(QWidget): #vers 4
     def _create_bottom_right(self): #vers 6
         """Create the right buttons with all controls in one line"""
         # Create button bar frame
-        self.rightbar = QFrame()
-        self.rightbar.setFrameStyle(QFrame.Shape.StyledPanel)
-        self.rightbar.setFixedHeight(45)
-        self.rightbar.setObjectName("rightbar")
+        rightbar = QFrame()
+        rightbar.setFrameStyle(QFrame.Shape.StyledPanel)
+        rightbar.setFixedHeight(45)
+        rightbar.setObjectName("rightbar")
 
-        button_layout = QHBoxLayout(self.rightbar)  # Use button_layout, not self.layout
+        button_layout = QHBoxLayout(rightbar)  # Use button_layout, not self.layout
         button_layout.setContentsMargins(5, 5, 5, 5)
         button_layout.setSpacing(5)
 
-        # Get icon color from main window
-        icon_color = self.main_window._get_icon_color() if hasattr(self.main_window, '_get_icon_color') else '#ffffff'
+        # Get icon color from main window (fallback to white if not available during init)
+        icon_color = '#ffffff'  # Default color
+        if hasattr(self, 'main_window') and self.main_window and hasattr(self.main_window, '_get_icon_color'):
+            icon_color = self.main_window._get_icon_color()
         
+        # Store button references as instance attributes for later access
         # Launch button
         self.launch_btn = QPushButton("Launch Game")
         self.launch_btn.setIcon(SVGIconFactory.launch_icon(20, icon_color))
@@ -703,7 +710,7 @@ class EmulatorDisplayWidget(QWidget): #vers 4
         self.launch_btn.setMinimumHeight(30)
         self.launch_btn.setToolTip("Launch Emulator")
         self.launch_btn.setEnabled(False)  # Start disabled
-        if self.main_window:
+        if hasattr(self, 'main_window') and self.main_window:
             self.launch_btn.clicked.connect(self.main_window._on_launch_game)
         button_layout.addWidget(self.launch_btn)
 
@@ -713,7 +720,7 @@ class EmulatorDisplayWidget(QWidget): #vers 4
         self.load_core_btn.setIconSize(QSize(20, 20))
         self.load_core_btn.setMinimumHeight(30)
         self.load_core_btn.setToolTip("Browse and load emulator cores")
-        if self.main_window:
+        if hasattr(self, 'main_window') and self.main_window:
             self.load_core_btn.clicked.connect(self.main_window._show_load_core)
         button_layout.addWidget(self.load_core_btn)
 
@@ -723,11 +730,22 @@ class EmulatorDisplayWidget(QWidget): #vers 4
         self.gameart_btn.setIconSize(QSize(20, 20))
         self.gameart_btn.setMinimumHeight(30)
         self.gameart_btn.setToolTip("Download and manage game artwork")
-        if self.main_window:
+        if hasattr(self, 'main_window') and self.main_window:
             self.gameart_btn.clicked.connect(self.main_window._download_game_artwork)
         button_layout.addWidget(self.gameart_btn)
 
+        # Database Manager button
+        self.database_btn = QPushButton("Database")
+        self.database_btn.setIcon(SVGIconFactory.database_icon(20, icon_color))
+        self.database_btn.setIconSize(QSize(20, 20))
+        self.database_btn.setMinimumHeight(30)
+        self.database_btn.setToolTip("Manage ROMs, BIOS, and paths database")
+        if hasattr(self, 'main_window') and self.main_window:
+            self.database_btn.clicked.connect(self.main_window._show_database_manager)
+        button_layout.addWidget(self.database_btn)
+
         button_layout.addStretch()
+
 
         # Game Manager button
         self.manage_btn = QPushButton("Game Manager")
@@ -735,7 +753,7 @@ class EmulatorDisplayWidget(QWidget): #vers 4
         self.manage_btn.setIconSize(QSize(20, 20))
         self.manage_btn.setMinimumHeight(30)
         self.manage_btn.setToolTip("Configure game settings")
-        if self.main_window:
+        if hasattr(self, 'main_window') and self.main_window:
             self.manage_btn.clicked.connect(self.main_window._show_game_manager)
         button_layout.addWidget(self.manage_btn)
 
@@ -745,7 +763,7 @@ class EmulatorDisplayWidget(QWidget): #vers 4
         self.ports_btn.setIconSize(QSize(20, 20))
         self.ports_btn.setMinimumHeight(30)
         self.ports_btn.setToolTip("View game ports across systems")
-        if self.main_window:
+        if hasattr(self, 'main_window') and self.main_window:
             self.ports_btn.clicked.connect(self.main_window._show_ports_manager)
         button_layout.addWidget(self.ports_btn)
 
@@ -755,11 +773,11 @@ class EmulatorDisplayWidget(QWidget): #vers 4
         self.stop_btn.setIconSize(QSize(20, 20))
         self.stop_btn.setMinimumHeight(30)
         self.stop_btn.setToolTip("Stop emulation")
-        if self.main_window:
+        if hasattr(self, 'main_window') and self.main_window:
             self.stop_btn.clicked.connect(self.main_window._on_stop_emulation)
         button_layout.addWidget(self.stop_btn)
 
-        return self.rightbar
+        return rightbar
 
     def _create_control_buttons(self): #vers 2
         """Create bottom control buttons"""
@@ -785,6 +803,12 @@ class EmulatorDisplayWidget(QWidget): #vers 4
         if self.main_window:
             stop_btn.clicked.connect(self.main_window._on_stop_emulation)
         layout.addWidget(stop_btn)
+
+        # Edit Database button
+        edit_db_btn = QPushButton("Edit Database")
+        if self.main_window:
+            edit_db_btn.clicked.connect(self.main_window._show_database_manager)
+        layout.addWidget(edit_db_btn)
 
         return controls_frame
 
@@ -879,6 +903,10 @@ class EmuLauncherGUI(QWidget): #vers 20
         self.last_save_directory = None
         self.standalone_mode = (main_window is None)
         self.game_config = game_config if game_config else GameConfig("config")
+        
+        # Initialize database manager
+        self.database_manager = DatabaseManager()
+        
         self.setWindowIcon(generate_icon(64))
 
         # Set default fonts
@@ -1337,16 +1365,8 @@ class EmuLauncherGUI(QWidget): #vers 20
 
         # Create display widget - use old EmulatorDisplayWidget for now
         print("Creating EmulatorDisplayWidget...")
-        try:
-            self.display_widget = EmulatorDisplayWidget(main_window=self)
-            print(f"✓ EmulatorDisplayWidget created: {type(self.display_widget)}")
-        except Exception as e:
-            print(f"✗ Failed to create EmulatorDisplayWidget: {e}")
-            import traceback
-            traceback.print_exc()
-            # Last resort fallback
-            self.display_widget = QLabel("Display widget creation failed")
-            print("Using QLabel fallback")
+        self.display_widget = EmulatorDisplayWidget(main_window=self)
+
 
         display_layout.addWidget(self.display_widget)
         main_layout.addWidget(display_container, stretch=1)
@@ -1843,11 +1863,12 @@ class EmuLauncherGUI(QWidget): #vers 20
         # Apply new mode
         self._set_icon_display_mode(modes[next_index])
 
-    def _on_game_selected(self, game): #vers 3
+    def _on_game_selected(self, game): #vers 4
         """Handle game selection - find ROM path and enable launch"""
         self.game_status.setText(f"Game: {game}")
 
         if not self.current_platform:
+            self.status_label.setText("Please select a platform first")
             return
 
         # Find ROM path for this game
@@ -1860,18 +1881,35 @@ class EmuLauncherGUI(QWidget): #vers 20
                     self.current_rom_path = rom_path
                     self.status_label.setText(f"Ready to launch: {game}")
 
-                    # Enable launch button
+                    # Enable launch button in both locations
                     if hasattr(self, 'display_widget') and hasattr(self.display_widget, 'launch_btn'):
-                        self.display_widget.launch_btn.setEnabled(True)  # ADD THIS
+                        self.display_widget.launch_btn.setEnabled(True)
+                    
+                    # Also enable the main control button
+                    if hasattr(self, 'launch_btn'):
+                        self.launch_btn.setEnabled(True)
                     break
+            else:
+                # Game not found in available ROMs
+                self.status_label.setText(f"ROM file for '{game}' not found")
+                if hasattr(self, 'launch_btn'):
+                    self.launch_btn.setEnabled(False)
+                if hasattr(self, 'display_widget') and hasattr(self.display_widget, 'launch_btn'):
+                    self.display_widget.launch_btn.setEnabled(False)
+        else:
+            self.status_label.setText(f"No ROMs found for platform: {self.current_platform}")
+            if hasattr(self, 'launch_btn'):
+                self.launch_btn.setEnabled(False)
+            if hasattr(self, 'display_widget') and hasattr(self.display_widget, 'launch_btn'):
+                self.display_widget.launch_btn.setEnabled(False)
         
         # Load and display title artwork
         if hasattr(self, 'artwork_loader') and hasattr(self, 'display_widget'):
             title_artwork = self.artwork_loader.get_title_artwork(game, self.current_platform)
             self.display_widget.show_title_artwork(title_artwork)
 
-        if hasattr(self, 'display_widget') and hasattr(self.display_widget, 'enable_launch_button'):
-            self.display_widget.enable_launch_button(True)
+        if hasattr(self, 'display_widget') and hasattr(self.display_widget, 'enable_launch_buttons'):
+            self.display_widget.enable_launch_buttons(True)
 
 
     def _on_launch_game(self): #vers 3
@@ -1938,11 +1976,17 @@ class EmuLauncherGUI(QWidget): #vers 20
                 self.status_label.setText("No emulation running")
 
 
-    def _on_platform_selected(self, platform): #vers 4
+    def _on_platform_selected(self, platform): #vers 5
         """Handle platform selection - scan for actual ROMs using discovered info"""
         self.current_platform = platform
         self.current_rom_path = None
         self.platform_status.setText(f"Platform: {platform}")
+
+        # Disable launch button when platform is selected (until game is selected)
+        if hasattr(self, 'launch_btn'):
+            self.launch_btn.setEnabled(False)
+        if hasattr(self, 'display_widget') and hasattr(self.display_widget, 'launch_btn'):
+            self.display_widget.launch_btn.setEnabled(False)
 
         # Get platform info from scanner
         platform_info = self.platform_scanner.get_platform_info(platform)
@@ -5058,6 +5102,21 @@ class EmuLauncherGUI(QWidget): #vers 20
         except Exception as e:
             print(f"Error creating theme-aware icon: {e}")
             return QIcon()
+
+
+    def _show_database_manager(self): #vers 1
+        """Show database manager dialog for managing ROMs, BIOS, and paths"""
+        try:
+            from PyQt6.QtWidgets import QMessageBox
+            
+            dialog = DatabaseManagerDialog(self.database_manager, self)
+            dialog.exec()
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Database Manager Error",
+                f"Failed to open database manager:\n{str(e)}"
+            )
 
 
 # Standalone execution
