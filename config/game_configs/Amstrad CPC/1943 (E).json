@@ -1,0 +1,10 @@
+{
+  "platform": "Amstrad CPC",
+  "game": "1943 (E)",
+  "core": null,
+  "custom_args": "",
+  "working_dir": "",
+  "fullscreen": true,
+  "auto_load_save": false,
+  "maintain_aspect": true
+}

@@ -57,7 +57,8 @@ class MELSettingsDialog(QDialog):
         tabs.addTab(self._create_emulators_tab(), "Emulators")
         tabs.addTab(self._create_debug_tab(), "Debug")
         tabs.addTab(self._create_display_tab(), "Display")
-        
+        tabs.addTab(self._create_emulator_display_tab(), "Emulator Display")
+
         layout.addWidget(tabs)
         
         # Bottom buttons
@@ -177,6 +178,31 @@ class MELSettingsDialog(QDialog):
             
             self.rom_paths_list.addItem(path)
     
+        # Emulator display settings
+    def get_emulator_display_mode(self, emulator): #vers 1
+        """Get display mode for emulator
+
+        Args:
+            emulator: Emulator name (e.g., 'stella', 'hatari')
+
+        Returns:
+            Display mode string (e.g., 'fullscreen', 'windowed', 'zoom_2x')
+        """
+        display_settings = self.settings.get('emulator_display_settings', {})
+        return display_settings.get(emulator, 'auto')
+
+    def set_emulator_display_mode(self, emulator, mode): #vers 1
+        """Set display mode for emulator"""
+        if 'emulator_display_settings' not in self.settings:
+            self.settings['emulator_display_settings'] = {}
+
+        self.settings['emulator_display_settings'][emulator] = mode
+        self.save_mel_settings()
+
+    def get_all_emulator_display_settings(self): #vers 1
+        """Get all emulator display settings"""
+        return self.settings.get('emulator_display_settings', {})
+
     def _remove_rom_path(self):
         """Remove selected ROM directory"""
         current_item = self.rom_paths_list.currentItem()
@@ -284,6 +310,170 @@ class MELSettingsDialog(QDialog):
         tab.setLayout(layout)
         return tab
     
+    def _create_emulator_display_tab(self): #vers 1
+        """Create emulator display settings tab"""
+        tab = QWidget()
+        layout = QVBoxLayout()
+
+        info_label = QLabel("Configure how each emulator opens (fullscreen, windowed, zoom level).\nOnly detected emulators are shown.")
+        info_label.setWordWrap(True)
+        layout.addWidget(info_label)
+
+        # Scan button
+        scan_btn = QPushButton("Rescan Emulators")
+        scan_btn.clicked.connect(self._rescan_emulator_displays)
+        layout.addWidget(scan_btn)
+
+        # Scroll area for emulator settings
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll_widget = QWidget()
+        scroll_layout = QVBoxLayout(scroll_widget)
+
+        # Emulator display mode options
+        self.emulator_display_combos = {}
+
+        # Define emulator display options
+        emulator_options = {
+            'stella': {  # Atari 2600
+                'Auto': 'auto',
+                'Fullscreen': '-fullscreen 1',
+                'Windowed': '-fullscreen 0',
+                '1x Zoom (320x210)': '-zoom 1',
+                '2x Zoom (640x420)': '-zoom 2',
+                '3x Zoom (960x630)': '-zoom 3',
+                '4x Zoom (1280x840)': '-zoom 4',
+            },
+            'hatari': {  # Atari ST
+                'Auto': 'auto',
+                'Fullscreen': '--fullscreen',
+                'Windowed': '--window',
+                '1x Zoom': '--zoom 1',
+                '2x Zoom': '--zoom 2',
+            },
+            'fs-uae': {  # Amiga
+                'Auto': 'auto',
+                'Fullscreen': '--fullscreen',
+                'Windowed': '--window',
+            },
+            'amiberry': {  # Amiga
+                'Auto': 'auto',
+                'Fullscreen': '-f',
+                'Windowed': '-W',
+            },
+            'mupen64plus': {  # N64
+                'Auto': 'auto',
+                'Fullscreen': '--fullscreen',
+                'Windowed': '--windowed',
+            },
+            'pcsx2': {  # PS2
+                'Auto': 'auto',
+                'Fullscreen': '--fullscreen',
+                'Windowed': '--nogui',
+            },
+            'desmume': {  # DS
+                'Auto': 'auto',
+                '1x (256x384)': '--3d-engine=1 --filter-mode=0',
+                '2x (512x768)': '--3d-engine=1 --filter-mode=1',
+                '3x (768x1152)': '--3d-engine=1 --filter-mode=2',
+            },
+            'fuse': {  # ZX Spectrum
+                'Auto': 'auto',
+                'Fullscreen': '--full-screen',
+                '1x': '--graphics-filter none',
+                '2x': '--graphics-filter 2xsai',
+                '3x': '--graphics-filter 3xsai',
+            },
+            'fceux': {  # NES
+                'Auto': 'auto',
+                'Fullscreen': '--fullscreen 1',
+                '1x': '--xscale 1 --yscale 1',
+                '2x': '--xscale 2 --yscale 2',
+                '3x': '--xscale 3 --yscale 3',
+            },
+            'snes9x-gtk': {  # SNES
+                'Auto': 'auto',
+                'Fullscreen': '--fullscreen',
+            },
+            'mgba-qt': {  # GBA
+                'Auto': 'auto',
+                'Fullscreen': '-f',
+                '1x': '-1',
+                '2x': '-2',
+                '3x': '-3',
+                '4x': '-4',
+            },
+            'ppsspp-qt': {  # PSP
+                'Auto': 'auto',
+                'Fullscreen': '--fullscreen',
+            },
+            'dolphin-emu': {  # GameCube/Wii
+                'Auto': 'auto',
+                'Fullscreen': '--batch --exec',
+            },
+            'blastem': {  # Genesis
+                'Auto': 'auto',
+                'Fullscreen': '-f',
+            },
+        }
+
+        # Scan for installed emulators
+        installed_emulators = self._scan_installed_emulators_simple()
+
+        if not installed_emulators:
+            no_emu_label = QLabel("No emulators detected. Install emulators and click 'Rescan'.")
+            scroll_layout.addWidget(no_emu_label)
+        else:
+            for emulator in sorted(installed_emulators):
+                if emulator in emulator_options:
+                    group = QGroupBox(f"{emulator.upper()}")
+                    group_layout = QFormLayout()
+
+                    combo = QComboBox()
+                    for label, value in emulator_options[emulator].items():
+                        combo.addItem(label, value)
+
+                    # Load saved setting
+                    saved_mode = self.settings_manager.get_emulator_display_mode(emulator)
+                    for i in range(combo.count()):
+                        if combo.itemData(i) == saved_mode:
+                            combo.setCurrentIndex(i)
+                            break
+
+                    self.emulator_display_combos[emulator] = combo
+                    group_layout.addRow("Display Mode:", combo)
+
+                    group.setLayout(group_layout)
+                    scroll_layout.addWidget(group)
+
+        scroll_layout.addStretch()
+        scroll.setWidget(scroll_widget)
+        layout.addWidget(scroll)
+
+        tab.setLayout(layout)
+        return tab
+
+    def _scan_installed_emulators_simple(self): #vers 2
+            """Comprehensive scan for installed emulators"""
+            from apps.methods.emulator_detector import detect_all_emulators
+
+            # Get cores directory from settings
+            cores_dir = Path(self.settings_manager.get_core_path())
+
+            # Detect all emulators
+            all_emulators, summary = detect_all_emulators(cores_dir)
+
+            # Return just the emulator names
+            return list(all_emulators.keys())
+
+    def _rescan_emulator_displays(self): #vers 1
+        """Rescan and rebuild emulator display tab"""
+        QMessageBox.information(
+            self,
+            "Rescan Complete",
+            "Close and reopen Settings to see updated emulator list."
+        )
+
     def _create_display_tab(self):
         """Create display tab"""
         tab = QWidget()
@@ -455,6 +645,7 @@ class MELSettingsDialog(QDialog):
         dialog.setLayout(layout)
         dialog.exec()
     
+
     def _save_settings(self): #vers 1
         """Save all settings"""
         # Save ROM paths - MULTIPLE
@@ -499,7 +690,12 @@ class MELSettingsDialog(QDialog):
             else:
                 emulator = combo.currentText()
                 self.settings_manager.set_emulator_for_platform(platform, emulator)
-        
+
+        # Save emulator display settings
+        for emulator, combo in self.emulator_display_combos.items():
+            mode = combo.currentData()
+            self.settings_manager.set_emulator_display_mode(emulator, mode)
+
         QMessageBox.information(
             self,
             "Settings Saved",

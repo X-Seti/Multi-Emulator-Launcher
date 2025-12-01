@@ -178,6 +178,8 @@ from pathlib import Path
 from typing import Optional, List, Dict, Tuple
 from PyQt6.QtSvg import QSvgRenderer
 
+
+
 base_dir = "config/"
 
 # PyQt6 imports
@@ -206,7 +208,6 @@ from apps.gui.database_manager_dialog import DatabaseManagerDialog
 from apps.methods.database_manager import DatabaseManager
 from apps.methods.mel_app_icon import generate_icon, save_icon_to_file, get_mel_svg
 from apps.methods.system_core_scanner import SystemCoreScanner
-
 
 
 # Import AppSettings
@@ -794,7 +795,6 @@ class EmulatorDisplayWidget(QWidget): #vers 4
 
         button_layout.addStretch()
 
-
         # Game Manager button
         self.manage_btn = QPushButton("Game Manager")
         self.manage_btn.setIcon(SVGIconFactory.manage_icon(20, icon_color))
@@ -1258,6 +1258,15 @@ class EmuLauncherGUI(QWidget): #vers 20
 
         self.layout.addStretch()
 
+        self.detect_btn = QPushButton()
+        self.detect_btn.setIcon(SVGIconFactory.search_icon(20, icon_color))
+        self.detect_btn.setText("")
+        self.detect_btn.setIconSize(QSize(20, 20))
+        self.detect_btn.setFixedSize(32, 32)
+        self.detect_btn.setToolTip("Detect Installed Emulators")
+        self.detect_btn.clicked.connect(self._show_detection_results)
+        self.layout.addWidget(self.detect_btn)
+
         # Scan ROMs button
         self.scan_roms_btn = QPushButton()
         self.scan_roms_btn.setFont(self.button_font)
@@ -1466,6 +1475,7 @@ class EmuLauncherGUI(QWidget): #vers 20
         print("=== Right Panel Created ===\n")
         return panel
 
+
     def _create_icon_controls(self): #vers 7
         """Create vertical icon control buttons - theme aware + display mode buttons"""
         controls_frame = QFrame()
@@ -1515,9 +1525,6 @@ class EmuLauncherGUI(QWidget): #vers 20
         controls_layout.addSpacing(10)
 
         # Display Mode Buttons (Embedded, Pop-out, Fullscreen)
-        # Import the icon creation methods from EmulatorEmbedWidget
-        from apps.components.emulator_embed_widget import EmulatorEmbedWidget
-
         # Embedded mode button
         self.embed_mode_btn = QPushButton()
         self.embed_mode_btn.setToolTip("Embedded mode (default)")
@@ -1565,7 +1572,7 @@ class EmuLauncherGUI(QWidget): #vers 20
 
     def _create_embed_icon(self, color): #vers 1
         """Create embedded window icon"""
-        from PyQt6.QtGui import QPixmap, QPainter, QColor
+        from PyQt6.QtGui import QPixmap, QPainter
         from PyQt6.QtSvg import QSvgRenderer
 
         svg = f'''<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -1610,10 +1617,10 @@ class EmuLauncherGUI(QWidget): #vers 20
         from PyQt6.QtSvg import QSvgRenderer
 
         svg = f'''<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <polyline points="4,8 4,4 8,4" fill="none" stroke="{color}" stroke-width="2"/>
-            <polyline points="20,8 20,4 16,4" fill="none" stroke="{color}" stroke-width="2"/>
-            <polyline points="4,16 4,20 8,20" fill="none" stroke="{color}" stroke-width="2"/>
-            <polyline points="20,16 20,20 16,20" fill="none" stroke="{color}" stroke-width="2"/>
+            <polyline points="4,10 4,4 10,4" fill="none" stroke="{color}" stroke-width="2"/>
+            <polyline points="20,14 20,20 14,20" fill="none" stroke="{color}" stroke-width="2"/>
+            <polyline points="14,4 20,4 20,10" fill="none" stroke="{color}" stroke-width="2"/>
+            <polyline points="10,20 4,20 4,14" fill="none" stroke="{color}" stroke-width="2"/>
         </svg>'''
 
         pixmap = QPixmap(24, 24)
@@ -1677,6 +1684,73 @@ class EmuLauncherGUI(QWidget): #vers 20
             if hasattr(self, 'status_label'):
                 self.status_label.setText("No platforms found")
 
+
+    def _show_detection_results(self): #vers 1
+        """Show comprehensive emulator detection results"""
+        from apps.methods.emulator_detector import detect_all_emulators
+        from PyQt6.QtWidgets import QDialog, QTextBrowser
+
+        base_dir = "cores"
+
+        # Get cores directory
+        cores_dir = Path(base_dir) / "cores"
+
+        # Detect all
+        all_emulators, summary = detect_all_emulators(cores_dir)
+
+        # Create results dialog
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Emulator Detection Results")
+        dialog.setMinimumSize(700, 600)
+
+        layout = QVBoxLayout()
+
+        # Summary at top
+        summary_label = QLabel(
+            f"<b>Found {summary['total']} total emulator(s)/core(s):</b><br>"
+            f"  • System (pacman/yay): {summary['system']}<br>"
+            f"  • Flatpak: {summary['flatpak']}<br>"
+            f"  • Local Cores: {summary['local_cores']}"
+        )
+        summary_label.setStyleSheet("padding: 10px; background: #2a2a2a; border-radius: 5px;")
+        layout.addWidget(summary_label)
+
+        # Detailed list
+        browser = QTextBrowser()
+        browser.setOpenExternalLinks(False)
+
+        html = "<h3>Detected Emulators</h3>"
+        html += "<style>table { width: 100%; border-collapse: collapse; }"
+        html += "th, td { padding: 8px; text-align: left; border-bottom: 1px solid #444; }"
+        html += "th { background: #333; }</style>"
+        html += "<table>"
+        html += "<tr><th>Name</th><th>Platform</th><th>Source</th><th>Path</th></tr>"
+
+        for emu_name, info in sorted(all_emulators.items()):
+            source_badge = {
+                'system': '🖥️ System',
+                'flatpak': '📦 Flatpak',
+                'local_core': '💾 Core'
+            }.get(info['source'], info['source'])
+
+            html += f"<tr>"
+            html += f"<td><b>{emu_name}</b></td>"
+            html += f"<td>{info['platform']}</td>"
+            html += f"<td>{source_badge}</td>"
+            html += f"<td><small>{info['path']}</small></td>"
+            html += f"</tr>"
+
+        html += "</table>"
+        browser.setHtml(html)
+        layout.addWidget(browser)
+
+        # Close button
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(dialog.accept)
+        layout.addWidget(close_btn)
+
+        dialog.setLayout(layout)
+        dialog.exec()
 
     def _show_bios_manager(self): #vers 1
         """Show BIOS manager dialog for scanning and managing system BIOS files"""
@@ -4293,6 +4367,7 @@ class EmuLauncherGUI(QWidget): #vers 20
 
         display_layout.addStretch()
         tabs.addTab(display_tab, "Display")
+
 
 
         # TAB 3: placeholder
