@@ -198,7 +198,7 @@ from apps.methods.platform_scanner import PlatformScanner
 from apps.methods.platform_icons import PlatformIcons
 from apps.methods.artwork_loader import ArtworkLoader
 from apps.methods.system_core_scanner import SystemCoreScanner
-from apps.gui.mel_settings_dialog import MELSettingsDialog
+from apps.gui.mel_settings_dialog import MELSettingsDialog# get_emulator_display_mode
 from apps.gui.mel_settings_manager import MELSettingsManager
 from apps.utils.debug_logger import debug, info, warning, error, verbose, init_logger
 from apps.gui.game_manager_dialog import GameManagerDialog, GameConfig
@@ -2973,6 +2973,7 @@ class EmuLauncherGUI(QWidget): #vers 20
             for btn in self.display_widget.findChildren(QPushButton):
                 btn.setStyleSheet(button_style)
 
+
     def _apply_theme_not_found(self): #vers 5
         """Apply theme to all GUI elements - comprehensive styling"""
 
@@ -3311,6 +3312,7 @@ class EmuLauncherGUI(QWidget): #vers 20
             self._apply_status_window_theme_styling()
             self._apply_file_list_window_theme_styling()
 
+
     def _apply_titlebar_colors(self): #vers 9
         """Apply theme colors to titlebar elements - respects themed setting and detects light/dark"""
         if not self.app_settings:
@@ -3403,6 +3405,7 @@ class EmuLauncherGUI(QWidget): #vers 20
 
         # Now style the bottom buttons with the same colors
         self._style_control_buttons(button_bg_color, button_text_color, accent_color, border_color)
+
 
     def _on_theme_changed(self): #vers 4
         """Handle theme changes - refresh everything including icons"""
@@ -4029,7 +4032,7 @@ class EmuLauncherGUI(QWidget): #vers 20
         layout = QVBoxLayout()
 
         # Title
-        title = QLabel("Multi-Emulator Launcher 1.0")
+        title = QLabel("Multi-Emulator Launcher 1.1")
         title_font = QFont(self.title_font)
         title_font.setPointSize(16)
         title_font.setBold(True)
@@ -4200,6 +4203,7 @@ class EmuLauncherGUI(QWidget): #vers 20
             QMessageBox.warning(self, "Save Failed", "Controller information not available")
 
 # - Settings Reusable
+
     def _show_workshop_settings(self): #vers 1 < moved from TXD workshop
         """Show complete workshop settings dialog"""
         from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QTabWidget, QWidget, QGroupBox, QFormLayout, QSpinBox, QComboBox, QSlider, QLabel, QCheckBox, QFontComboBox)
@@ -4546,6 +4550,7 @@ class EmuLauncherGUI(QWidget): #vers 20
             }
         """)
 
+
         def apply_settings():
             # FONTS
             self.setFont(QFont(default_font_combo.currentFont().family(),
@@ -4709,7 +4714,7 @@ class EmuLauncherGUI(QWidget): #vers 20
         return locales
 
 
-    def _show_amiga_locale_error(self): #vers 1
+    def _show_amiga_locale_error(self): #vers 2
         """Show Amiga Workbench 3.1 style error dialog"""
         from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QHBoxLayout
         from PyQt6.QtCore import Qt
@@ -4777,7 +4782,9 @@ class EmuLauncherGUI(QWidget): #vers 20
         dialog.exec()
 
 
-    def _update_dock_button_visibility(self): #vers 1
+# - Docking functions
+
+    def _update_dock_button_visibility(self): #vers 2
         """Show/hide dock and tearoff buttons based on docked state"""
         if hasattr(self, 'dock_btn'):
             # Hide D button when docked, show when standalone
@@ -4788,7 +4795,7 @@ class EmuLauncherGUI(QWidget): #vers 20
             self.tearoff_btn.setVisible(self.is_docked and not self.standalone_mode)
 
 
-    def toggle_dock_mode(self): #vers 1
+    def toggle_dock_mode(self): #vers 2
         """Toggle between docked and standalone mode"""
         if self.is_docked:
             self._undock_from_main()
@@ -4797,26 +4804,70 @@ class EmuLauncherGUI(QWidget): #vers 20
 
         self._update_dock_button_visibility()
 
-    def _dock_to_main(self): #vers 7
-        """Dock handled by overlay system in imgfactory"""
-        if hasattr(self, 'is_overlay') and self.is_overlay:
+
+    def _dock_to_main(self): #vers 9
+        """Dock handled by overlay system in imgfactory - IMPROVED"""
+        try:
+            if hasattr(self, 'is_overlay') and self.is_overlay:
+                self.show()
+                self.raise_()
+                return
+
+            # For proper docking, we need to be called from imgfactory
+            # This method should be handled by imgfactory's overlay system
+            if self.main_window and hasattr(self.main_window, App_name + '_docked'):
+                # If available, use the main window's docking system
+                self.main_window.open_col_workshop_docked()
+            else:
+                # Fallback: just show the window
+                self.show()
+                self.raise_()
+
+            # Update dock state
+            self.is_docked = True
+            self._update_dock_button_visibility()
+
+            if hasattr(self.main_window, 'log_message'):
+                self.main_window.log_message(f"{App_name} docked to main window")
+
+        except Exception as e:
+            img_debugger.error(f"Error docking: {str(e)}")
+            self.show()
+
+
+    def _undock_from_main(self): #vers 4
+        """Undock from overlay mode to standalone window - IMPROVED"""
+        try:
+            if hasattr(self, 'is_overlay') and self.is_overlay:
+                # Switch from overlay to normal window
+                self.setWindowFlags(Qt.WindowType.Window)
+                self.is_overlay = False
+                self.overlay_table = None
+
+            # Set proper window flags for standalone mode
+            self.setWindowFlags(Qt.WindowType.Window)
+
+            # Ensure proper size when undocking
+            if hasattr(self, 'original_size'):
+                self.resize(self.original_size)
+            else:
+                self.resize(1000, 700)  # Reasonable default size
+
+            self.is_docked = False
+            self._update_dock_button_visibility()
+
             self.show()
             self.raise_()
 
-    def _undock_from_main(self): #vers 3
-        """Undock from overlay mode to standalone window"""
-        if hasattr(self, 'is_overlay') and self.is_overlay:
+            if hasattr(self.main_window, 'log_message'):
+                self.main_window.log_message(f"{App_name} undocked to standalone")
+
+        except Exception as e:
+            img_debugger.error(f"Error undocking: {str(e)}")
+            # Fallback
             self.setWindowFlags(Qt.WindowType.Window)
-            self.is_overlay = False
-            self.overlay_table = None
+            self.show()
 
-        self.is_docked = False
-        self._update_dock_button_visibility()
-
-        self.show()
-
-        if hasattr(self.main_window, 'log_message'):
-            self.main_window.log_message(App_name + " undocked to standalone")
 
     def _apply_button_mode(self, dialog): #vers 1
         """Apply button display mode"""
@@ -4831,9 +4882,10 @@ class EmuLauncherGUI(QWidget): #vers 20
 
             if self.main_window and hasattr(self.main_window, 'log_message'):
                 mode_names = {0: 'Icons + Text', 1: 'Icons Only', 2: 'Text Only'}
-                self.main_window.log_message(f"âœ¨ Button style: {mode_names[mode_index]}")
+                self.main_window.log_message(f"✨ Button style: {mode_names[mode_index]}")
 
         dialog.close()
+
 
 # - Window functionality
 
@@ -4883,66 +4935,7 @@ class EmuLauncherGUI(QWidget): #vers 20
         return True
 
 
-    def _get_resize_corner(self, pos): #vers 1
-        """Determine which corner is under mouse position"""
-        size = self.corner_size
-        w = self.width()
-        h = self.height()
-
-        if pos.x() < size and pos.y() < size:
-            return "top-left"
-        if pos.x() > w - size and pos.y() < size:
-            return "top-right"
-        if pos.x() < size and pos.y() > h - size:
-            return "bottom-left"
-        if pos.x() > w - size and pos.y() > h - size:
-            return "bottom-right"
-
-        return None
-
-
-    def _handle_corner_resize(self, global_pos): #vers 1
-        """Handle window resizing from corners"""
-        if not self.resize_corner or not self.drag_position:
-            return
-
-        delta = global_pos - self.drag_position
-        geometry = self.initial_geometry
-
-        min_width = 800
-        min_height = 600
-
-        if self.resize_corner == "top-left":
-            new_x = geometry.x() + delta.x()
-            new_y = geometry.y() + delta.y()
-            new_width = geometry.width() - delta.x()
-            new_height = geometry.height() - delta.y()
-
-            if new_width >= min_width and new_height >= min_height:
-                self.setGeometry(new_x, new_y, new_width, new_height)
-
-        elif self.resize_corner == "top-right":
-            new_y = geometry.y() + delta.y()
-            new_width = geometry.width() + delta.x()
-            new_height = geometry.height() - delta.y()
-
-            if new_width >= min_width and new_height >= min_height:
-                self.setGeometry(geometry.x(), new_y, new_width, new_height)
-
-        elif self.resize_corner == "bottom-left":
-            new_x = geometry.x() + delta.x()
-            new_width = geometry.width() - delta.x()
-            new_height = geometry.height() + delta.y()
-
-            if new_width >= min_width and new_height >= min_height:
-                self.setGeometry(new_x, geometry.y(), new_width, new_height)
-
-        elif self.resize_corner == "bottom-right":
-            new_width = geometry.width() + delta.x()
-            new_height = geometry.height() + delta.y()
-
-            if new_width >= min_width and new_height >= min_height:
-                self.resize(new_width, new_height)
+# - From the fixed gui - move, drag
 
     def _update_all_buttons(self): #vers 4
         """Update all buttons to match display mode"""
@@ -4955,10 +4948,15 @@ class EmuLauncherGUI(QWidget): #vers 20
     def paintEvent(self, event): #vers 2
         """Paint corner resize triangles"""
         super().paintEvent(event)
+
         from PyQt6.QtGui import QPainter, QColor, QPen, QBrush, QPainterPath
 
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        # Colors
+        normal_color = QColor(100, 100, 100, 150)
+        hover_color = QColor(150, 150, 255, 200)
 
         # Get theme colors for corner indicators
         if self.app_settings:
@@ -4970,10 +4968,6 @@ class EmuLauncherGUI(QWidget): #vers 20
 
         hover_color = QColor(accent_color)
         hover_color.setAlpha(255)
-
-        # Colors
-        normal_color = QColor(100, 100, 100, 150)
-        hover_color = QColor(150, 150, 255, 200)
 
         w = self.width()
         h = self.height()
@@ -5013,13 +5007,10 @@ class EmuLauncherGUI(QWidget): #vers 20
 
         if pos.x() < size and pos.y() < size:
             return "top-left"
-
         if pos.x() > w - size and pos.y() < size:
             return "top-right"
-
         if pos.x() < size and pos.y() > h - size:
             return "bottom-left"
-
         if pos.x() > w - size and pos.y() > h - size:
             return "bottom-right"
 
@@ -5027,7 +5018,7 @@ class EmuLauncherGUI(QWidget): #vers 20
 
 
     # KEEP ONLY mousePressEvent with this logic:
-    def mousePressEvent(self, event): #vers 7
+    def mousePressEvent(self, event): #vers 0
         """Handle ALL mouse press - dragging and resizing"""
         if event.button() != Qt.MouseButton.LeftButton:
             super().mousePressEvent(event)
@@ -5053,6 +5044,7 @@ class EmuLauncherGUI(QWidget): #vers 20
                 return
 
         super().mousePressEvent(event)
+
 
     def mouseMoveEvent(self, event): #vers 4
         """Handle mouse move for resizing and hover effects
@@ -5254,7 +5246,9 @@ class EmuLauncherGUI(QWidget): #vers 20
         self.window_closed.emit()
         event.accept()
 
+
 # - SVG ICONS -- Section.
+
     def _create_theme_aware_icon(self, svg_data, size=20): #vers 4
         """Create theme-aware SVG icon that adapts to light/dark themes
 
