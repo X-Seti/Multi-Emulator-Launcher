@@ -13,6 +13,11 @@ Main window with 3-panel layout for emulator management
 
 #Changelog
 
+#December27 v18 - Button Visibility and Font Support
+#- Archive Extraction functions.
+#- Load as - force pick emulator.
+#- Window resize adjustments - Resize, Scale windows.
+
 #November27 v18 - Button Visibility and Font Support
 #- Move window functionality is fixed
 #- Controller layout models, Playstation 4, 5, X-Box, Generic Layouts added
@@ -410,6 +415,62 @@ class EmulatorListWidget(QListWidget): #vers 2
         menu.exec(self.mapToGlobal(position))
 
 
+    def _open_as_emulator(self, platform): #vers 4
+        """Open dialog to select default emulator for platform"""
+        from apps.gui.launch_with_dialog import LaunchWithDialog
+        from PyQt6.QtWidgets import QMessageBox
+
+        # Find parent GUI
+        parent_widget = self.parent()
+        while parent_widget and not hasattr(parent_widget, 'mel_settings'):
+            parent_widget = parent_widget.parent()
+
+        if not parent_widget or not hasattr(parent_widget, 'mel_settings'):
+            QMessageBox.warning(self, "Error", "Cannot access settings")
+            return
+
+        # Show dialog with platform pre-selected (need a dummy ROM path)
+        from pathlib import Path
+        dialog = LaunchWithDialog(
+            platform,
+            Path("/tmp/dummy.rom"),  # Dummy path, won't be used
+            parent_widget.mel_settings,
+            self
+        )
+
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        launcher_path, launcher_type, _ = dialog.get_selected_launcher()
+
+        # Save as platform default
+        if launcher_type == 'emulator':
+            emu_name = Path(launcher_path).name
+            parent_widget.mel_settings.set_emulator_for_platform(platform, emu_name)
+            QMessageBox.information(
+                self,
+                "Default Set",
+                f"Set {emu_name} as default emulator for {platform}"
+            )
+        elif launcher_type == 'core':
+            core_name = Path(launcher_path).stem
+            # Save full path for cores
+            parent_widget.mel_settings.set_emulator_for_platform(platform, launcher_path)
+            QMessageBox.information(
+                self,
+                "Default Set",
+                f"Set {core_name} core as default for {platform}"
+            )
+        else:  # custom
+            # Save full path
+            parent_widget.mel_settings.set_emulator_for_platform(platform, launcher_path)
+            QMessageBox.information(
+                self,
+                "Default Set",
+                f"Set custom emulator as default for {platform}"
+            )
+
+
     def _configure_platform_controller(self, platform): #vers 1
         """Open controller config for specific platform"""
         # Find parent EmuLauncherGUI
@@ -612,6 +673,37 @@ class GameListWidget(QListWidget): #vers 2
         if row >= 0:
             game = self.item(row).text()
             self.game_selected.emit(game)
+
+
+    def contextMenuEvent(self, event): #vers 1
+        """Show context menu on right-click"""
+        from PyQt6.QtWidgets import QMenu
+
+        item = self.itemAt(event.pos())
+        if not item:
+            return
+
+        game_name = item.text()
+
+        menu = QMenu(self)
+
+        launch_action = menu.addAction("Launch")
+        launch_action.triggered.connect(lambda: self.game_selected.emit(game_name))
+
+        launch_with_action = menu.addAction("Launch With...")
+        launch_with_action.triggered.connect(lambda: self._launch_with_custom(game_name))
+
+        menu.exec(event.globalPos())
+
+    def _launch_with_custom(self, game_name): #vers 1
+        """Emit signal to launch with custom emulator selection"""
+        # Find parent GUI
+        parent_widget = self.parent()
+        while parent_widget and not hasattr(parent_widget, '_on_launch_with'):
+            parent_widget = parent_widget.parent()
+
+        if parent_widget and hasattr(parent_widget, '_on_launch_with'):
+            parent_widget._on_launch_with(game_name)
 
 
 class EmulatorDisplayWidget(QWidget): #vers 4
@@ -1752,6 +1844,7 @@ class EmuLauncherGUI(QWidget): #vers 20
         dialog.setLayout(layout)
         dialog.exec()
 
+
     def _show_bios_manager(self): #vers 1
         """Show BIOS manager dialog for scanning and managing system BIOS files"""
         from PyQt6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QTableWidget
@@ -1815,6 +1908,7 @@ class EmuLauncherGUI(QWidget): #vers 20
 
         dialog.exec()
 
+
     def _browse_bios_path(self): #vers 1
         """Browse for BIOS directory"""
         path = QFileDialog.getExistingDirectory(self,"Select BIOS Directory",str(Path.home()))
@@ -1822,6 +1916,7 @@ class EmuLauncherGUI(QWidget): #vers 20
             self.bios_path_edit.setText(path)
             self.mel_settings.settings['bios_path'] = path
             self.mel_settings.save_mel_settings()
+
 
     def _scan_bios_files(self): #vers 2
         """Scan BIOS directory and populate table with found files"""
@@ -1915,6 +2010,7 @@ class EmuLauncherGUI(QWidget): #vers 20
             QMessageBox.information(self, "BIOS Scan Complete",
                                    f"Found {self.bios_table.rowCount()} BIOS file(s)")
 
+
     def _add_bios_to_table(self, system, file_path, expected_info, actual_md5, status): #vers 2
         """Add BIOS file to table with all details"""
         row = self.bios_table.rowCount()
@@ -1936,6 +2032,7 @@ class EmuLauncherGUI(QWidget): #vers 20
         # Status
         self.bios_table.setItem(row, 4, QTableWidgetItem(status))
 
+
     def _verify_all_bios(self): #vers 1
         """Verify all BIOS files in table"""
         verified = 0
@@ -1951,6 +2048,7 @@ class EmuLauncherGUI(QWidget): #vers 20
 
         QMessageBox.information(self, "Verification Complete",
                                f"Verified: {verified}\nWarnings: {warnings}\nTotal: {self.bios_table.rowCount()}")
+
 
     def _load_bios_data(self): #vers 2
         """Load BIOS data from saved settings and populate table"""
@@ -2005,6 +2103,7 @@ class EmuLauncherGUI(QWidget): #vers 20
             }
             self.status_label.setText(f"Display mode: {mode_names.get(mode, mode)}")
 
+
     def _toggle_icon_display_mode(self): #vers 2
         """Cycle through icon display modes"""
         modes = ["icons_and_text", "icons_only", "text_only"]
@@ -2023,6 +2122,7 @@ class EmuLauncherGUI(QWidget): #vers 20
 
         # Apply new mode
         self._set_icon_display_mode(modes[next_index])
+
 
     def _on_game_selected(self, game): #vers 4
         """Handle game selection - find ROM path and enable launch"""
@@ -2073,6 +2173,198 @@ class EmuLauncherGUI(QWidget): #vers 20
             self.display_widget.enable_launch_buttons(True)
 
 
+    def _on_launch_with(self, game_name): #vers 1
+        """Handle launch with custom emulator selection"""
+        from apps.gui.launch_with_dialog import LaunchWithDialog
+        from PyQt6.QtWidgets import QMessageBox, QDialog
+        from pathlib import Path
+
+        if not self.current_platform:
+            QMessageBox.warning(self, "No Platform", "Please select a platform first")
+            return
+
+        # Find ROM path for this game
+        rom_path = None
+        if self.current_platform in self.available_roms:
+            for rom in self.available_roms[self.current_platform]:
+                if rom.stem == game_name:
+                    rom_path = rom
+                    break
+
+        if not rom_path:
+            QMessageBox.warning(self, "ROM Not Found", f"Could not find ROM for: {game_name}")
+            return
+
+        # Show launch with dialog
+        dialog = LaunchWithDialog(
+            self.current_platform,
+            rom_path,
+            self.mel_settings,
+            self
+        )
+
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        launcher_path, launcher_type, set_as_default = dialog.get_selected_launcher()
+
+        # Save as default if requested
+        if set_as_default:
+            if launcher_type == 'emulator':
+                emu_name = Path(launcher_path).name
+                self.mel_settings.set_emulator_for_platform(self.current_platform, emu_name)
+                print(f"Set {emu_name} as default for {self.current_platform}")
+            elif launcher_type == 'core':
+                self.mel_settings.set_emulator_for_platform(self.current_platform, launcher_path)
+                print(f"Set core as default for {self.current_platform}")
+            else:  # custom
+                self.mel_settings.set_emulator_for_platform(self.current_platform, launcher_path)
+                print(f"Set custom emulator as default for {self.current_platform}")
+
+        # Launch with selected method
+        self._launch_with_emulator(launcher_path, rom_path)
+
+
+    def _on_launch_with(self, game_name): #vers 1
+        """Handle launch with custom emulator selection"""
+        from apps.gui.launch_with_dialog import LaunchWithDialog
+        from PyQt6.QtWidgets import QMessageBox, QDialog
+        from pathlib import Path
+
+        if not self.current_platform:
+            QMessageBox.warning(self, "No Platform", "Please select a platform first")
+            return
+
+        # Find ROM path for this game
+        rom_path = None
+        if self.current_platform in self.available_roms:
+            for rom in self.available_roms[self.current_platform]:
+                if rom.stem == game_name:
+                    rom_path = rom
+                    break
+
+        if not rom_path:
+            QMessageBox.warning(self, "ROM Not Found", f"Could not find ROM for: {game_name}")
+            return
+
+        # Show launch with dialog
+        dialog = LaunchWithDialog(
+            self.current_platform,
+            rom_path,
+            self.mel_settings,
+            self
+        )
+
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        launcher_path, launcher_type, set_as_default = dialog.get_selected_launcher()
+
+        # Save as default if requested
+        if set_as_default:
+            if launcher_type == 'emulator':
+                emu_name = Path(launcher_path).name
+                self.mel_settings.set_emulator_for_platform(self.current_platform, emu_name)
+                print(f"Set {emu_name} as default for {self.current_platform}")
+            elif launcher_type == 'core':
+                self.mel_settings.set_emulator_for_platform(self.current_platform, launcher_path)
+                print(f"Set core as default for {self.current_platform}")
+            else:  # custom
+                self.mel_settings.set_emulator_for_platform(self.current_platform, launcher_path)
+                print(f"Set custom emulator as default for {self.current_platform}")
+
+        # Launch with selected method
+        self._launch_with_emulator(launcher_path, rom_path)
+
+    def _launch_with_emulator(self, emulator_path, rom_path): #vers 3
+        """Launch game with specific emulator or core"""
+        import subprocess
+        from PyQt6.QtWidgets import QMessageBox
+        from pathlib import Path
+        from apps.methods.rom_extractor import RomExtractor
+
+        try:
+            emulator_path = Path(emulator_path)
+            rom_path = Path(rom_path)
+
+            # Extract ROM if compressed and emulator can't handle it
+            extractor = RomExtractor()
+            actual_rom_path, was_extracted = extractor.extract_if_needed(rom_path, emulator_path.name)
+
+            # Store extractor for cleanup later
+            if was_extracted:
+                self.current_rom_extractor = extractor
+
+            # Check if this is a libretro core (.so file)
+            if emulator_path.suffix == '.so':
+                # Use RetroArch to launch cores
+                cmd = ['retroarch', '-L', str(emulator_path), str(actual_rom_path)]
+
+                print(f"Launching core via RetroArch: {emulator_path.name}")
+
+                # Launch RetroArch
+                self.current_process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+
+                self.status_label.setText(f"Running: {rom_path.name} (RetroArch + {emulator_path.stem})")
+                print(f"✓ Launched with RetroArch core: {emulator_path.name}")
+
+            else:
+                # Regular emulator executable
+                # Get window size from settings
+                width = self.mel_settings.get_emulator_window_width()
+                height = self.mel_settings.get_emulator_window_height()
+
+                # Build command
+                cmd = [str(emulator_path), str(actual_rom_path)]
+
+                # Add window arguments if available
+                try:
+                    from apps.core.emulator_window_args import get_window_args
+                    emu_name = emulator_path.name
+                    window_args = get_window_args(emu_name, width=width, height=height)
+                    if window_args:
+                        cmd.extend(window_args)
+                except ImportError:
+                    pass  # emulator_window_args not available
+
+                # Launch
+                self.current_process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+
+                emu_name = emulator_path.name
+                self.status_label.setText(f"Running: {rom_path.name} ({emu_name})")
+
+                # Try to embed window
+                if hasattr(self, 'display_widget') and hasattr(self.display_widget, 'embed_window'):
+                    self.display_widget.embed_window(self.current_process)
+
+                print(f"✓ Launched with {emu_name}: {rom_path.name}")
+
+        except FileNotFoundError as e:
+            if 'retroarch' in str(e):
+                QMessageBox.critical(
+                    self,
+                    "RetroArch Not Found",
+                    "Libretro cores require RetroArch.\n\n"
+                    "Install it with:\n"
+                    "  sudo pacman -S retroarch"
+                )
+            else:
+                QMessageBox.critical(self, "Launch Error", f"Emulator not found:\n{emulator_path}")
+            self.status_label.setText("Launch failed: Emulator not found")
+
+        except Exception as e:
+            QMessageBox.critical(self, "Launch Error", f"Failed to launch:\n{str(e)}")
+            self.status_label.setText(f"Launch failed: {str(e)}")
+
+
     def _on_launch_game(self): #vers 3
         """Launch selected game with CoreLauncher and embed window"""
         if not self.current_platform or not self.current_rom_path:
@@ -2115,6 +2407,138 @@ class EmuLauncherGUI(QWidget): #vers 20
             else:
                 self.status_label.setText(f"Launch failed: {game_name}")
 
+
+    def _on_launch_with(self, game_name): #vers 3
+        """Handle launch with custom emulator selection"""
+        from apps.gui.launch_with_dialog import LaunchWithDialog
+        from PyQt6.QtWidgets import QMessageBox, QDialog
+        from pathlib import Path
+
+        if not self.current_platform:
+            QMessageBox.warning(self, "No Platform", "Please select a platform first")
+            return
+
+        # Find ROM path for this game
+        rom_path = None
+        if self.current_platform in self.available_roms:
+            for rom in self.available_roms[self.current_platform]:
+                if rom.stem == game_name:
+                    rom_path = rom
+                    break
+
+        if not rom_path:
+            QMessageBox.warning(self, "ROM Not Found", f"Could not find ROM for: {game_name}")
+            return
+
+        # Show launch with dialog
+        dialog = LaunchWithDialog(
+            self.current_platform,
+            rom_path,
+            self.mel_settings,
+            self
+        )
+
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        launcher_path, launcher_type, set_as_default = dialog.get_selected_launcher()
+
+        # Save as default if requested
+        if set_as_default:
+            if launcher_type == 'emulator':
+                emu_name = Path(launcher_path).name
+                self.mel_settings.set_emulator_for_platform(self.current_platform, emu_name)
+                print(f"Set {emu_name} as default for {self.current_platform}")
+            elif launcher_type == 'core':
+                self.mel_settings.set_emulator_for_platform(self.current_platform, launcher_path)
+                print(f"Set core as default for {self.current_platform}")
+            else:  # custom
+                self.mel_settings.set_emulator_for_platform(self.current_platform, launcher_path)
+                print(f"Set custom emulator as default for {self.current_platform}")
+
+        # Launch with selected method
+        self._launch_with_emulator(launcher_path, rom_path)
+
+    def _launch_with_emulator(self, emulator_path, rom_path): #vers 5
+        """Launch game with specific emulator or core"""
+        import subprocess
+        from PyQt6.QtWidgets import QMessageBox
+        from pathlib import Path
+
+        try:
+            emulator_path = Path(emulator_path)
+
+            # Check if this is a libretro core (.so file)
+            if emulator_path.suffix == '.so':
+                # Use RetroArch to launch cores
+                cmd = ['retroarch', '-L', str(emulator_path), str(rom_path)]
+
+                print(f"Launching core via RetroArch: {emulator_path.name}")
+
+                # Launch RetroArch
+                self.current_process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+
+                self.status_label.setText(f"Running: {rom_path.name} (RetroArch + {emulator_path.stem})")
+                print(f"✓ Launched with RetroArch core: {emulator_path.name}")
+
+            else:
+                # Regular emulator executable
+                # Get window size from settings
+                width = self.mel_settings.get_emulator_window_width()
+                height = self.mel_settings.get_emulator_window_height()
+
+                # Build command
+                cmd = [str(emulator_path), str(rom_path)]
+
+                # Add window arguments if available
+                try:
+                    from apps.core.emulator_window_args import get_window_args
+                    emu_name = emulator_path.name
+                    window_args = get_window_args(emu_name, width=width, height=height)
+                    if window_args:
+                        cmd.extend(window_args)
+                except ImportError:
+                    pass  # emulator_window_args not available
+
+                # Launch
+                self.current_process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+
+                emu_name = emulator_path.name
+                self.status_label.setText(f"Running: {rom_path.name} ({emu_name})")
+
+                # Try to embed window
+                if hasattr(self, 'display_widget') and hasattr(self.display_widget, 'embed_window'):
+                    self.display_widget.embed_window(self.current_process)
+
+                print(f"✓ Launched with {emu_name}: {rom_path.name}")
+
+        except FileNotFoundError as e:
+            if 'retroarch' in str(e):
+                QMessageBox.critical(
+                    self,
+                    "RetroArch Not Found",
+                    "Libretro cores require RetroArch.\n\n"
+                    "Install it with:\n"
+                    "  sudo pacman -S retroarch"
+                )
+            else:
+                QMessageBox.critical(self, "Launch Error", f"Emulator not found:\n{emulator_path}")
+            self.status_label.setText("Launch failed: Emulator not found")
+
+        except Exception as e:
+            QMessageBox.critical(self, "Launch Error", f"Failed to launch:\n{str(e)}")
+            self.status_label.setText(f"Launch failed: {str(e)}")
+
+
+
     def _launch_with_custom_emulator(self, platform: str, rom_path: Path, emulator_path: str): #vers 1
         """Launch game with a custom emulator binary selected by user"""
         import subprocess
@@ -2153,7 +2577,7 @@ class EmuLauncherGUI(QWidget): #vers 20
             QMessageBox.critical(self, "Launch Error", error_msg)
             return False
 
-    def _on_stop_emulation(self): #vers 3
+    def _on_stop_emulation(self): #vers 4
         """Stop current emulation and close embedded window"""
         if not self.core_launcher:
             return
@@ -2182,6 +2606,11 @@ class EmuLauncherGUI(QWidget): #vers 20
                     
                     if hasattr(self, 'status_label'):
                         self.status_label.setText("Custom emulator stopped")
+
+                    if hasattr(self, 'current_rom_extractor') and self.current_rom_extractor:
+                        self.current_rom_extractor.cleanup_extraction()
+                        self.current_rom_extractor = None
+
                 except Exception as e:
                     print(f"Error stopping custom emulator: {e}")
                     if hasattr(self, 'status_label'):

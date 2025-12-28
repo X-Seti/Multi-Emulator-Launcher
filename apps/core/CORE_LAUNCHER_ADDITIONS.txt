@@ -1,0 +1,139 @@
+# Additions for apps/core/core_launcher.py
+# Add window size arguments when launching emulators
+
+====== STEP 1: Add import at top of file ======
+After existing imports, add:
+from apps.core.emulator_window_args import get_window_args
+
+====== STEP 2: Update launch_with_subprocess method ======
+
+Find this section (around line 280 in launch_with_subprocess):
+                    # Build command
+                    cmd = [launcher, str(rom_path)]
+                    
+                    # Add custom args from game_config
+                    if game_config:
+
+ADD BEFORE "# Add custom args from game_config":
+
+                    # Add window size arguments from MEL settings
+                    if self.mel_settings:
+                        window_width = self.mel_settings.settings.get('emulator_window_width', 800)
+                        window_height = self.mel_settings.settings.get('emulator_window_height', 600)
+                        use_fullscreen = game_config.get('fullscreen', False) if game_config else False
+                        
+                        # Get appropriate window arguments for this emulator
+                        window_args = get_window_args(
+                            launcher, 
+                            width=window_width, 
+                            height=window_height,
+                            fullscreen=use_fullscreen
+                        )
+                        
+                        if window_args:
+                            cmd.extend(window_args)
+                            print(f"Added window args: {window_args}")
+
+====== STEP 3: Add mel_settings to CoreLauncher __init__ ======
+
+In __init__ method, add parameter and store it:
+
+def __init__(self, base_dir: Path, core_database: Dict = None, core_downloader=None, db_manager: DatabaseManager = None, mel_settings=None):
+    ...existing code...
+    self.mel_settings = mel_settings
+
+====== STEP 4: Update emu_launcher_main.py ======
+
+When creating CoreLauncher, pass mel_settings:
+
+self.core_launcher = CoreLauncher(
+    self.base_dir, 
+    dynamic_platforms,
+    self.core_downloader,
+    mel_settings=self.mel_settings  # ADD THIS LINE
+)
+
+====== STEP 5: Add window size settings to mel_settings_manager.py ======
+
+In _load_settings() defaults:
+    'emulator_window_width': 800,
+    'emulator_window_height': 600,
+
+Add getter methods:
+def get_emulator_window_width(self): #vers 1
+    """Get emulator window width"""
+    return self.settings.get('emulator_window_width', 800)
+
+def get_emulator_window_height(self): #vers 1
+    """Get emulator window height"""
+    return self.settings.get('emulator_window_height', 600)
+
+Add setter methods:
+def set_emulator_window_width(self, width): #vers 1
+    """Set emulator window width"""
+    self.settings['emulator_window_width'] = int(width)
+    self.save_mel_settings()
+
+def set_emulator_window_height(self, height): #vers 1
+    """Set emulator window height"""
+    self.settings['emulator_window_height'] = int(height)
+    self.save_mel_settings()
+
+====== STEP 6: Add UI controls to mel_settings_dialog.py ======
+
+In _create_display_tab(), in the emulator_group section, add:
+
+        # Window size spinboxes
+        size_layout = QHBoxLayout()
+        size_layout.addWidget(QLabel("Window Size:"))
+        
+        self.window_width_spin = QSpinBox()
+        self.window_width_spin.setRange(320, 3840)
+        self.window_width_spin.setSingleStep(100)
+        self.window_width_spin.setSuffix(" px")
+        size_layout.addWidget(self.window_width_spin)
+        
+        size_layout.addWidget(QLabel("×"))
+        
+        self.window_height_spin = QSpinBox()
+        self.window_height_spin.setRange(240, 2160)
+        self.window_height_spin.setSingleStep(100)
+        self.window_height_spin.setSuffix(" px")
+        size_layout.addWidget(self.window_height_spin)
+        
+        size_layout.addStretch()
+        emulator_layout.addLayout(size_layout)
+
+In __init__, add:
+        self.window_width_spin = None
+        self.window_height_spin = None
+
+In _get_settings(), add:
+        # Emulator window size
+        self.window_width_spin.setValue(
+            self.settings_manager.get_emulator_window_width()
+        )
+        self.window_height_spin.setValue(
+            self.settings_manager.get_emulator_window_height()
+        )
+
+In _save_settings(), add:
+        # Save emulator window size
+        self.settings_manager.set_emulator_window_width(
+            self.window_width_spin.value()
+        )
+        self.settings_manager.set_emulator_window_height(
+            self.window_height_spin.value()
+        )
+
+====== RESULT ======
+This will:
+1. Pass --window size arguments directly to emulators when launching
+2. Respect per-game fullscreen settings
+3. Allow configuring default window size in Settings > Display
+4. Work with most common emulators (Hatari, Cap32, PCSX2, etc.)
+
+Example: Caprice32 will launch with:
+cap32 -scr_width 800 -scr_height 600 /path/to/game.dsk
+
+This is MUCH more reliable than trying to resize windows after launch!

@@ -7,7 +7,7 @@
   "core_path": "/home/x2/Documents/GitHub/Multi-Emulator-Launcher/cores",
   "save_path": "/home/x2/Documents/GitHub/Multi-Emulator-Launcher/saves",
   "cache_path": "/home/x2/Documents/GitHub/Multi-Emulator-Launcher/cache",
-  "icon_display_mode": "icons_only",
+  "icon_display_mode": "icons_and_text",
   "use_themed_titlebar": true,
   "debug_enabled": false,
   "debug_level": "INFO",
@@ -57,6 +57,10 @@
     "Wii U": "cemu",
     "ZX Spectrum": "fuse"
   },
+  "auto_resize_embedded": true,
+  "reembed_external": true,
+  "emulator_window_width": 800,
+  "emulator_window_height": 600,
   "hidden_platforms": [],
   "window_geometry": {
     "width": 1400,
