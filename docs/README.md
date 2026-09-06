@@ -4,6 +4,8 @@
 
 A complete, production-ready multi-emulator frontend with:
 
+TEMP on hold; another project is taking priority !!
+
 ✅ **Smart Game Scanning** - Automatically detects platforms from folder structure  
 ✅ **ZIP Support** - Extracts and caches compressed ROMs  
 ✅ **Multi-Disk Management** - Intelligent grouping of disk-based games  
