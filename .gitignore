@@ -73,3 +73,6 @@ htmlcov/
 ```
 apps/database/mel_database.db
 *.db
+apps/utils
+apps/images
+apps/themes
