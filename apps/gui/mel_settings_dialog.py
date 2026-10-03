@@ -98,9 +98,9 @@ class MELSettingsDialog(QDialog):
         
         # Buttons for ROM paths
         rom_btn_layout = QHBoxLayout()
-        add_rom_btn = QPushButton("âž• Add ROM Directory")
+        add_rom_btn = QPushButton("Add ROM Directory")
         add_rom_btn.clicked.connect(self._add_rom_path)
-        remove_rom_btn = QPushButton("âž– Remove Selected")
+        remove_rom_btn = QPushButton("Remove Selected")
         remove_rom_btn.clicked.connect(self._remove_rom_path)
         
         rom_btn_layout.addWidget(add_rom_btn)
@@ -178,31 +178,6 @@ class MELSettingsDialog(QDialog):
             
             self.rom_paths_list.addItem(path)
     
-        # Emulator display settings
-    def get_emulator_display_mode(self, emulator): #vers 1
-        """Get display mode for emulator
-
-        Args:
-            emulator: Emulator name (e.g., 'stella', 'hatari')
-
-        Returns:
-            Display mode string (e.g., 'fullscreen', 'windowed', 'zoom_2x')
-        """
-        display_settings = self.settings.get('emulator_display_settings', {})
-        return display_settings.get(emulator, 'auto')
-
-    def set_emulator_display_mode(self, emulator, mode): #vers 1
-        """Set display mode for emulator"""
-        if 'emulator_display_settings' not in self.settings:
-            self.settings['emulator_display_settings'] = {}
-
-        self.settings['emulator_display_settings'][emulator] = mode
-        self.save_mel_settings()
-
-    def get_all_emulator_display_settings(self): #vers 1
-        """Get all emulator display settings"""
-        return self.settings.get('emulator_display_settings', {})
-
     def _remove_rom_path(self):
         """Remove selected ROM directory"""
         current_item = self.rom_paths_list.currentItem()
@@ -227,7 +202,7 @@ class MELSettingsDialog(QDialog):
         info_label.setWordWrap(True)
         layout.addWidget(info_label)
         
-        rescan_btn = QPushButton("ðŸ”„ Re-scan for Emulators")
+        rescan_btn = QPushButton("Re-scan for Emulators")
         rescan_btn.clicked.connect(self._rescan_emulators)
         layout.addWidget(rescan_btn)
         
@@ -479,11 +454,12 @@ class MELSettingsDialog(QDialog):
         tab = QWidget()
         layout = QVBoxLayout()
         
-        info_label = QLabel("Customize how the launcher displays icons and UI elements.")
+        info_label = QLabel("Customize how the launcher displays icons and UI elements.\n"
+                             "This also sets the ribbon buttons.")
         info_label.setWordWrap(True)
         layout.addWidget(info_label)
         
-        icon_group = QGroupBox("Platform Icons")
+        icon_group = QGroupBox("Platform Icons & Ribbon Buttons")
         icon_layout = QVBoxLayout()
         
         self.icon_button_group = QButtonGroup()
@@ -509,7 +485,7 @@ class MELSettingsDialog(QDialog):
         self.themed_titlebar_check = QCheckBox("Use themed titlebar colors")
         titlebar_layout.addWidget(self.themed_titlebar_check)
         
-        hint_label = QLabel("ðŸ’¡ Disable if titlebar buttons are hard to see in light themes")
+        hint_label = QLabel("Disable if titlebar buttons are hard to see in light themes")
         hint_label.setStyleSheet("color: #888888; font-size: 10px; font-style: italic;")
         hint_label.setWordWrap(True)
         titlebar_layout.addWidget(hint_label)

@@ -35,16 +35,16 @@ Main window with 3-panel layout for emulator management
 #- This fixes both button visibility and font customization support!
 
 #November24 v15.7 - Fix Titlebar Button Colors and Drag Debug
-#- Fixed _apply_titlebar_colors (vers 5 â†’ 6) with !important flags
+#- Fixed _apply_titlebar_colors (vers 5 -> 6) with !important flags
 #- Titlebar buttons now use theme colors (text_primary, button_normal) properly
 #- Added size constraints to buttons (30x30) for consistency
 #- Added debug output showing button colors being applied
-#- Added extensive debug to _is_on_draggable_area (vers 3 â†’ 4)
+#- Added extensive debug to _is_on_draggable_area (vers 3 -> 4)
 #- Debug shows titlebar detection, button positions, click locations
 #- This will help identify why drag isn't working
 
 #November24 v15.6 - Fix Theme Color Loading from AppSettings
-#- Fixed _get_theme_colors (vers 6 â†’ 7) to load CURRENT active theme
+#- Fixed _get_theme_colors (vers 6 -> 7) to load CURRENT active theme
 #- Now reads current_settings.theme to get active theme name
 #- Looks for colors in theme.colors or theme root
 #- Added extensive debug output showing what's being loaded
@@ -63,14 +63,14 @@ Main window with 3-panel layout for emulator management
 #- This WILL fix the dark panels on light theme!
 
 #November24 v15.4 - Extreme Debug Mode (Fallback Disabled)
-#- Disabled fallback in _get_theme_colors (vers 4 â†’ 5)
+#- Disabled fallback in _get_theme_colors (vers 4 -> 5)
 #- Returns BRIGHT PINK/YELLOW colors if AppSettings fails
 #- Extensive debug output showing exactly what's happening
 #- If you see pink/yellow, AppSettings is NOT providing colors
 #- This will help identify the exact failure point
 
 #November24 v15.3 - Fix Theme Color Fetching from AppSettings
-#- Fixed _get_theme_colors (vers 3 â†’ 4) to use self.app_settings instead of self.main_window.app_settings
+#- Fixed _get_theme_colors (vers 3 -> 4) to use self.app_settings instead of self.main_window.app_settings
 #- Root cause: Method was looking for app_settings in wrong place (main_window doesn't exist in this context)
 #- Now correctly accesses self.app_settings which is set in __init__
 #- Added better debug output with checkmarks and sample colors
@@ -78,13 +78,13 @@ Main window with 3-panel layout for emulator management
 #- This should fix the dark panels on light theme issue
 
 #November24 v15.2 - Debug Version to Identify Theme Color Issues
-#- Added debug output in _apply_theme (vers 8 â†’ 9) to print actual colors being used
+#- Added debug output in _apply_theme (vers 8 -> 9) to print actual colors being used
 #- Prints bg_primary, panel_bg, text_primary, border, accent_primary to terminal
 #- This will help identify if AppSettings is providing dark colors on light theme
 #- Run app and check terminal output to see what colors are being applied
 
 #November24 v15.1 - Critical Hotfix for Theme Application
-#- Fixed _apply_theme (vers 7 â†’ 8) to apply styles DIRECTLY to widgets
+#- Fixed _apply_theme (vers 7 -> 8) to apply styles DIRECTLY to widgets
 #- AppSettings base stylesheet was overriding MEL-specific styles
 #- Now uses widget.setStyleSheet() with !important flags for precedence
 #- Lists now correctly show light background on light themes
@@ -185,14 +185,16 @@ base_dir = "config/"
 # PyQt6 imports
 from PyQt6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QSplitter, QListWidget, QListWidgetItem, QLabel, QPushButton, QFrame, QTabWidget, QGroupBox, QFormLayout, QDialog, QMessageBox, QTextBrowser)
 from PyQt6.QtWidgets import (QApplication, QSlider, QCheckBox, QTreeWidget,
-    QWidget, QVBoxLayout, QHBoxLayout, QSplitter, QListWidget, QDialog, QFormLayout, QSpinBox,  QListWidgetItem, QLabel, QPushButton, QFrame, QFileDialog, QLineEdit, QTextEdit, QMessageBox, QScrollArea, QGroupBox, QTableWidget, QTableWidgetItem, QColorDialog, QHeaderView, QAbstractItemView, QMenu, QComboBox, QInputDialog, QTabWidget, QDoubleSpinBox, QRadioButton
+    QWidget, QVBoxLayout, QHBoxLayout, QSplitter, QListWidget, QDialog, QFormLayout, QSpinBox,  QListWidgetItem, QLabel, QPushButton, QFrame, QFileDialog, QLineEdit, QTextEdit, QMessageBox, QScrollArea, QGroupBox, QTableWidget, QTableWidgetItem, QColorDialog, QHeaderView, QAbstractItemView, QMenu, QComboBox, QInputDialog, QTabWidget, QDoubleSpinBox, QRadioButton, QToolButton
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QSize, QPoint, QRect, QByteArray
-from PyQt6.QtGui import QFont, QIcon, QPixmap, QImage, QPainter, QPen, QBrush,  QColor, QCursor
+from PyQt6.QtGui import QFont, QIcon, QPixmap, QImage, QPainter, QPen, QBrush,  QColor, QCursor, QPalette
 from PyQt6.QtSvg import QSvgRenderer
 
 # Import SVG icon factory
 from apps.methods.svg_icon_factory import SVGIconFactory
+from apps.methods.ribbon_system import RibbonMixin
+from apps.methods.ribbon_dialog import RibbonIconsMixin
 from apps.components.emulator_embed_widget import EmulatorEmbedWidget
 from apps.methods.platform_scanner import PlatformScanner
 from apps.methods.platform_icons import PlatformIcons
@@ -208,6 +210,13 @@ from apps.gui.database_manager_dialog import DatabaseManagerDialog
 from apps.methods.database_manager import DatabaseManager
 from apps.methods.mel_app_icon import generate_icon, save_icon_to_file, get_mel_svg
 from apps.methods.system_core_scanner import SystemCoreScanner
+
+# Subsystems created by __init__ when not injected by the caller
+from apps.methods.core_downloader import CoreDownloader
+from apps.core.core_launcher import CoreLauncher
+from apps.methods.rom_loader import RomLoader
+from apps.methods.game_scanner import GameScanner
+from apps.methods.bios_manager import BiosManager
 
 
 # Import AppSettings
@@ -306,65 +315,6 @@ class EmulatorListWidget(QListWidget): #vers 2
 
         # Hidden platforms storage
         self.hidden_platforms = set()
-
-    def on_selection_changed(self, row): #vers 2
-        """Handle platform selection"""
-        if row >= 0:
-            item = self.item(row)
-            platform = item.data(Qt.ItemDataRole.UserRole)
-            if not platform:
-                platform = item.text()
-            self.platform_selected.emit(platform)
-
-
-    def populate_platforms(self, platforms, icon_factory=None): #vers 2
-        """Populate with platform names and optional icons
-
-        Args:
-            platforms: List of platform names
-            icon_factory: PlatformIcons instance for generating icons
-        """
-        self.clear()
-        for platform in platforms:
-            item = QListWidgetItem()
-
-            # Set icon if available and mode allows
-            if icon_factory and self.display_mode != "text_only":
-                icon = icon_factory.get_platform_icon(platform, size=32)
-                item.setIcon(icon)
-
-            # Set text based on display mode
-            if self.display_mode == "icons_only":
-                item.setText("")
-                item.setToolTip(platform)  # Show name on hover
-            else:
-                item.setText(platform)
-
-            # Store platform name in data
-            item.setData(Qt.ItemDataRole.UserRole, platform)
-            self.addItem(item)
-
-
-    def set_display_mode(self, mode): #vers 1
-        """Set display mode and refresh list
-
-        Args:
-            mode: "icons_only", "text_only", or "icons_and_text"
-        """
-        self.display_mode = mode
-
-        # Re-populate to apply new display mode
-        # Store current platforms
-        platforms = []
-        for i in range(self.count()):
-            item = self.item(i)
-            platform = item.data(Qt.ItemDataRole.UserRole) or item.text()
-            platforms.append(platform)
-
-        # Refresh with new mode
-        if platforms:
-            self.populate_platforms(platforms, getattr(self, 'icon_factory', None))
-
 
     def _show_context_menu(self, position): #vers 4
         """Show right-click context menu"""
@@ -746,10 +696,11 @@ class EmulatorDisplayWidget(QWidget): #vers 4
         button_layout.setContentsMargins(5, 5, 5, 5)
         button_layout.setSpacing(5)
 
-        # Get icon color from main window (fallback to white if not available during init)
-        icon_color = '#ffffff'  # Default color
+        # Icon colour from the theme, or the widget palette before the window exists
         if hasattr(self, 'main_window') and self.main_window and hasattr(self.main_window, '_get_icon_color'):
             icon_color = self.main_window._get_icon_color()
+        else:
+            icon_color = self.palette().color(QPalette.ColorRole.WindowText).name()
         
         # Store button references as instance attributes for later access
         # Launch button
@@ -951,10 +902,13 @@ class EmulatorDisplayWidget(QWidget): #vers 4
             fullscreen_dialog.showFullScreen()
 
 
-class EmuLauncherGUI(QWidget): #vers 20
+class EmuLauncherGUI(RibbonMixin, RibbonIconsMixin, QWidget): #vers 22
     """Main GUI window - Multi-Emulator Launcher"""
 
     window_closed = pyqtSignal()
+
+    _ribbon_name = "mel"
+    _RIBBON_LAYOUT_VERSION = 1
 
     def __init__(self, parent=None, main_window=None, core_downloader=None, platform_scanner=None,
                 rom_loader=None, bios_manager=None, game_scanner=None, core_launcher=None, gamepad_config=None, game_config=None, system_core_scanner=None): #vers 14
@@ -1095,7 +1049,8 @@ class EmuLauncherGUI(QWidget): #vers 20
 
         # Initialize icon factory and display mode
         self.platform_icons = PlatformIcons()
-        self.icon_display_mode = "icons_and_text"
+        self.icon_display_mode = self.mel_settings.settings.get(
+            'icon_display_mode', 'icons_and_text')
 
         # Initialize artwork loader
         artwork_dir = Path.cwd() / "artwork"
@@ -1139,10 +1094,10 @@ class EmuLauncherGUI(QWidget): #vers 20
 
         # Ensure display_widget exists
         if not hasattr(self, 'display_widget'):
-            print("⚠ WARNING: display_widget missing! Creating fallback...")
+            print("WARNING: display_widget missing")
             self.display_widget = EmulatorDisplayWidget(main_window=self)
 
-    def setup_ui(self): #vers 2
+    def setup_ui(self): #vers 3
         """Setup main UI layout"""
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -1184,7 +1139,15 @@ class EmuLauncherGUI(QWidget): #vers 20
         status_bar = self._create_status_bar()
         content_layout.addWidget(status_bar)
 
-        main_layout.addWidget(content_widget)
+        # Ribbons live in an inner QMainWindow hosting the content
+        self._ribbon_mw = self.ribbon_wrap(content_widget)
+        self._build_ribbons()
+        self._apply_ribbon_theme()
+        self.ribbon_apply_display_mode()
+        self._apply_custom_icons()
+        self.ribbon_restore_state()
+
+        main_layout.addWidget(self._ribbon_mw)
 
 
     def _load_fonts_from_settings(self): #vers 1
@@ -1235,6 +1198,20 @@ class EmuLauncherGUI(QWidget): #vers 20
 
         # Get icon color from theme
         icon_color = self._get_icon_color()
+
+        # Menu drop-down - every MEL command, grouped like the ribbons
+        self.menu_btn = QToolButton()
+        self.menu_btn.setFont(self.button_font)
+        self.menu_btn.setText("Menu")
+        self.menu_btn.setIcon(SVGIconFactory.menu_icon(20, icon_color))
+        self.menu_btn.setIconSize(QSize(20, 20))
+        self.menu_btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.menu_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.menu_btn.setMenu(QMenu(self.menu_btn))
+        self.menu_btn.menu().aboutToShow.connect(
+            lambda: (self.menu_btn.menu().clear(), self._build_full_menu(self.menu_btn.menu())))
+        self.menu_btn.setToolTip("All Multi-Emulator Launcher commands")
+        self.layout.addWidget(self.menu_btn)
 
         # Settings button
         self.settings_btn = QPushButton()
@@ -1372,10 +1349,8 @@ class EmuLauncherGUI(QWidget): #vers 20
         header.setStyleSheet("font-weight: bold; padding: 5px;")
         layout.addWidget(header)
 
-        # Platform list with icon support
-        # Check if icon_display_mode exists, use default if not
-        display_mode = getattr(self, 'icon_display_mode', 'icons_and_text')
-        self.platform_list = EmulatorListWidget(display_mode=display_mode)
+        # Platform list with icon support - names always shown
+        self.platform_list = EmulatorListWidget(display_mode='icons_and_text')
         self.platform_list.platform_selected.connect(self._on_platform_selected)
         layout.addWidget(self.platform_list)
 
@@ -1434,8 +1409,8 @@ class EmuLauncherGUI(QWidget): #vers 20
         return panel
 
 
-    def _create_right_panel(self): #vers 4
-        """Create Panel 3: Emulator display with vertical icon controls on right"""
+    def _create_right_panel(self): #vers 5
+        """Create Panel 3: tabbed viewport with vertical icon controls on right"""
         print("\n=== Creating Right Panel ===")
 
         panel = QFrame()
@@ -1447,9 +1422,9 @@ class EmuLauncherGUI(QWidget): #vers 20
         main_layout.setContentsMargins(5, 5, 5, 5)
         main_layout.setSpacing(5)
 
-        # Left side: Display widget container (takes most space)
-        display_container = QWidget()
-        display_layout = QVBoxLayout(display_container)
+        # Left side: tabbed viewport - display plus closable tool panels
+        display_tab = QWidget()
+        display_layout = QVBoxLayout(display_tab)
         display_layout.setContentsMargins(0, 0, 0, 0)
 
         # Header
@@ -1463,9 +1438,16 @@ class EmuLauncherGUI(QWidget): #vers 20
         from apps.components.emulator_embed_widget import EmulatorEmbedWidget
         self.display_widget = EmulatorEmbedWidget(main_window=self, include_controls=False)
 
-
         display_layout.addWidget(self.display_widget)
-        main_layout.addWidget(display_container, stretch=1)
+
+        # Tool panels open as tabs beside the display and close on demand
+        self.right_tabs = QTabWidget()
+        self.right_tabs.setTabsClosable(True)
+        self.right_tabs.setMovable(False)
+        self.right_tabs.tabCloseRequested.connect(self._close_right_tab)
+        self._right_display_tab = display_tab
+        self.right_tabs.addTab(display_tab, "Emulator Display")
+        main_layout.addWidget(self.right_tabs, stretch=1)
 
         # Right side: Vertical icon controls
         print("Creating icon controls...")
@@ -1474,6 +1456,49 @@ class EmuLauncherGUI(QWidget): #vers 20
 
         print("=== Right Panel Created ===\n")
         return panel
+
+    def _close_right_tab(self, index): #vers 1
+        """Close a tool panel tab; the display tab stays open"""
+        widget = self.right_tabs.widget(index)
+        if widget is self._right_display_tab:
+            return
+        self.right_tabs.removeTab(index)
+        widget.deleteLater()
+
+    def _right_tabs_by_title(self) -> dict: #vers 1
+        """Panel tabs keyed by title"""
+        return {self.right_tabs.tabText(i): self.right_tabs.widget(i)
+                for i in range(self.right_tabs.count())}
+
+    def add_right_tab(self, title, widget): #vers 1
+        """Add a closable panel tab, or focus the one already open"""
+        existing = self._right_tabs_by_title().get(title)
+        if existing is not None:
+            self.right_tabs.setCurrentWidget(existing)
+            return existing
+        self.right_tabs.addTab(widget, title)
+        self.right_tabs.setCurrentWidget(widget)
+        return widget
+
+    def _show_results_tab(self, title, text): #vers 1
+        """Show read-only results in the right viewport instead of a dialog"""
+        self._last_results = (title, text)
+        browser = self._right_tabs_by_title().get(title)
+        if browser is None:
+            browser = QTextBrowser()
+            browser.setOpenExternalLinks(False)
+            self.add_right_tab(title, browser)
+        browser.setPlainText(text)
+        self.right_tabs.setCurrentWidget(browser)
+        return browser
+
+    def _reopen_last_results(self): #vers 1
+        """Reopen the last results tab if it was closed"""
+        if not getattr(self, '_last_results', None):
+            self._set_status("No results yet - run a scan first")
+            return
+        title, text = self._last_results
+        self._show_results_tab(title, text)
 
 
     def _create_icon_controls(self): #vers 7
@@ -1752,20 +1777,13 @@ class EmuLauncherGUI(QWidget): #vers 20
         dialog.setLayout(layout)
         dialog.exec()
 
-    def _show_bios_manager(self): #vers 1
-        """Show BIOS manager dialog for scanning and managing system BIOS files"""
-        from PyQt6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QTableWidget
-        from PyQt6.QtWidgets import QTableWidgetItem, QLabel, QPushButton, QLineEdit
-        from PyQt6.QtWidgets import QFileDialog, QHeaderView
+    def _show_bios_manager(self): #vers 2
+        """Show the BIOS manager in the right viewport as its own tab"""
+        icon_color = self._get_icon_color()
 
-        dialog = QDialog(self)
-        dialog.setWindowTitle("BIOS Manager")
-        dialog.resize(800, 600)
-
-        layout = QVBoxLayout(dialog)
-
-        # Get icon color from main window
-        icon_color = self.main_window._get_icon_color() if hasattr(self.main_window, '_get_icon_color') else '#ffffff'
+        panel = QWidget()
+        layout = QVBoxLayout(panel)
+        layout.setContentsMargins(5, 5, 5, 5)
 
         # BIOS path configuration
         path_layout = QHBoxLayout()
@@ -1803,17 +1821,12 @@ class EmuLauncherGUI(QWidget): #vers 20
         button_layout.addWidget(verify_btn)
 
         button_layout.addStretch()
-
-        close_btn = QPushButton("Close")
-        close_btn.clicked.connect(dialog.accept)
-        button_layout.addWidget(close_btn)
-
         layout.addLayout(button_layout)
 
         # Load existing BIOS data
         self._load_bios_data()
 
-        dialog.exec()
+        self.add_right_tab("BIOS Manager", panel)
 
     def _browse_bios_path(self): #vers 1
         """Browse for BIOS directory"""
@@ -1885,9 +1898,9 @@ class EmuLauncherGUI(QWidget): #vers 20
 
                             # Check status
                             if expected_info.get('md5') == actual_md5:
-                                status = "âœ“ Verified"
+                                status = "Verified"
                             else:
-                                status = "âš  Unknown Version"
+                                status = "Unknown Version"
 
                             # Add to table
                             self._add_bios_to_table(system, file_path, expected_info, actual_md5, status)
@@ -1944,9 +1957,9 @@ class EmuLauncherGUI(QWidget): #vers 20
         for row in range(self.bios_table.rowCount()):
             status_item = self.bios_table.item(row, 4)
             if status_item:
-                if "âœ“" in status_item.text():
+                if "Verified" in status_item.text():
                     verified += 1
-                elif "âš " in status_item.text():
+                elif "Unknown Version" in status_item.text():
                     warnings += 1
 
         QMessageBox.information(self, "Verification Complete",
@@ -1977,20 +1990,20 @@ class EmuLauncherGUI(QWidget): #vers 20
                 self.bios_table.setItem(row, 4, QTableWidgetItem(info.get('status', '? Unverified')))
 
 
-    def _set_icon_display_mode(self, mode): #vers 2
-        """Set icon display mode for platform list
+    def _set_icon_display_mode(self, mode): #vers 4
+        """Set the ribbon icon display mode
 
         Args:
             mode: "icons_only", "text_only", or "icons_and_text"
         """
-        if not hasattr(self, 'platform_list'):
-            return
-
         self.icon_display_mode = mode
 
-        # Apply to platform list if it has the method
-        if hasattr(self.platform_list, 'set_display_mode'):
-            self.platform_list.set_display_mode(mode)
+        # Ribbons follow the chosen style
+        self.ribbon_apply_display_mode(mode)
+
+        # Platform list keeps its names so the left bar stays readable
+        if hasattr(self, 'platform_list') and hasattr(self.platform_list, 'set_display_mode'):
+            self.platform_list.set_display_mode('icons_and_text')
 
         # Save to settings
         self.mel_settings.settings['icon_display_mode'] = mode
@@ -2023,55 +2036,6 @@ class EmuLauncherGUI(QWidget): #vers 20
 
         # Apply new mode
         self._set_icon_display_mode(modes[next_index])
-
-    def _on_game_selected(self, game): #vers 4
-        """Handle game selection - find ROM path and enable launch"""
-        self.game_status.setText(f"Game: {game}")
-
-        if not self.current_platform:
-            self.status_label.setText("Please select a platform first")
-            return
-
-        # Find ROM path for this game
-        if self.current_platform in self.available_roms:
-            roms = self.available_roms[self.current_platform]
-
-            # Match game name to ROM file
-            for rom_path in roms:
-                if rom_path.stem == game:
-                    self.current_rom_path = rom_path
-                    self.status_label.setText(f"Ready to launch: {game}")
-
-                    # Enable launch button in both locations
-                    if hasattr(self, 'display_widget') and hasattr(self.display_widget, 'launch_btn'):
-                        self.display_widget.launch_btn.setEnabled(True)
-                    
-                    # Also enable the main control button
-                    if hasattr(self, 'launch_btn'):
-                        self.launch_btn.setEnabled(True)
-                    break
-            else:
-                # Game not found in available ROMs
-                self.status_label.setText(f"ROM file for '{game}' not found")
-                if hasattr(self, 'launch_btn'):
-                    self.launch_btn.setEnabled(False)
-                if hasattr(self, 'display_widget') and hasattr(self.display_widget, 'launch_btn'):
-                    self.display_widget.launch_btn.setEnabled(False)
-        else:
-            self.status_label.setText(f"No ROMs found for platform: {self.current_platform}")
-            if hasattr(self, 'launch_btn'):
-                self.launch_btn.setEnabled(False)
-            if hasattr(self, 'display_widget') and hasattr(self.display_widget, 'launch_btn'):
-                self.display_widget.launch_btn.setEnabled(False)
-        
-        # Load and display title artwork
-        if hasattr(self, 'artwork_loader') and hasattr(self, 'display_widget'):
-            title_artwork = self.artwork_loader.get_title_artwork(game, self.current_platform)
-            self.display_widget.show_title_artwork(title_artwork)
-
-        if hasattr(self, 'display_widget') and hasattr(self.display_widget, 'enable_launch_buttons'):
-            self.display_widget.enable_launch_buttons(True)
-
 
     def _on_launch_game(self): #vers 3
         """Launch selected game with CoreLauncher and embed window"""
@@ -2152,44 +2116,6 @@ class EmuLauncherGUI(QWidget): #vers 20
             
             QMessageBox.critical(self, "Launch Error", error_msg)
             return False
-
-    def _on_stop_emulation(self): #vers 3
-        """Stop current emulation and close embedded window"""
-        if not self.core_launcher:
-            return
-
-        # Stop the core launcher process first
-        if self.core_launcher.is_running():
-            success = self.core_launcher.stop_emulation()
-
-            # Close embedded window
-            if hasattr(self, 'display_widget') and hasattr(self.display_widget, 'close_embedded_window'):
-                self.display_widget.close_embedded_window()
-
-            if hasattr(self, 'status_label'):
-                if success:
-                    self.status_label.setText("Emulation stopped")
-                else:
-                    self.status_label.setText("Failed to stop emulation")
-        else:
-            # Check if we have a custom emulator process running
-            if self.current_process and self.current_process.poll() is None:
-                # Stop the custom emulator process
-                try:
-                    self.current_process.terminate()
-                    self.current_process.wait(timeout=5)
-                    self.current_process = None
-                    
-                    if hasattr(self, 'status_label'):
-                        self.status_label.setText("Custom emulator stopped")
-                except Exception as e:
-                    print(f"Error stopping custom emulator: {e}")
-                    if hasattr(self, 'status_label'):
-                        self.status_label.setText("Failed to stop custom emulator")
-            else:
-                if hasattr(self, 'status_label'):
-                    self.status_label.setText("No emulation running")
-
 
     def _on_platform_selected(self, platform): #vers 5
         """Handle platform selection - scan for actual ROMs using discovered info"""
@@ -2286,133 +2212,6 @@ class EmuLauncherGUI(QWidget): #vers 20
         else:
             if hasattr(self, 'status_label'):
                 self.status_label.setText("No emulation running")
-
-    def _apply_main_splitter_theme(self): #vers 6
-        """Apply theme styling to main horizontal splitter"""
-        theme_colors = self._get_theme_colors("default")
-
-        # Extract variables FIRST
-        bg_secondary = theme_colors.get('bg_secondary', '#f8f9fa')
-        bg_primary = theme_colors.get('bg_primary', '#ffffff')
-        bg_tertiary = theme_colors.get('bg_tertiary', '#e9ecef')
-
-        self.main_splitter.setStyleSheet(f"""
-            QSplitter::handle:horizontal {{
-                background-color: {bg_secondary};
-                border: 1px solid {bg_primary};
-                border-left: 1px solid {bg_tertiary};
-                width: 8px;
-                margin: 2px 1px;
-                border-radius: 3px;
-            }}
-
-            QSplitter::handle:horizontal:hover {{
-                background-color: {bg_primary};
-                border-color: {bg_tertiary};
-            }}
-
-            QSplitter::handle:horizontal:pressed {{
-                background-color: {bg_tertiary};
-            }}
-        """)
-
-
-    def _apply_vertical_splitter_theme(self): #vers 6
-        """Apply theme styling to the vertical splitter"""
-        theme_colors = self._get_theme_colors("default")
-
-        # Extract variables FIRST
-        bg_secondary = theme_colors.get('bg_secondary', '#f8f9fa')
-        bg_tertiary = theme_colors.get('bg_tertiary', '#e9ecef')
-
-        self.left_vertical_splitter.setStyleSheet(f"""
-            QSplitter::handle:vertical {{
-                background-color: {bg_secondary};
-                border: 1px solid {bg_tertiary};
-                height: 4px;
-                margin: 1px 2px;
-                border-radius: 2px;
-            }}
-            QSplitter::handle:vertical:hover {{
-                background-color: {bg_tertiary};
-            }}
-        """)
-
-
-    def _apply_log_theme_styling(self): #vers 7
-        """Apply theme styling to the log widget"""
-        theme_colors = self._get_theme_colors("default")
-
-        # Extract variables FIRST
-        panel_bg = theme_colors.get('panel_bg', '#f0f0f0')
-        text_primary = theme_colors.get('text_primary', '#000000')
-        border = theme_colors.get('border', '#dee2e6')
-
-        self.log.setStyleSheet(f"""
-            QTextEdit {{
-                background-color: {panel_bg};
-                color: {text_primary};
-                border: 1px solid {border};
-                border-radius: 3px;
-                padding: 5px;
-                font-family: 'Consolas', 'Monaco', monospace;
-                font-size: 9pt;
-            }}
-        """)
-
-
-    def _apply_status_window_theme_styling(self): #vers 1
-        """Apply theme styling to the status window"""
-        theme_colors = self._get_theme_colors("default")
-        if hasattr(self, 'status_window'):
-             # Extract variables FIRST
-            panel_bg = theme_colors.get('panel_bg', '#f0f0f0')
-            text_primary = theme_colors.get('text_primary', '#000000')
-            border = theme_colors.get('border', '#dee2e6')
-
-            self.status_window.setStyleSheet(f"""
-                QWidget {{
-                    background-color: {panel_bg};
-                    border: 1px solid {border};
-                    border-radius: 3px;
-                }}
-                QLabel {{
-                    color: #{text_primary};
-                    font-weight: bold;
-                }}
-            """)
-
-
-    def _apply_file_list_window_theme_styling(self): #vers 7
-        """Apply theme styling to the file list window"""
-        theme_colors = self._get_theme_colors("default")
-
-        # Extract variables FIRST
-        bg_secondary = theme_colors.get('bg_secondary', '#f8f9fa')
-        border = theme_colors.get('border', '#dee2e6')
-        button_normal = theme_colors.get('button_normal', '#e0e0e0')
-        text_primary = theme_colors.get('text_primary', '#000000')
-        bg_tertiary = theme_colors.get('bg_tertiary', '#e9ecef')
-
-        if hasattr(self, 'tab_widget'):
-            self.tab_widget.setStyleSheet(f"""
-                QTabWidget::pane {{
-                    background-color: {bg_secondary};
-                    border: 1px solid {border};
-                    border-radius: 3px;
-                }}
-                QTabBar::tab {{
-                    background-color: {button_normal};
-                    color: {text_primary};
-                    padding: 5px 10px;
-                    margin: 2px;
-                    border-radius: 3px;
-                }}
-                QTabBar::tab:selected {{
-                    background-color: {bg_tertiary};
-                    border: 1px solid {border};
-                }}
-            """)
 
     def _show_ports_manager(self): #vers 1
         """Show ports manager dialog"""
@@ -2571,7 +2370,7 @@ class EmuLauncherGUI(QWidget): #vers 20
 
         # Update status
         if hasattr(self, 'status_label'):
-            self.status_label.setText(f"âœ“ Artwork downloaded for: {game_name}")
+            self.status_label.setText(f"Artwork downloaded for: {game_name}")
 
 
     def _adjust_brightness(self, hex_color, factor=None): #vers 1
@@ -2606,42 +2405,12 @@ class EmuLauncherGUI(QWidget): #vers 20
             return hex_color
 
 
-    def _apply_file_list_window_theme_styling(self): #vers 7
-        """Apply theme styling to the file list window"""
-        theme_colors = self._get_theme_colors("default")
+    def apply_table_theme(self): #vers 2
+        """Legacy method - Apply theme styling to table and related components
 
-        # Extract variables FIRST
-        bg_secondary = theme_colors.get('bg_secondary', '#f8f9fa')
-        border = theme_colors.get('border', '#dee2e6')
-        button_normal = theme_colors.get('button_normal', '#e0e0e0')
-        text_primary = theme_colors.get('text_primary', '#000000')
-        bg_tertiary = theme_colors.get('bg_tertiary', '#e9ecef')
-
-        if hasattr(self, 'tab_widget'):
-            self.tab_widget.setStyleSheet(f"""
-                QTabWidget::pane {{
-                    background-color: {bg_secondary};
-                    border: 1px solid {border};
-                    border-radius: 3px;
-                }}
-                QTabBar::tab {{
-                    background-color: {button_normal};
-                    color: {text_primary};
-                    padding: 5px 10px;
-                    margin: 2px;
-                    border-radius: 3px;
-                }}
-                QTabBar::tab:selected {{
-                    background-color: {bg_tertiary};
-                    border: 1px solid {border};
-                }}
-            """)
-
-
-    def apply_table_theme(self): #vers 1
-        """Legacy method - Apply theme styling to table and related components"""
-        # This method is called by main application for compatibility
-        self.apply_all_window_themes()
+        Called by the AppSettings system after a theme change.
+        """
+        self._apply_theme()
 
 
     def _safe_log(self, message): #vers 1
@@ -2652,16 +2421,11 @@ class EmuLauncherGUI(QWidget): #vers 20
             print(f"GUI Layout: {message}")
 
 
-    def log_message(self, message): #vers 1
+    def log_message(self, message): #vers 2
         """Add message to activity log"""
-        if self.log:
-            from PyQt6.QtCore import QDateTime
-            timestamp = QDateTime.currentDateTime().toString("hh:mm:ss")
-            self.log.append(f"[{timestamp}] {message}")
-            # Auto-scroll to bottom
-            self.log.verticalScrollBar().setValue(
-                self.log.verticalScrollBar().maximum()
-            )
+        from PyQt6.QtCore import QDateTime
+        timestamp = QDateTime.currentDateTime().toString("hh:mm:ss")
+        print(f"[{timestamp}] {message}")
 
 
     def _is_dark_theme(self):
@@ -2676,49 +2440,21 @@ class EmuLauncherGUI(QWidget): #vers 20
 
         return True
 
-    def _get_theme_colors(self, theme_name: str): #vers 8
+    def _get_theme_colors(self, theme_name: str): #vers 9
         """Returns a dictionary of theme colors from AppSettings current theme"""
 
+        # Complete theme palette - AppSettings guarantees every key
         theme_data = {}
-        theme_obj = {}  # Initialize here
-
-        # Get the CURRENT active theme from AppSettings
         if APPSETTINGS_AVAILABLE and self.app_settings:
-            if hasattr(self.app_settings, 'current_settings'):
-                current_theme_name = self.app_settings.current_settings.get("theme", "")
-                debug(f"Current active theme: {current_theme_name}", "THEME")
-
-                # Try to load that theme's colors
-                if hasattr(self.app_settings, 'themes') and current_theme_name:
-                    theme_obj = self.app_settings.themes.get(current_theme_name, {})
-                    debug(f"Theme object keys: {list(theme_obj.keys())}", "THEME")
+            theme_data.update(self.app_settings.get_theme_colors())
+            theme_data.setdefault('accent', theme_data['accent_primary'])
+        if not theme_data:
+            return {}
 
         # Determine if this theme is dark or light
         is_dark = self._is_dark_theme()
         debug(f"Theme is dark: {is_dark}", "THEME")
         
-        # Only set defaults for MISSING keys (setdefault won't override existing)
-        if is_dark:
-            theme_data.setdefault("bg_primary", "#1a1a1a")
-            theme_data.setdefault("bg_secondary", "#2a2a2a")
-            theme_data.setdefault("text_primary", "#ffffff")
-            theme_data.setdefault("text_secondary", "#cccccc")
-            theme_data.setdefault("accent", "#00d8ff")
-            theme_data.setdefault("border", "#3a3a3a")
-            theme_data.setdefault("panel_bg", "#2d2d2d")
-            theme_data.setdefault("accent_primary", "#00d8ff")
-            theme_data.setdefault("button_normal", "#404040")
-        else:
-            theme_data.setdefault("bg_primary", "#ffffff")
-            theme_data.setdefault("bg_secondary", "#f8f9fa")
-            theme_data.setdefault("text_primary", "#000000")
-            theme_data.setdefault("text_secondary", "#495057")
-            theme_data.setdefault("accent", "#1976d2")
-            theme_data.setdefault("border", "#dee2e6")
-            theme_data.setdefault("panel_bg", "#f0f0f0")
-            theme_data.setdefault("accent_primary", "#1976d2")
-            theme_data.setdefault("button_normal", "#e0e0e0")
-
         # Build tearoff button stylesheet
         if is_dark:
             button_style = f"""
@@ -2772,7 +2508,7 @@ class EmuLauncherGUI(QWidget): #vers 20
 
         return theme_data
 
-    def _apply_theme(self): #vers 9
+    def _apply_theme(self): #vers 11
         """Apply comprehensive theme to all GUI elements with direct widget styling"""
 
         if self.app_settings and APPSETTINGS_AVAILABLE:
@@ -2783,14 +2519,14 @@ class EmuLauncherGUI(QWidget): #vers 20
             theme_colors = self._get_theme_colors("default")
             
             # Calculate alternate row color
-            panel_bg = theme_colors.get('panel_bg', '#f0f0f0')
+            panel_bg = theme_colors['panel_bg']
             panel_bg_alt = self._adjust_brightness(panel_bg)
             
             # Get other themed colors
-            text_primary = theme_colors.get('text_primary', '#000000')
-            border = theme_colors.get('border', '#dee2e6')
-            accent = theme_colors.get('accent_primary', '#1976d2')
-            bg_primary = theme_colors.get('bg_primary', '#ffffff')
+            text_primary = theme_colors['text_primary']
+            border = theme_colors['border']
+            accent = theme_colors['accent_primary']
+            bg_primary = theme_colors['bg_primary']
             
             # Calculate button color with good contrast
             # Check if theme is light or dark
@@ -2888,17 +2624,14 @@ class EmuLauncherGUI(QWidget): #vers 20
             
             # Apply fonts from AppSettings to widgets
             self._apply_fonts_to_widgets()
-        else:
-            # Fallback when AppSettings not available
-            self._apply_fallback_theme()
+            self._apply_ribbon_theme()
     
 
-    def _get_icon_color(self): #vers 1
-        """Get icon color from current theme"""
+    def _get_icon_color(self): #vers 2
+        """Icon colour from the current theme, or the widget palette"""
         if APPSETTINGS_AVAILABLE and self.app_settings:
-            colors = self.app_settings.get_theme_colors()
-            return colors.get('text_primary', '#ffffff')
-        return '#ffffff'
+            return self.app_settings.get_theme_colors()['text_primary']
+        return self.palette().color(QPalette.ColorRole.WindowText).name()
 
 
     def _apply_fonts_to_widgets(self): #vers 1
@@ -2929,7 +2662,7 @@ class EmuLauncherGUI(QWidget): #vers 20
         for btn in self.findChildren(QPushButton):
             btn.setFont(self.button_font)
         
-        print("âœ“ Fonts applied to widgets")
+        print("Fonts applied to widgets")
         print("======================\n")
     
     def _style_control_buttons(self, button_bg, text_color, accent_color, border_color): #vers 4
@@ -2973,344 +2706,6 @@ class EmuLauncherGUI(QWidget): #vers 20
             for btn in self.display_widget.findChildren(QPushButton):
                 btn.setStyleSheet(button_style)
 
-    def _apply_theme_not_found(self): #vers 5
-        """Apply theme to all GUI elements - comprehensive styling"""
-
-        if self.app_settings and APPSETTINGS_AVAILABLE:
-            # Get base AppSettings stylesheet
-            stylesheet = self.app_settings.get_stylesheet()
-
-            # Get theme colors for MEL-specific widgets
-            theme_colors = self._get_theme_colors("default")
-
-            # Extract all colors from theme
-            bg_primary = theme_colors.get('bg_primary', '#1f2f39')
-            bg_secondary = theme_colors.get('bg_secondary', '#293f4d')
-            bg_tertiary = theme_colors.get('bg_tertiary', '#18242d')
-            panel_bg = theme_colors.get('panel_bg', '#253447')
-
-            accent_primary = theme_colors.get('accent_primary', '#4f6f7A')
-            accent_secondary = theme_colors.get('accent_secondary', '#657682')
-
-            text_primary = theme_colors.get('text_primary', '#FFFFFF')
-            text_secondary = theme_colors.get('text_secondary', '#E2FFE9')
-            text_accent = theme_colors.get('text_accent', '#AFCFAF')
-
-            button_normal = theme_colors.get('button_normal', '#2f3f49')
-            button_hover = theme_colors.get('button_hover', '#0f0f09')
-            button_pressed = theme_colors.get('button_pressed', '#5f6f79')
-            button_text = theme_colors.get('button_text_color', '#FFFFFF')
-
-            border = theme_colors.get('border', '#135379')
-
-            splitter_bg = theme_colors.get('splitter_color_background', '#243845')
-            splitter_shine = theme_colors.get('splitter_color_shine', '#3e525e')
-            splitter_shadow = theme_colors.get('splitter_color_shadow', '#1f2f39')
-
-            scrollbar_bg = theme_colors.get('scrollbar_background', '#1d2c36')
-            scrollbar_handle = theme_colors.get('scrollbar_handle', '#114a6c')
-            scrollbar_handle_hover = theme_colors.get('scrollbar_handle_hover', '#0f4260')
-            scrollbar_handle_pressed = theme_colors.get('scrollbar_handle_pressed', '#0d3a54')
-            scrollbar_border = theme_colors.get('scrollbar_border', '#135379')
-
-            selection_bg = theme_colors.get('selection_background', '#4f6f7A')
-            selection_text = theme_colors.get('selection_text', '#ffffff')
-
-            # Comprehensive MEL stylesheet
-            mel_stylesheet = f"""
-                /* Main Window */
-                QWidget {{
-                    background-color: {bg_primary};
-                    color: {text_primary};
-                }}
-
-                /* Frames and Panels */
-                QFrame {{
-                    background-color: {panel_bg};
-                    border: 1px solid {border};
-                    border-radius: 4px;
-                }}
-
-                QFrame[frameShape="4"] {{  /* StyledPanel */
-                    background-color: {panel_bg};
-                    border: 1px solid {border};
-                }}
-
-                /* Group Boxes */
-                QGroupBox {{
-                    background-color: {panel_bg};
-                    border: 2px solid {border};
-                    border-radius: 5px;
-                    margin-top: 10px;
-                    padding-top: 15px;
-                    color: {text_primary};
-                    font-weight: bold;
-                }}
-
-                QGroupBox::title {{
-                    subcontrol-origin: margin;
-                    subcontrol-position: top left;
-                    padding: 5px 10px;
-                    color: {text_primary};
-                    background-color: {bg_secondary};
-                    border: 1px solid {border};
-                    border-radius: 3px;
-                }}
-
-                /* Buttons */
-                QPushButton {{
-                    background-color: {button_normal};
-                    border: 1px solid {border};
-                    border-radius: 4px;
-                    padding: 6px 12px;
-                    color: {button_text};
-                    min-height: 30px;
-                }}
-
-                QPushButton:hover {{
-                    background-color: {button_hover};
-                    border-color: {accent_primary};
-                }}
-
-                QPushButton:pressed {{
-                    background-color: {button_pressed};
-                    border-color: {accent_secondary};
-                }}
-
-                QPushButton:disabled {{
-                    background-color: {bg_tertiary};
-                    color: {text_secondary};
-                    border-color: {border};
-                }}
-
-                /* Lists */
-                QListWidget {{
-                    background-color: {bg_primary};
-                    alternate-background-color: {bg_secondary};
-                    border: 1px solid {border};
-                    border-radius: 4px;
-                    color: {text_primary};
-                    selection-background-color: {selection_bg};
-                    selection-color: {selection_text};
-                }}
-
-                QListWidget::item {{
-                    padding: 5px;
-                    border-bottom: 1px solid {bg_tertiary};
-                }}
-
-                QListWidget::item:selected {{
-                    background-color: {selection_bg};
-                    color: {selection_text};
-                }}
-
-                QListWidget::item:hover {{
-                    background-color: {accent_primary};
-                }}
-
-                /* Splitters */
-                QSplitter::handle:horizontal {{
-                    background-color: {splitter_bg};
-                    border: 1px solid {splitter_shadow};
-                    border-left: 1px solid {splitter_shine};
-                    width: 8px;
-                    margin: 2px;
-                    border-radius: 3px;
-                }}
-
-                QSplitter::handle:horizontal:hover {{
-                    background-color: {splitter_shine};
-                }}
-
-                QSplitter::handle:vertical {{
-                    background-color: {splitter_bg};
-                    border: 1px solid {splitter_shadow};
-                    border-top: 1px solid {splitter_shine};
-                    height: 8px;
-                    margin: 2px;
-                    border-radius: 3px;
-                }}
-
-                QSplitter::handle:vertical:hover {{
-                    background-color: {splitter_shine};
-                }}
-
-                /* Scrollbars */
-                QScrollBar:vertical {{
-                    background-color: {scrollbar_bg};
-                    width: 12px;
-                    border: 1px solid {scrollbar_border};
-                    border-radius: 3px;
-                }}
-
-                QScrollBar::handle:vertical {{
-                    background-color: {scrollbar_handle};
-                    min-height: 20px;
-                    border-radius: 3px;
-                    margin: 2px;
-                }}
-
-                QScrollBar::handle:vertical:hover {{
-                    background-color: {scrollbar_handle_hover};
-                }}
-
-                QScrollBar::handle:vertical:pressed {{
-                    background-color: {scrollbar_handle_pressed};
-                }}
-
-                QScrollBar::add-line:vertical,
-                QScrollBar::sub-line:vertical {{
-                    height: 0px;
-                }}
-
-                QScrollBar:horizontal {{
-                    background-color: {scrollbar_bg};
-                    height: 12px;
-                    border: 1px solid {scrollbar_border};
-                    border-radius: 3px;
-                }}
-
-                QScrollBar::handle:horizontal {{
-                    background-color: {scrollbar_handle};
-                    min-width: 20px;
-                    border-radius: 3px;
-                    margin: 2px;
-                }}
-
-                QScrollBar::handle:horizontal:hover {{
-                    background-color: {scrollbar_handle_hover};
-                }}
-
-                QScrollBar::handle:horizontal:pressed {{
-                    background-color: {scrollbar_handle_pressed};
-                }}
-
-                QScrollBar::add-line:horizontal,
-                QScrollBar::sub-line:horizontal {{
-                    width: 0px;
-                }}
-
-                /* Labels */
-                QLabel {{
-                    color: {text_primary};
-                    background-color: transparent;
-                }}
-
-                /* Line Edits */
-                QLineEdit {{
-                    background-color: {bg_secondary};
-                    border: 1px solid {border};
-                    border-radius: 3px;
-                    padding: 5px;
-                    color: {text_primary};
-                    selection-background-color: {selection_bg};
-                    selection-color: {selection_text};
-                }}
-
-                QLineEdit:focus {{
-                    border: 2px solid {accent_primary};
-                }}
-
-                /* Checkboxes */
-                QCheckBox {{
-                    color: {text_primary};
-                    spacing: 5px;
-                }}
-
-                QCheckBox::indicator {{
-                    width: 18px;
-                    height: 18px;
-                    border: 1px solid {border};
-                    border-radius: 3px;
-                    background-color: {bg_secondary};
-                }}
-
-                QCheckBox::indicator:checked {{
-                    background-color: {accent_primary};
-                    border-color: {accent_secondary};
-                }}
-
-                QCheckBox::indicator:hover {{
-                    border-color: {accent_primary};
-                }}
-
-                /* Radio Buttons */
-                QRadioButton {{
-                    color: {text_primary};
-                    spacing: 5px;
-                }}
-
-                QRadioButton::indicator {{
-                    width: 18px;
-                    height: 18px;
-                    border: 1px solid {border};
-                    border-radius: 9px;
-                    background-color: {bg_secondary};
-                }}
-
-                QRadioButton::indicator:checked {{
-                    background-color: {accent_primary};
-                    border-color: {accent_secondary};
-                }}
-
-                QRadioButton::indicator:hover {{
-                    border-color: {accent_primary};
-                }}
-
-                /* Status Bar */
-                QStatusBar {{
-                    background-color: {bg_tertiary};
-                    color: {text_secondary};
-                    border-top: 1px solid {border};
-                }}
-
-                /* Dialogs */
-                QDialog {{
-                    background-color: {bg_primary};
-                    color: {text_primary};
-                }}
-
-                /* Tab Widget */
-                QTabWidget::pane {{
-                    background-color: {panel_bg};
-                    border: 1px solid {border};
-                    border-radius: 4px;
-                }}
-
-                QTabBar::tab {{
-                    background-color: {button_normal};
-                    color: {button_text};
-                    padding: 8px 16px;
-                    margin: 2px;
-                    border: 1px solid {border};
-                    border-bottom: none;
-                    border-top-left-radius: 4px;
-                    border-top-right-radius: 4px;
-                }}
-
-                QTabBar::tab:selected {{
-                    background-color: {panel_bg};
-                    border-bottom: 2px solid {accent_primary};
-                }}
-
-                QTabBar::tab:hover {{
-                    background-color: {button_hover};
-                }}
-            """
-
-            # Apply combined stylesheet
-            self.setStyleSheet(stylesheet + mel_stylesheet)
-
-            # Apply titlebar colors
-            self._apply_titlebar_colors()
-        else:
-            # Fallback theme when AppSettings not available
-            self._apply_log_theme_styling()
-            self._apply_vertical_splitter_theme()
-            self._apply_main_splitter_theme()
-            self._apply_status_window_theme_styling()
-            self._apply_file_list_window_theme_styling()
-
     def _apply_titlebar_colors(self): #vers 9
         """Apply theme colors to titlebar elements - respects themed setting and detects light/dark"""
         if not self.app_settings:
@@ -3323,34 +2718,21 @@ class EmuLauncherGUI(QWidget): #vers 20
         theme_colors = self._get_theme_colors("default")
 
         if not use_themed:
-            # Hardcoded high-contrast colors for visibility
-            text_color = '#FFFFFF'
-            bg_color = '#2c3e50'
-            accent_color = '#3498db'
-            button_text_color = '#FFFFFF'
-            button_bg_color = '#3498db'
-            border_color = '#2c3e50'
+            # Theme's dedicated titlebar colours
+            text_color = theme_colors['gadgetbar_text']
+            bg_color = theme_colors['gadgetbar_bg']
+            accent_color = theme_colors['accent_primary']
+            button_text_color = theme_colors['button_text_color']
+            button_bg_color = theme_colors['button_normal']
+            border_color = theme_colors['border']
         else:
-            # Use theme colors
-            text_color = theme_colors.get('text_primary', '#000000')
-            bg_color = theme_colors.get('panel_bg', '#ffffff')
-            accent_color = theme_colors.get('accent', '#1976d2')
-            border_color = theme_colors.get('border', '#dee2e6')
-
-            # Detect if theme is light or dark based on background brightness
-            bg_rgb = tuple(int(bg_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
-            luminance = (0.299 * bg_rgb[0] + 0.587 * bg_rgb[1] + 0.114 * bg_rgb[2]) / 255
-
-            # Light theme (bright background): use dark buttons
-            # Dark theme (dark background): use light buttons
-            if luminance > 0.5:
-                # Light theme - use theme colors
-                button_text_color = theme_colors.get('text_primary', '#2c3e50')
-                button_bg_color = theme_colors.get('button_normal', '#e0e0e0')
-            else:
-                # Dark theme - use light colors
-                button_text_color = '#FFFFFF'
-                button_bg_color = theme_colors.get('button_normal', '#404040')
+            # Themed colours - the theme's text/button pair contrasts
+            text_color = theme_colors['text_primary']
+            bg_color = theme_colors['panel_bg']
+            accent_color = theme_colors['accent_primary']
+            border_color = theme_colors['border']
+            button_text_color = theme_colors['button_text_color']
+            button_bg_color = theme_colors['button_normal']
 
         # Apply to title label
         if hasattr(self, 'title_label'):
@@ -3527,30 +2909,16 @@ class EmuLauncherGUI(QWidget): #vers 20
         if dialog.exec():
             # Settings saved, refresh platforms with new ROM path
             self._refresh_platforms()
-            
+
+            # Reapply icon display mode (lists + ribbons)
+            self._set_icon_display_mode(self.mel_settings.get_icon_display_mode())
+
             # Reapply titlebar colors (in case themed setting changed)
             self._apply_titlebar_colors()
 
             # Update status
             if hasattr(self, 'status_label'):
                 self.status_label.setText("Settings saved - platforms refreshed")
-
-    def _open_settings_dialog(self): #vers 1
-        """Open settings dialog and refresh on save"""
-        dialog = SettingsDialog(self.mel_settings, self)
-        if dialog.exec():
-            # Refresh platform list with new ROM path
-            self._scan_platforms()
-            self.status_label.setText("Settings saved - platforms refreshed")
-
-
-    def _setup_settings_button(self): #vers 1
-        """Setup settings button in UI"""
-        settings_btn = QPushButton("âš™ Settings")
-        settings_btn.clicked.connect(self._open_settings_dialog)
-        settings_btn.setMaximumWidth(120)
-        return settings_btn
-
 
     def _show_settings_dialog(self): #vers 2
         """Show settings dialog with theme and preferences"""
@@ -3743,9 +3111,9 @@ class EmuLauncherGUI(QWidget): #vers 20
             # Show results
             result = f"Found {total_roms} ROM(s) across {len(discovered_platforms)} platform(s):\n\n"
             for platform, info in sorted(discovered_platforms.items()):
-                result += f"â€¢ {platform}: {info['rom_count']} ROM(s)\n"
+                result += f"- {platform}: {info['rom_count']} ROM(s)\n"
 
-            QMessageBox.information(self, "Scan Complete", result)
+            self._show_results_tab("Scan Results", result)
             self.status_label.setText(f"Found {len(discovered_platforms)} platform(s) with {total_roms} ROM(s)")
         else:
             progress.setValue(100)
@@ -3886,7 +3254,7 @@ class EmuLauncherGUI(QWidget): #vers 20
 
         # Update status
         if hasattr(self, 'status_label'):
-            self.status_label.setText(f"âœ“ Configuration saved for {game_name}")
+            self.status_label.setText(f"Configuration saved for {game_name}")
 
     def _show_load_core(self): #vers 1
         """Show load core dialog"""
@@ -4200,418 +3568,6 @@ class EmuLauncherGUI(QWidget): #vers 20
             QMessageBox.warning(self, "Save Failed", "Controller information not available")
 
 # - Settings Reusable
-    def _show_workshop_settings(self): #vers 1 < moved from TXD workshop
-        """Show complete workshop settings dialog"""
-        from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QTabWidget, QWidget, QGroupBox, QFormLayout, QSpinBox, QComboBox, QSlider, QLabel, QCheckBox, QFontComboBox)
-        from PyQt6.QtCore import Qt
-        from PyQt6.QtGui import QFont
-
-        dialog = QDialog(self)
-        dialog.setWindowTitle(App_name + " Settings")
-        dialog.setMinimumWidth(650)
-        dialog.setMinimumHeight(550)
-
-        layout = QVBoxLayout(dialog)
-
-        # Create tabs
-        tabs = QTabWidget()
-
-        # TAB 1: FONTS (FIRST TAB)
-
-        fonts_tab = QWidget()
-        fonts_layout = QVBoxLayout(fonts_tab)
-
-        # Default Font
-        default_font_group = QGroupBox("Default Font")
-        default_font_layout = QHBoxLayout()
-
-        default_font_combo = QFontComboBox()
-        default_font_combo.setCurrentFont(self.font())
-        default_font_layout.addWidget(default_font_combo)
-
-        default_font_size = QSpinBox()
-        default_font_size.setRange(8, 24)
-        default_font_size.setValue(self.font().pointSize())
-        default_font_size.setSuffix(" pt")
-        default_font_size.setFixedWidth(80)
-        default_font_layout.addWidget(default_font_size)
-
-        default_font_group.setLayout(default_font_layout)
-        fonts_layout.addWidget(default_font_group)
-
-        # Title Font
-        title_font_group = QGroupBox("Title Font")
-        title_font_layout = QHBoxLayout()
-
-        title_font_combo = QFontComboBox()
-        if hasattr(self, 'title_font'):
-            title_font_combo.setCurrentFont(self.title_font)
-        else:
-            title_font_combo.setCurrentFont(QFont("Arial", 14))
-        title_font_layout.addWidget(title_font_combo)
-
-        title_font_size = QSpinBox()
-        title_font_size.setRange(10, 32)
-        title_font_size.setValue(getattr(self, 'title_font', QFont("Arial", 14)).pointSize())
-        title_font_size.setSuffix(" pt")
-        title_font_size.setFixedWidth(80)
-        title_font_layout.addWidget(title_font_size)
-
-        title_font_group.setLayout(title_font_layout)
-        fonts_layout.addWidget(title_font_group)
-
-        # Panel Font
-        panel_font_group = QGroupBox("Panel Headers Font")
-        panel_font_layout = QHBoxLayout()
-
-        panel_font_combo = QFontComboBox()
-        if hasattr(self, 'panel_font'):
-            panel_font_combo.setCurrentFont(self.panel_font)
-        else:
-            panel_font_combo.setCurrentFont(QFont("Arial", 10))
-        panel_font_layout.addWidget(panel_font_combo)
-
-        panel_font_size = QSpinBox()
-        panel_font_size.setRange(8, 18)
-        panel_font_size.setValue(getattr(self, 'panel_font', QFont("Arial", 10)).pointSize())
-        panel_font_size.setSuffix(" pt")
-        panel_font_size.setFixedWidth(80)
-        panel_font_layout.addWidget(panel_font_size)
-
-        panel_font_group.setLayout(panel_font_layout)
-        fonts_layout.addWidget(panel_font_group)
-
-        # Button Font
-        button_font_group = QGroupBox("Button Font")
-        button_font_layout = QHBoxLayout()
-
-        button_font_combo = QFontComboBox()
-        if hasattr(self, 'button_font'):
-            button_font_combo.setCurrentFont(self.button_font)
-        else:
-            button_font_combo.setCurrentFont(QFont("Arial", 10))
-        button_font_layout.addWidget(button_font_combo)
-
-        button_font_size = QSpinBox()
-        button_font_size.setRange(8, 16)
-        button_font_size.setValue(getattr(self, 'button_font', QFont("Arial", 10)).pointSize())
-        button_font_size.setSuffix(" pt")
-        button_font_size.setFixedWidth(80)
-        button_font_layout.addWidget(button_font_size)
-
-        button_font_group.setLayout(button_font_layout)
-        fonts_layout.addWidget(button_font_group)
-
-        # Info Bar Font
-        infobar_font_group = QGroupBox("Info Bar Font")
-        infobar_font_layout = QHBoxLayout()
-
-        infobar_font_combo = QFontComboBox()
-        if hasattr(self, 'infobar_font'):
-            infobar_font_combo.setCurrentFont(self.infobar_font)
-        else:
-            infobar_font_combo.setCurrentFont(QFont("Courier New", 9))
-        infobar_font_layout.addWidget(infobar_font_combo)
-
-        infobar_font_size = QSpinBox()
-        infobar_font_size.setRange(7, 14)
-        infobar_font_size.setValue(getattr(self, 'infobar_font', QFont("Courier New", 9)).pointSize())
-        infobar_font_size.setSuffix(" pt")
-        infobar_font_size.setFixedWidth(80)
-        infobar_font_layout.addWidget(infobar_font_size)
-
-        infobar_font_group.setLayout(infobar_font_layout)
-        fonts_layout.addWidget(infobar_font_group)
-
-        fonts_layout.addStretch()
-        tabs.addTab(fonts_tab, "Fonts")
-
-        # TAB 2: DISPLAY SETTINGS
-
-        display_tab = QWidget()
-        display_layout = QVBoxLayout(display_tab)
-
-        # Button display mode
-        button_group = QGroupBox("Button Display Mode")
-        button_layout = QVBoxLayout()
-
-        button_mode_combo = QComboBox()
-        button_mode_combo.addItems(["Icons + Text", "Icons Only", "Text Only"])
-        current_mode = getattr(self, 'button_display_mode', 'both')
-        mode_map = {'both': 0, 'icons': 1, 'text': 2}
-        button_mode_combo.setCurrentIndex(mode_map.get(current_mode, 0))
-        button_layout.addWidget(button_mode_combo)
-
-        button_hint = QLabel("Changes how toolbar buttons are displayed")
-        button_hint.setStyleSheet("color: #888; font-style: italic;")
-        button_layout.addWidget(button_hint)
-
-        button_group.setLayout(button_layout)
-        display_layout.addWidget(button_group)
-
-        # Table display
-        table_group = QGroupBox("Texture List Display")
-        table_layout = QVBoxLayout()
-
-        show_thumbnails = QCheckBox("Show texture thumbnails")
-        show_thumbnails.setChecked(True)
-        table_layout.addWidget(show_thumbnails)
-
-        show_warnings = QCheckBox("Show warning icons for suspicious textures")
-        show_warnings.setChecked(True)
-        show_warnings.setToolTip("Shows icon if normal and alpha appear identical")
-        table_layout.addWidget(show_warnings)
-
-        table_group.setLayout(table_layout)
-        display_layout.addWidget(table_group)
-
-        display_layout.addStretch()
-        tabs.addTab(display_tab, "Display")
-
-
-
-        # TAB 3: placeholder
-        # TAB 4: PERFORMANCE
-
-        perf_tab = QWidget()
-        perf_layout = QVBoxLayout(perf_tab)
-
-        perf_group = QGroupBox("Performance Settings")
-        perf_form = QFormLayout()
-
-        preview_quality = QComboBox()
-        preview_quality.addItems(["Low (Fast)", "Medium", "High (Slow)"])
-        preview_quality.setCurrentIndex(1)
-        perf_form.addRow("Preview Quality:", preview_quality)
-
-        thumb_size = QSpinBox()
-        thumb_size.setRange(32, 128)
-        thumb_size.setValue(64)
-        thumb_size.setSuffix(" px")
-        perf_form.addRow("Thumbnail Size:", thumb_size)
-
-        perf_group.setLayout(perf_form)
-        perf_layout.addWidget(perf_group)
-
-        # Caching
-        cache_group = QGroupBox("Caching")
-        cache_layout = QVBoxLayout()
-
-        enable_cache = QCheckBox("Enable texture preview caching")
-        enable_cache.setChecked(True)
-        cache_layout.addWidget(enable_cache)
-
-        cache_hint = QLabel("Caching improves performance but uses more memory")
-        cache_hint.setStyleSheet("color: #888; font-style: italic;")
-        cache_layout.addWidget(cache_hint)
-
-        cache_group.setLayout(cache_layout)
-        perf_layout.addWidget(cache_group)
-
-        perf_layout.addStretch()
-        tabs.addTab(perf_tab, "Performance")
-
-        # TAB 5: PREVIEW SETTINGS (LAST TAB)
-
-        preview_tab = QWidget()
-        preview_layout = QVBoxLayout(preview_tab)
-
-        # Zoom Settings
-        zoom_group = QGroupBox("Zoom Settings")
-        zoom_form = QFormLayout()
-
-        zoom_spin = QSpinBox()
-        zoom_spin.setRange(10, 500)
-        zoom_spin.setValue(int(getattr(self, 'zoom_level', 1.0) * 100))
-        zoom_spin.setSuffix("%")
-        zoom_form.addRow("Default Zoom:", zoom_spin)
-
-        zoom_group.setLayout(zoom_form)
-        preview_layout.addWidget(zoom_group)
-
-        # Background Settings
-        bg_group = QGroupBox("Background Settings")
-        bg_layout = QVBoxLayout()
-
-        # Background mode
-        bg_mode_layout = QFormLayout()
-        bg_mode_combo = QComboBox()
-        bg_mode_combo.addItems(["Solid Color", "Checkerboard", "Grid"])
-        current_bg_mode = getattr(self, 'background_mode', 'solid')
-        mode_idx = {"solid": 0, "checkerboard": 1, "checker": 1, "grid": 2}.get(current_bg_mode, 0)
-
-        bg_mode_combo.setCurrentIndex(mode_idx)
-        bg_mode_layout.addRow("Background Mode:", bg_mode_combo)
-        bg_layout.addLayout(bg_mode_layout)
-
-        bg_layout.addSpacing(10)
-
-        # Checkerboard size
-        cb_label = QLabel("Checkerboard Size:")
-        bg_layout.addWidget(cb_label)
-
-        cb_layout = QHBoxLayout()
-        cb_slider = QSlider(Qt.Orientation.Horizontal)
-        cb_slider.setMinimum(4)
-        cb_slider.setMaximum(64)
-        cb_slider.setValue(getattr(self, '_checkerboard_size', 16))
-        cb_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        cb_slider.setTickInterval(8)
-        cb_layout.addWidget(cb_slider)
-
-        cb_spin = QSpinBox()
-        cb_spin.setMinimum(4)
-        cb_spin.setMaximum(64)
-        cb_spin.setValue(getattr(self, '_checkerboard_size', 16))
-        cb_spin.setSuffix(" px")
-        cb_spin.setFixedWidth(80)
-        cb_layout.addWidget(cb_spin)
-
-        bg_layout.addLayout(cb_layout)
-
-        # Connect checkerboard controls
-        #cb_slider.valueChanged.connect(cb_spin.setValue)
-        #cb_spin.valueChanged.connect(cb_slider.setValue)
-
-        # Hint
-        cb_hint = QLabel("Smaller = tighter pattern, larger = bigger squares")
-        cb_hint.setStyleSheet("color: #888; font-style: italic; font-size: 10px;")
-        bg_layout.addWidget(cb_hint)
-
-        bg_group.setLayout(bg_layout)
-        preview_layout.addWidget(bg_group)
-
-        # Overlay Settings
-        overlay_group = QGroupBox("Overlay View Settings")
-        overlay_layout = QVBoxLayout()
-
-        overlay_label = QLabel("Overlay Opacity (Normal over Alpha):")
-        overlay_layout.addWidget(overlay_label)
-
-        opacity_layout = QHBoxLayout()
-        opacity_slider = QSlider(Qt.Orientation.Horizontal)
-        opacity_slider.setMinimum(0)
-        opacity_slider.setMaximum(100)
-        opacity_slider.setValue(getattr(self, '_overlay_opacity', 50))
-        opacity_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        opacity_slider.setTickInterval(10)
-        opacity_layout.addWidget(opacity_slider)
-
-        opacity_spin = QSpinBox()
-        opacity_spin.setMinimum(0)
-        opacity_spin.setMaximum(100)
-        opacity_spin.setValue(getattr(self, '_overlay_opacity', 50))
-        opacity_spin.setSuffix(" %")
-        opacity_spin.setFixedWidth(80)
-        opacity_layout.addWidget(opacity_spin)
-
-        overlay_layout.addLayout(opacity_layout)
-
-        # Connect opacity controls
-        #opacity_slider.valueChanged.connect(opacity_spin.setValue)
-        #opacity_spin.valueChanged.connect(opacity_slider.setValue)
-
-        # Hint
-        opacity_hint = QLabel("0")
-        opacity_hint.setStyleSheet("color: #888; font-style: italic; font-size: 10px;")
-        overlay_layout.addWidget(opacity_hint)
-
-        overlay_group.setLayout(overlay_layout)
-        preview_layout.addWidget(overlay_group)
-
-        preview_layout.addStretch()
-        tabs.addTab(preview_tab, "Preview")
-
-        # Add tabs to dialog
-        layout.addWidget(tabs)
-
-        # BUTTONS
-
-        btn_layout = QHBoxLayout()
-        btn_layout.addStretch()
-
-        # Apply button
-        apply_btn = QPushButton("Apply Settings")
-        apply_btn.setStyleSheet("""
-            QPushButton {
-                background: #0078d4;
-                color: white;
-                padding: 10px 24px;
-                font-weight: bold;
-                border-radius: 4px;
-                font-size: 13px;
-            }
-            QPushButton:hover {
-                background: #1984d8;
-            }
-        """)
-
-        def apply_settings():
-            # FONTS
-            self.setFont(QFont(default_font_combo.currentFont().family(),
-                            default_font_size.value()))
-            self.title_font = QFont(title_font_combo.currentFont().family(),
-                                title_font_size.value())
-            self.panel_font = QFont(panel_font_combo.currentFont().family(),
-                                panel_font_size.value())
-            self.button_font = QFont(button_font_combo.currentFont().family(),
-                                    button_font_size.value())
-            self.infobar_font = QFont(infobar_font_combo.currentFont().family(),
-                                    infobar_font_size.value())
-
-            # Apply fonts to UI
-            self._apply_title_font()
-            self._apply_panel_font()
-            self._apply_button_font()
-            self._apply_infobar_font()
-
-            mode_map = {0: 'both', 1: 'icons', 2: 'text'}
-            self.button_display_mode = mode_map[button_mode_combo.currentIndex()]
-
-            # EXPORT
-            self.default_export_format = format_combo.currentText()
-
-            # PREVIEW
-            self.zoom_level = zoom_spin.value() / 100.0
-
-            bg_modes = ['solid', 'checkerboard', 'grid']
-            self.background_mode = bg_modes[bg_mode_combo.currentIndex()]
-
-            self._checkerboard_size = cb_spin.value()
-            self._overlay_opacity = opacity_spin.value()
-
-            # Update preview widget
-            if hasattr(self, 'preview_widget'):
-                if self.background_mode == 'checkerboard':
-                    self.preview_widget.set_checkerboard_background()
-                    self.preview_widget._checkerboard_size = self._checkerboard_size
-                else:
-                    self.preview_widget.set_background_color(self.preview_widget.bg_color)
-
-            # Apply button display mode
-            if hasattr(self, '_update_all_buttons'):
-                self._update_all_buttons()
-
-            # Refresh display
-
-            if self.main_window and hasattr(self.main_window, 'log_message'):
-                self.main_window.log_message("Workshop settings updated successfully")
-
-        apply_btn.clicked.connect(apply_settings)
-        btn_layout.addWidget(apply_btn)
-
-        # Close button
-        close_btn = QPushButton("Close")
-        close_btn.setStyleSheet("padding: 10px 24px; font-size: 13px;")
-        close_btn.clicked.connect(dialog.close)
-        btn_layout.addWidget(close_btn)
-
-        layout.addLayout(btn_layout)
-
-        # Show dialog
-        dialog.exec()
-
-
     def _apply_window_flags(self): #vers 2
         """Apply window flags based on settings"""
         # Save current geometry
@@ -4777,47 +3733,6 @@ class EmuLauncherGUI(QWidget): #vers 20
         dialog.exec()
 
 
-    def _update_dock_button_visibility(self): #vers 1
-        """Show/hide dock and tearoff buttons based on docked state"""
-        if hasattr(self, 'dock_btn'):
-            # Hide D button when docked, show when standalone
-            self.dock_btn.setVisible(not self.is_docked)
-
-        if hasattr(self, 'tearoff_btn'):
-            # T button only visible when docked and not in standalone mode
-            self.tearoff_btn.setVisible(self.is_docked and not self.standalone_mode)
-
-
-    def toggle_dock_mode(self): #vers 1
-        """Toggle between docked and standalone mode"""
-        if self.is_docked:
-            self._undock_from_main()
-        else:
-            self._dock_to_main()
-
-        self._update_dock_button_visibility()
-
-    def _dock_to_main(self): #vers 7
-        """Dock handled by overlay system in imgfactory"""
-        if hasattr(self, 'is_overlay') and self.is_overlay:
-            self.show()
-            self.raise_()
-
-    def _undock_from_main(self): #vers 3
-        """Undock from overlay mode to standalone window"""
-        if hasattr(self, 'is_overlay') and self.is_overlay:
-            self.setWindowFlags(Qt.WindowType.Window)
-            self.is_overlay = False
-            self.overlay_table = None
-
-        self.is_docked = False
-        self._update_dock_button_visibility()
-
-        self.show()
-
-        if hasattr(self.main_window, 'log_message'):
-            self.main_window.log_message(App_name + " undocked to standalone")
-
     def _apply_button_mode(self, dialog): #vers 1
         """Apply button display mode"""
         mode_index = self.button_mode_combo.currentIndex()
@@ -4831,24 +3746,20 @@ class EmuLauncherGUI(QWidget): #vers 20
 
             if self.main_window and hasattr(self.main_window, 'log_message'):
                 mode_names = {0: 'Icons + Text', 1: 'Icons Only', 2: 'Text Only'}
-                self.main_window.log_message(f"âœ¨ Button style: {mode_names[mode_index]}")
+                self.main_window.log_message(f"Button style: {mode_names[mode_index]}")
 
         dialog.close()
 
 # - Window functionality
 
-    def _initialize_features(self): #vers 3
+    def _initialize_features(self): #vers 4
         """Initialize all features after UI setup"""
         try:
             self._apply_theme()
-            self._update_status_indicators()
-
-            if self.main_window and hasattr(self.main_window, 'log_message'):
-                self.main_window.log_message("All features initialized")
+            self.log_message("All features initialized")
 
         except Exception as e:
-            if self.main_window and hasattr(self.main_window, 'log_message'):
-                self.main_window.log_message(f"Feature init error: {str(e)}")
+            self.log_message(f"Feature init error: {str(e)}")
 
 
     def _is_on_draggable_area(self, pos): #vers 7
@@ -4883,67 +3794,6 @@ class EmuLauncherGUI(QWidget): #vers 20
         return True
 
 
-    def _get_resize_corner(self, pos): #vers 1
-        """Determine which corner is under mouse position"""
-        size = self.corner_size
-        w = self.width()
-        h = self.height()
-
-        if pos.x() < size and pos.y() < size:
-            return "top-left"
-        if pos.x() > w - size and pos.y() < size:
-            return "top-right"
-        if pos.x() < size and pos.y() > h - size:
-            return "bottom-left"
-        if pos.x() > w - size and pos.y() > h - size:
-            return "bottom-right"
-
-        return None
-
-
-    def _handle_corner_resize(self, global_pos): #vers 1
-        """Handle window resizing from corners"""
-        if not self.resize_corner or not self.drag_position:
-            return
-
-        delta = global_pos - self.drag_position
-        geometry = self.initial_geometry
-
-        min_width = 800
-        min_height = 600
-
-        if self.resize_corner == "top-left":
-            new_x = geometry.x() + delta.x()
-            new_y = geometry.y() + delta.y()
-            new_width = geometry.width() - delta.x()
-            new_height = geometry.height() - delta.y()
-
-            if new_width >= min_width and new_height >= min_height:
-                self.setGeometry(new_x, new_y, new_width, new_height)
-
-        elif self.resize_corner == "top-right":
-            new_y = geometry.y() + delta.y()
-            new_width = geometry.width() + delta.x()
-            new_height = geometry.height() - delta.y()
-
-            if new_width >= min_width and new_height >= min_height:
-                self.setGeometry(geometry.x(), new_y, new_width, new_height)
-
-        elif self.resize_corner == "bottom-left":
-            new_x = geometry.x() + delta.x()
-            new_width = geometry.width() - delta.x()
-            new_height = geometry.height() + delta.y()
-
-            if new_width >= min_width and new_height >= min_height:
-                self.setGeometry(new_x, geometry.y(), new_width, new_height)
-
-        elif self.resize_corner == "bottom-right":
-            new_width = geometry.width() + delta.x()
-            new_height = geometry.height() + delta.y()
-
-            if new_width >= min_width and new_height >= min_height:
-                self.resize(new_width, new_height)
-
     def _update_all_buttons(self): #vers 4
         """Update all buttons to match display mode"""
         buttons_to_update = [
@@ -4960,20 +3810,21 @@ class EmuLauncherGUI(QWidget): #vers 20
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        # Get theme colors for corner indicators
-        if self.app_settings:
-            theme_colors = self._get_theme_colors("default")
-            accent_color = QColor(theme_colors.get('accent_primary', '#1976d2'))
-            accent_color.setAlpha(180)
+        # Corner indicator colours from the theme, or the widget palette
+        theme_colors = self._get_theme_colors("default")
+        palette = self.palette()
+        if theme_colors:
+            accent_color = QColor(theme_colors['accent_primary'])
+            normal_color = QColor(theme_colors['border'])
+            hover_color = QColor(theme_colors['button_hover'])
         else:
-            accent_color = QColor(100, 150, 255, 180)
+            accent_color = palette.color(QPalette.ColorRole.Highlight)
+            normal_color = palette.color(QPalette.ColorRole.Mid)
+            hover_color = palette.color(QPalette.ColorRole.Light)
 
-        hover_color = QColor(accent_color)
-        hover_color.setAlpha(255)
-
-        # Colors
-        normal_color = QColor(100, 100, 100, 150)
-        hover_color = QColor(150, 150, 255, 200)
+        accent_color.setAlpha(180)
+        normal_color.setAlpha(150)
+        hover_color.setAlpha(200)
 
         w = self.width()
         h = self.height()
@@ -5163,36 +4014,6 @@ class EmuLauncherGUI(QWidget): #vers 20
                 self.resize(new_width, new_height)
 
 
-    def _get_resize_direction(self, pos): #vers 1
-        """Determine resize direction based on mouse position"""
-        rect = self.rect()
-        margin = self.resize_margin
-
-        left = pos.x() < margin
-        right = pos.x() > rect.width() - margin
-        top = pos.y() < margin
-        bottom = pos.y() > rect.height() - margin
-
-        if left and top:
-            return "top-left"
-        elif right and top:
-            return "top-right"
-        elif left and bottom:
-            return "bottom-left"
-        elif right and bottom:
-            return "bottom-right"
-        elif left:
-            return "left"
-        elif right:
-            return "right"
-        elif top:
-            return "top"
-        elif bottom:
-            return "bottom"
-
-        return None
-
-
     def _update_cursor(self, direction): #vers 1
         """Update cursor based on resize direction"""
         if direction == "top" or direction == "bottom":
@@ -5207,41 +4028,6 @@ class EmuLauncherGUI(QWidget): #vers 20
             self.setCursor(Qt.CursorShape.ArrowCursor)
 
 
-    def _handle_resize(self, global_pos): #vers 1
-        """Handle window resizing"""
-        if not self.resize_direction or not self.drag_position:
-            return
-
-        delta = global_pos - self.drag_position
-        geometry = self.frameGeometry()
-
-        min_width = 800
-        min_height = 600
-
-        # Handle horizontal resizing
-        if "left" in self.resize_direction:
-            new_width = geometry.width() - delta.x()
-            if new_width >= min_width:
-                geometry.setLeft(geometry.left() + delta.x())
-        elif "right" in self.resize_direction:
-            new_width = geometry.width() + delta.x()
-            if new_width >= min_width:
-                geometry.setRight(geometry.right() + delta.x())
-
-        # Handle vertical resizing
-        if "top" in self.resize_direction:
-            new_height = geometry.height() - delta.y()
-            if new_height >= min_height:
-                geometry.setTop(geometry.top() + delta.y())
-        elif "bottom" in self.resize_direction:
-            new_height = geometry.height() + delta.y()
-            if new_height >= min_height:
-                geometry.setBottom(geometry.bottom() + delta.y())
-
-        self.setGeometry(geometry)
-        self.drag_position = global_pos
-
-
     def _toggle_maximize(self): #vers 1
         """Toggle window maximize state"""
         if self.isMaximized():
@@ -5249,10 +4035,138 @@ class EmuLauncherGUI(QWidget): #vers 20
         else:
             self.showMaximized()
 
-    def closeEvent(self, event): #vers 1
+    def closeEvent(self, event): #vers 2
         """Handle close event"""
+        self.ribbon_save_state()
         self.window_closed.emit()
         event.accept()
+
+# - RIBBONS -- Section.
+
+    def _build_ribbons(self): #vers 1
+        """Declare the ribbons and their buttons"""
+        tb_platforms = self.ribbon_toolbar("Platforms")
+        self.ribbon_button(tb_platforms, "refresh_icon",
+                           "Rescan platforms and games", self._refresh_platforms,
+                           text="Rescan")
+        self.ribbon_button(tb_platforms, "manage_icon",
+                           "Cycle icon display mode", self._toggle_icon_display_mode,
+                           text="Icon Style")
+        self.ribbon_button(tb_platforms, "search_icon",
+                           "Detect installed emulators", self._show_detection_results,
+                           text="Detect")
+        tb_platforms.addSeparator()
+        self.ribbon_button(tb_platforms, "folder_icon", "Scan for ROM files",
+                           self._scan_roms, text="Scan ROMs")
+        self.ribbon_button(tb_platforms, "chip_icon",
+                           "Scan and manage system BIOS files", self._show_bios_manager,
+                           text="Scan BIOS")
+        self.ribbon_button(tb_platforms, "database_icon",
+                           "BIOS and core database manager", self._show_database_manager,
+                           text="Database")
+        self.ribbon_button(tb_platforms, "file_icon", "Reopen the last scan results",
+                           self._reopen_last_results, text="Results")
+
+        tb_games = self.ribbon_toolbar("Games")
+        self.ribbon_button(tb_games, "launch_icon",
+                           "Launch selected game", self._on_launch_game, text="Launch")
+        self.ribbon_button(tb_games, "stop_icon",
+                           "Stop emulation", self._on_stop_emulation, text="Stop")
+        tb_games.addSeparator()
+        self.ribbon_button(tb_games, "manage_icon", "Game manager",
+                           self._show_game_manager, text="Games")
+        self.ribbon_button(tb_games, "package_icon", "Ports manager",
+                           self._show_ports_manager, text="Ports")
+        self.ribbon_button(tb_games, "save_icon", "Save configuration",
+                           self._save_config, text="Save Config")
+
+        tb_view = self.ribbon_toolbar("View", new_row=True)
+        self.ribbon_button(tb_view, lambda size, color: self._create_embed_icon(color),
+                           "Embedded window mode",
+                           lambda: self._set_display_mode('embedded'), text="Embed")
+        self.ribbon_button(tb_view, lambda size, color: self._create_popout_icon(color),
+                           "Pop-out to resizable window",
+                           lambda: self._set_display_mode('popout'), text="Pop-out")
+        self.ribbon_button(tb_view, lambda size, color: self._create_fullscreen_icon(color),
+                           "Fullscreen mode",
+                           lambda: self._set_display_mode('fullscreen'), text="Fullscreen")
+
+        tb_tools = self.ribbon_toolbar("Tools")
+        self.ribbon_button(tb_tools, "manage_icon", "Arrange ribbons and choose icons",
+                           self.open_ribbon_manager, text="Ribbons")
+        self.ribbon_button(tb_tools, "settings_icon", "Multi-Emulator Launcher settings",
+                           self._open_mel_settings, text="Settings")
+        self.ribbon_button(tb_tools, "properties_icon", "Theme and preferences",
+                           self._show_settings_dialog, text="Theme")
+        self.ribbon_button(tb_tools, "controller_icon", "Configure game controller",
+                           self._setup_controller, text="Controller")
+        self.ribbon_button(tb_tools, "info_icon", "About Multi-Emulator Launcher",
+                           self._show_about_dialog, text="About")
+
+    def _build_full_menu(self, parent_menu): #vers 1
+        """File menu, then one sub-menu per ribbon"""
+        fm = parent_menu.addMenu("File")
+        fm.addAction("Settings...", self._open_mel_settings)
+        fm.addAction("Theme Settings...", self._show_settings_dialog)
+        fm.addSeparator()
+        fm.addAction("Scan ROMs", self._scan_roms)
+        fm.addAction("Rescan Platforms", self._refresh_platforms)
+        fm.addAction("Save Configuration", self._save_config)
+        fm.addSeparator()
+        fm.addAction("About...", self._show_about_dialog)
+        fm.addAction("Quit", self.close)
+
+        for tb in self.ribbon_toolbars():
+            entries = list(tb.actions())
+            if not any(not a.isSeparator() for a in entries):
+                continue
+            sub = parent_menu.addMenu(tb.windowTitle() or tb.objectName())
+            for act in entries:
+                if act.isSeparator():
+                    sub.addSeparator()
+                elif act.isVisible():
+                    sub.addAction(act)
+
+        parent_menu.addSeparator()
+        parent_menu.addAction("Ribbon Manager...", self.open_ribbon_manager)
+        parent_menu.addAction("Save Ribbon Config", self.ribbon_save_state)
+
+    def _apply_ribbon_theme(self): #vers 3
+        """Style ribbons and re-render their icons from the theme"""
+        mw = getattr(self, '_ribbon_mw', None)
+        if mw is None:
+            return
+        colors = self._get_theme_colors("default")
+        if not colors:
+            return
+        border = colors['border']
+        text = colors['button_text_color']
+        hover = colors['button_hover']
+        pressed = colors['button_pressed']
+        mw.setStyleSheet(f"""
+            QToolBar QToolButton {{
+                background-color: transparent;
+                border: 1px solid transparent;
+                border-radius: 3px;
+                padding: 3px;
+                color: {text};
+            }}
+            QToolBar QToolButton:hover {{
+                background-color: {hover};
+                border: 1px solid {border};
+            }}
+            QToolBar QToolButton:pressed, QToolBar QToolButton:checked {{
+                background-color: {pressed};
+                border: 1px solid {border};
+            }}
+            QToolBar::separator {{
+                background-color: {border};
+                width: 1px;
+                margin: 4px 3px;
+            }}
+        """)
+        self._render_ribbon_icons()
+        self._apply_custom_icon_images()
 
 # - SVG ICONS -- Section.
     def _create_theme_aware_icon(self, svg_data, size=20): #vers 4
@@ -5270,32 +4184,9 @@ class EmuLauncherGUI(QWidget): #vers 20
         from PyQt6.QtCore import QByteArray
 
         try:
-            # Get theme colors
+            # Icon colour is the theme's text colour
             theme_colors = self._get_theme_colors("default")
-            bg_primary = theme_colors.get('bg_primary', '#ffffff')
-            text_primary = theme_colors.get('text_primary', '#000000')
-
-            # Calculate luminance from background
-            bg_rgb = tuple(int(bg_primary.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
-            luminance = (0.299 * bg_rgb[0] + 0.587 * bg_rgb[1] + 0.114 * bg_rgb[2]) / 255
-
-            # Choose icon color - OPPOSITE of background with guaranteed contrast
-            if luminance > 0.5:
-                # Light background - FORCE dark icons
-                # Use text_primary if it's dark enough, otherwise force black
-                text_rgb = tuple(int(text_primary.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
-                text_luminance = (0.299 * text_rgb[0] + 0.587 * text_rgb[1] + 0.114 * text_rgb[2]) / 255
-
-                if text_luminance < 0.5:
-                    # text_primary is dark - use it
-                    icon_color = text_primary
-                else:
-                    # text_primary is too light - force black
-                    icon_color = '#000000'
-            else:
-                # Dark background - FORCE light icons
-                icon_color = '#FFFFFF'
-
+            icon_color = theme_colors['text_primary']
             # Replace currentColor with actual color
             svg_str = svg_data.decode('utf-8')
             svg_str = svg_str.replace('currentColor', icon_color)
@@ -5307,7 +4198,7 @@ class EmuLauncherGUI(QWidget): #vers 20
                 return QIcon()
 
             pixmap = QPixmap(size, size)
-            pixmap.fill(QColor(0, 0, 0, 0))  # Transparent background
+            pixmap.fill(Qt.GlobalColor.transparent)
 
             painter = QPainter(pixmap)
             renderer.render(painter)

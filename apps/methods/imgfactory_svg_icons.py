@@ -2691,10 +2691,6 @@ class SVGIconFactory: #vers 8
 
 
     @staticmethod
-    def get_app_icon(size: int = 32, color: str = None) -> QIcon: #vers 2
-        """Get application icon - IMG cube with letters"""
-        return SVGIconFactory.app_icon_cube(size, color)
-
     @staticmethod
     def get_app_icon(size: int = 64) -> QIcon: #vers 1
         """IMG Factory application icon - Archive/Package themed"""
@@ -3280,10 +3276,6 @@ def get_trash_icon(size: int = 24, color: str = None) -> QIcon:
 def get_folder_icon(size: int = 24, color: str = None) -> QIcon:
     """Wrapper for SVGIconFactory.get_folder_icon"""
     return SVGIconFactory.get_folder_icon(size, color)
-
-def get_new_file_icon(size: int = 24, color: str = None) -> QIcon:
-    """Wrapper for SVGIconFactory.get_new_file_icon"""
-    return SVGIconFactory.get_new_file_icon(size, color)
 
 def get_undobar_icon(size: int = 24, color: str = None) -> QIcon:
     """Wrapper for SVGIconFactory.get_undobar_icon"""
@@ -4175,26 +4167,6 @@ def get_recent_scans_icon(size: int = 24, color: str = None, bg_color: str = Non
     </svg>''', size, color, bg_color)
 
 
-
-def get_radar_workshop_icon(size: int = 24, color: str = None, bg_color: str = None) -> QIcon: #vers 1
-    """Radar Workshop — radar cross / map grid"""
-    return SVGIconFactory._create_icon('''<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" fill="none"/>
-        <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-opacity="0.6"/>
-        <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
-        <line x1="12" y1="3" x2="12" y2="21" stroke="currentColor" stroke-width="1.2" stroke-opacity="0.5"/>
-        <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.2" stroke-opacity="0.5"/>
-        <path d="M12 12 L18 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-    </svg>''', size, color, bg_color)
-
-def get_water_workshop_icon(size: int = 24, color: str = None, bg_color: str = None) -> QIcon: #vers 1
-    """Water Workshop — anchor"""
-    return SVGIconFactory._create_icon('''<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="12" cy="6" r="2.5" stroke="currentColor" stroke-width="2" fill="none"/>
-        <line x1="12" y1="8.5" x2="12" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        <line x1="7" y1="11" x2="17" y2="11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        <path d="M7 19 Q9 17 12 19 Q15 21 17 19" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
-    </svg>''', size, color, bg_color)
 
 def get_dp5_panel_icon(size: int = 24, color: str = None, bg_color: str = None) -> QIcon: #vers 1
     """DP5 Paint — paintbrush"""

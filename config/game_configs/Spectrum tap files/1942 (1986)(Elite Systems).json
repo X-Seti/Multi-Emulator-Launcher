@@ -1,0 +1,10 @@
+{
+  "platform": "Spectrum tap files",
+  "game": "1942 (1986)(Elite Systems)",
+  "core": "fuse",
+  "custom_args": "",
+  "working_dir": "",
+  "fullscreen": false,
+  "auto_load_save": false,
+  "maintain_aspect": true
+}

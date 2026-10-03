@@ -16,11 +16,13 @@ import subprocess
 ##Methods list -
 # __init__
 # add_rom_path
+# get_all_emulator_display_settings
 # get_bios_path
 # get_cache_path
 # get_core_path
 # get_debug_enabled
 # get_debug_level
+# get_emulator_display_mode
 # get_emulator_for_platform
 # get_icon_display_mode
 # get_rom_path
@@ -35,6 +37,7 @@ import subprocess
 # set_core_path
 # set_debug_enabled
 # set_debug_level
+# set_emulator_display_mode
 # set_emulator_for_platform
 # set_icon_display_mode
 # set_rom_path
@@ -115,7 +118,8 @@ class MELSettingsManager: #vers 4
             'use_themed_titlebar': True,
             'debug_enabled': False,
             'debug_level': 'INFO',
-            'emulator_preferences': {}  # platform -> emulator_name mapping
+            'emulator_preferences': {},  # platform -> emulator_name mapping
+            'emulator_display_settings': {}  # emulator -> display mode string
         }
         
         if self.settings_file.exists():
@@ -250,6 +254,23 @@ class MELSettingsManager: #vers 4
         """
         prefs = self.settings.get('emulator_preferences', {})
         return prefs.get(platform, 'auto')
+
+    # Emulator display settings
+    def get_emulator_display_mode(self, emulator): #vers 1
+        """Get saved display mode for an emulator
+
+        Args:
+            emulator: Emulator name (e.g., 'stella', 'hatari')
+
+        Returns:
+            Display mode string (e.g., 'auto', 'fullscreen', '-zoom 2')
+        """
+        display_settings = self.settings.get('emulator_display_settings', {})
+        return display_settings.get(emulator, 'auto')
+
+    def get_all_emulator_display_settings(self): #vers 1
+        """Get all emulator display settings"""
+        return self.settings.get('emulator_display_settings', {})
     
     def scan_installed_emulators(self): #vers 1
         """Scan system for installed emulators
@@ -355,4 +376,17 @@ class MELSettingsManager: #vers 4
             self.settings['emulator_preferences'] = {}
         
         self.settings['emulator_preferences'][platform] = emulator
+        self.save_mel_settings()
+
+    def set_emulator_display_mode(self, emulator, mode): #vers 1
+        """Set display mode for an emulator
+
+        Args:
+            emulator: Emulator name
+            mode: Display mode string
+        """
+        if 'emulator_display_settings' not in self.settings:
+            self.settings['emulator_display_settings'] = {}
+
+        self.settings['emulator_display_settings'][emulator] = mode
         self.save_mel_settings()

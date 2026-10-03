@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-#this belongs in apps/methods/svg_icon_factory.py - Version: 6
+#this belongs in apps/methods/svg_icon_factory.py - Version: 7
 # X-Seti - November26 2025 - Multi-Emulator Launcher - Complete SVG Icon Factory
 
 """
-SVG Icon Factory - COMPLETE Version 6
-ALL 22 SVG icons - theme aware with color parameter
+SVG Icon Factory - COMPLETE Version 7
+ALL 24 SVG icons - theme aware with color parameter
 No duplicate icon methods elsewhere in the project
 """
 
@@ -23,12 +23,14 @@ from PyQt6.QtCore import Qt
 # manage_icon
 # maximize_icon
 # mel_app_icon
+# menu_icon
 # minimize_icon
 # package_icon
 # paint_icon
 # pause_icon
 # properties_icon
 # record_icon
+# refresh_icon
 # save_icon
 # screenshot_icon
 # settings_icon
@@ -39,7 +41,7 @@ from PyQt6.QtCore import Qt
 
 ##class SVGIconFactory -
 
-class SVGIconFactory: #vers 6
+class SVGIconFactory: #vers 7
     """Factory class for creating theme-aware SVG icons"""
     
     @staticmethod
@@ -294,6 +296,24 @@ class SVGIconFactory: #vers 6
         </svg>'''
         return SVGIconFactory._create_icon(svg_data, size, color)
     
+    @staticmethod
+    def menu_icon(size: int = 20, color: str = None) -> QIcon: #vers 1
+        """Hamburger menu icon"""
+        svg_data = '''<svg viewBox="0 0 24 24">
+            <path fill="currentColor"
+                d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/>
+        </svg>'''
+        return SVGIconFactory._create_icon(svg_data, size, color)
+
+    @staticmethod
+    def refresh_icon(size: int = 20, color: str = None) -> QIcon: #vers 1
+        """Refresh / rescan icon"""
+        svg_data = '''<svg viewBox="0 0 24 24">
+            <path fill="currentColor"
+                d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"/>
+        </svg>'''
+        return SVGIconFactory._create_icon(svg_data, size, color)
+
     # =====================================
     # APP ICON
     # =====================================

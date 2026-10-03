@@ -1,0 +1,10 @@
+{
+  "platform": "Amstrad 464",
+  "game": "Turrican II (E) - Alternate - Side A",
+  "core": "stella",
+  "custom_args": "",
+  "working_dir": "",
+  "fullscreen": false,
+  "auto_load_save": false,
+  "maintain_aspect": true
+}
