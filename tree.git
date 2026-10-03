@@ -1,0 +1,154 @@
+.
+├── AI_Rules.md
+├── apps
+│   ├── appfactory.settings.json
+│   ├── components
+│   │   ├── 16_bit_convert.py
+│   │   ├── 8_bit_convert.py
+│   │   ├── emulator_embed_widget.py
+│   │   ├── emulator_list_widget.py
+│   │   ├── game_list_widget.py
+│   │   └── retro_convert.py
+│   ├── core
+│   │   ├── bios_manager.py
+│   │   ├── core_downloader.py
+│   │   ├── core_launcher.py
+│   │   ├── emulator_window_args.py
+│   │   ├── gamepad_config.py
+│   │   ├── platform_config.py
+│   │   └── platform_emulators.py
+│   ├── database
+│   │   ├── database_manager.py
+│   │   ├── mel_database.db
+│   │   └── web_db_browser.py
+│   ├── debug
+│   │   └── placeholder
+│   ├── download_sample_cores.py
+│   ├── gui
+│   │   ├── controller_config_dialog.py
+│   │   ├── controller_layout_viewer.py
+│   │   ├── database_manager_dialog.py
+│   │   ├── emulator_settings_dialog.py
+│   │   ├── emu_launcher_gui.py
+│   │   ├── game_manager_dialog.py
+│   │   ├── load_core_dialog.py
+│   │   ├── mel_settings_dialog.py
+│   │   ├── mel_settings_manager.py
+│   │   ├── ports_manager_dialog.py
+│   │   ├── preview_window.py
+│   │   └── retro_conversion_methods.py
+│   ├── icons
+│   │   ├── compress_icon.png
+│   │   ├── compress.png
+│   │   └── README.md
+│   ├── images -> /home/x2/Documents/GitHub/App-Settings-System/apps/images
+│   ├── __init__.py -> /home/x2/Documents/GitHub/AI-Workshop/apps/__init__.py
+│   ├── locale
+│   │   └── placeholder
+│   ├── methods
+│   │   ├── artwork_loader.py
+│   │   ├── bios_manager.py
+│   │   ├── controller_buttons.py
+│   │   ├── controller_layouts.py
+│   │   ├── core_downloader.py
+│   │   ├── database_manager.py
+│   │   ├── emulator_detector.py
+│   │   ├── game_scanner.py
+│   │   ├── igdb_downloader.py
+│   │   ├── imgfactory_svg_icons.py
+│   │   ├── mel_app_icon.py
+│   │   ├── platform_icons.py
+│   │   ├── platform_scanner.py
+│   │   ├── retroarch_artwork.py
+│   │   ├── ribbon_dialog.py
+│   │   ├── ribbon_system.py
+│   │   ├── rom_loader.py
+│   │   ├── svg_icon_factory.py
+│   │   ├── system_core_scanner.py
+│   │   └── test_scanner.py
+│   ├── themes -> /home/x2/Documents/GitHub/App-Settings-System/apps/themes
+│   ├── tools
+│   │   └── caprice32_debugger.py
+│   └── utils -> /home/x2/Documents/GitHub/App-Settings-System/apps/utils
+├── artwork
+│   └── game boy
+│       └── gameboy_thumb.jpg
+├── bios
+├── cache
+│   └── extracted
+├── caprice32_launcher_wrapper.sh
+├── cc.sh
+├── config
+│   ├── database.db
+│   ├── game_configs
+│   │   ├── Amstrad 464
+│   │   │   ├── Aliens (E).json
+│   │   │   └── Turrican II (E) - Alternate - Side A.json
+│   │   ├── Amstrad CPC
+│   │   │   └── 1943 (E).json
+│   │   ├── Atari-8-bit
+│   │   │   └── Feud - The Graphic Adventure (1987)(Bulldog Software)(GB)[a2].json
+│   │   ├── Atari ST
+│   │   │   └── Arkanoid III (1987)(Imagine)[cr Mario].json
+│   │   ├── Spectrum tap files
+│   │   │   └── 1942 (1986)(Elite Systems).json
+│   │   └── Z81 48k-128k
+│   │       └── Contact Sam Cruise (Summit).json
+│   ├── mel_database.db
+│   ├── platforms.json
+│   └── settings.json
+├── cores
+│   ├── 81_libretro.so
+│   ├── atari800_libretro.so
+│   ├── bluemsx_libretro.so
+│   ├── bsnes_libretro.so
+│   ├── cap32_libretro.so
+│   ├── crocods_libretro.so
+│   ├── fceumm_libretro.so
+│   ├── fmsx_libretro.so
+│   ├── fuse_libretro.so
+│   ├── genesis_plus_gx_libretro.so
+│   ├── hatari_libretro.so
+│   ├── mame2003_plus_libretro.so
+│   ├── mame_libretro.so
+│   ├── mgba_libretro.so
+│   ├── mupen64plus_next_libretro.so
+│   ├── nestopia_libretro.so
+│   ├── parallel_n64_libretro.so
+│   ├── pcsx_rearmed_libretro.so
+│   ├── picodrive_libretro.so
+│   ├── prosystem_libretro.so
+│   ├── puae_libretro.so
+│   ├── snes9x_libretro.so
+│   ├── stella_libretro.so
+│   ├── vice_x64_libretro.so
+│   ├── vice_x64sc_libretro.so
+│   └── vice_xplus4_libretro.so
+├── docs
+│   ├── changelog.md
+│   ├── LICENSE
+│   ├── quickstart.md
+│   ├── README.md
+│   └── requirements.md
+├── emu_launcher_main.py
+├── install_cores.sh
+├── mel_settings.json
+├── playlists
+├── roms
+├── saves
+├── screenshots
+├── settings
+│   ├── appfactory.settings.json
+│   └── col_workshop.json
+├── settings_example.json
+├── support
+│   ├── check_cores.py
+│   ├── fix_core_names.py
+│   ├── install_cores.sh
+│   ├── test_core_detection.py
+│   └── test_dynamic_database.py
+├── system
+├── tree.git
+└── V14_CHANGELOG.md
+
+36 directories, 116 files

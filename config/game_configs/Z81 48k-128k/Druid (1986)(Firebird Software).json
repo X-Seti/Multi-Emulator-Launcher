@@ -1,0 +1,10 @@
+{
+  "platform": "Z81 48k-128k",
+  "game": "Druid (1986)(Firebird Software)",
+  "core": "fuse",
+  "custom_args": "",
+  "working_dir": "",
+  "fullscreen": false,
+  "auto_load_save": false,
+  "maintain_aspect": true
+}
