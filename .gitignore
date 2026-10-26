@@ -76,3 +76,7 @@ apps/database/mel_database.db
 apps/utils
 apps/images
 apps/themes
+
+# Build output (made by buildscript.py / GitHub Actions; releases hold the downloads)
+/_internal/
+/*.exe
