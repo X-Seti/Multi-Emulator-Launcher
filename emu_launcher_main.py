@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-#this belongs in root /emu_launcher_main.py - Version: 3
+#this belongs in root /emu_launcher_main.py - Version: 4
 # X-Seti - November28 2025 - Multi-Emulator Launcher - Main Entry Point
 
 """
@@ -183,7 +183,7 @@ def check_dependencies() -> bool: #vers 1
     return True
 
 
-def initialize_directories(base_dir: Path) -> bool: #vers 2
+def initialize_directories(base_dir: Path) -> bool: #vers 3
     """Initialize directory structure if needed"""
     required_dirs = [
         'apps',
@@ -203,7 +203,10 @@ def initialize_directories(base_dir: Path) -> bool: #vers 2
     
     if missing_dirs:
         print(f"\n⚠️  Missing directories detected: {', '.join(missing_dirs)}")
-        response = input("Create directory structure? [Y/n]: ").strip().lower()
+        if sys.stdin and sys.stdin.isatty():
+            response = input("Create directory structure? [Y/n]: ").strip().lower()
+        else:
+            response = 'y'                         # no console (built program): create them
         
         if response in ['', 'y', 'yes']:
             try:
