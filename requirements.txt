@@ -1,0 +1,9 @@
+Pillow
+PyQt6
+flask
+mss
+numpy
+py7zr
+pygame
+rarfile
+requests

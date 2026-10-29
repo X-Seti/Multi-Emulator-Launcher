@@ -1,4 +1,4 @@
-#this belongs in apps/methods/ribbon_system.py - Version: 1
+#this belongs in apps/methods/ribbon_system.py - Version: 3
 # X-Seti - October 3 2026 - Multi-Emulator Launcher - Shared ribbon toolbar system
 
 """ribbon_system.py - Ribbon toolbars for MEL windows.
@@ -23,6 +23,7 @@ an older ribbon structure is rejected via _RIBBON_LAYOUT_VERSION.
 # RibbonMixin.ribbon_toolbars
 # RibbonMixin.ribbon_widget
 # RibbonMixin.ribbon_wrap
+# RibbonMixin._ribbon_dock_all
 # RibbonMixin._ribbon_config_get
 # RibbonMixin._ribbon_config_set
 # RibbonMixin._ribbon_icon
@@ -33,7 +34,7 @@ an older ribbon structure is rejected via _RIBBON_LAYOUT_VERSION.
 
 from PyQt6.QtCore import Qt, QSize, QByteArray
 from PyQt6.QtGui import QAction
-from PyQt6.QtWidgets import QMainWindow, QToolBar, QMenu, QLabel
+from PyQt6.QtWidgets import QMainWindow, QToolBar, QLabel
 
 from apps.methods.svg_icon_factory import SVGIconFactory
 
@@ -70,7 +71,7 @@ class RibbonMixin: #vers 1
         tb.setIconSize(QSize(px, px))
         tb.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
         tb.setMovable(True)
-        tb.setFloatable(True)
+        tb.setFloatable(False)                  # Wayland can't re-dock a floating toolbar
         tb.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         tb.customContextMenuRequested.connect(
             lambda pos, t=tb: self.ribbon_context_menu(t, pos))
@@ -153,14 +154,19 @@ class RibbonMixin: #vers 1
             return []
         return [tb for tb in mw.findChildren(QToolBar) if tb.parent() is mw]
 
-    def ribbon_context_menu(self, toolbar, pos): #vers 1
-        """Right-click menu for a ribbon"""
-        menu = QMenu(self)
-        menu.addAction("Save Ribbon Config", self.ribbon_save_state)
-        menu.addSeparator()
-        menu.addAction("Lock All Toolbars", lambda: self._ribbon_set_movable(False))
-        menu.addAction("Unlock All Toolbars", lambda: self._ribbon_set_movable(True))
+    def ribbon_context_menu(self, toolbar, pos): #vers 3
+        """Shared ribbon menu (methods/toolbar_menu.py) plus Dock All Ribbons."""
+        from apps.methods.toolbar_menu import standard_toolbar_menu
+        menu = standard_toolbar_menu(self, self.ribbon_toolbars())
+        menu.addAction("Dock All Ribbons", self._ribbon_dock_all)
         menu.exec(toolbar.mapToGlobal(pos))
+
+    def _ribbon_dock_all(self): #vers 1
+        """Floating ribbons back into the top ribbon area"""
+        for tb in self.ribbon_toolbars():
+            if tb.isFloating():
+                self._ribbon_mw.addToolBar(Qt.ToolBarArea.TopToolBarArea, tb)
+                tb.setVisible(True)
 
     def _ribbon_set_movable(self, movable): #vers 1
         """Lock or unlock every ribbon"""
