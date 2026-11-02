@@ -80,3 +80,6 @@ apps/themes
 # Build output (made by buildscript.py / GitHub Actions; releases hold the downloads)
 /_internal/
 /*.exe
+/*_dist/
+/Multi_Emulator_Launcher
+/Multi_Emulator_Launcher.app/
